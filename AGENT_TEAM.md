@@ -19,3 +19,12 @@ Sirati is operated by a coordinated multi-agent team. All agents must follow `AG
 - Prefer small, reversible changes.
 - Any protected or high-risk action is marked **BLOCKED — OWNER DECISION REQUIRED**.
 - Manager has coordination priority; Deputy handles handoffs and continuity, not product-policy overrides.
+
+
+## Continuous improvement
+- Every agent reads `AGENT_SKILLS.md` and `AGENT_LESSONS.md` before meaningful work.
+- After a verified result, the responsible agent records reusable lessons and improves its playbook.
+- The Manager decides whether a lesson should become a shared team rule.
+- The Deputy checks that lessons are not duplicated, speculative, or contradictory.
+- Agents improve methods, checklists, prompts, tests, and execution patterns; they do not alter model weights, permissions, or protected safety boundaries.
+- A learned technique is applied to the site only when it is relevant, low-risk, reversible, and verified.
