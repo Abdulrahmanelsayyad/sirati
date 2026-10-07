@@ -377,6 +377,18 @@ function writeSavedTarget(scope: { key: string; persistent: boolean }, targetRol
   store.setItem(scope.key, JSON.stringify({ version: 2, targetRole, jobDescription }));
 }
 
+function patchSavedTarget(
+  scope: { key: string; persistent: boolean },
+  patch: Partial<{ targetRole: string; jobDescription: string }>
+) {
+  const existing = readSavedTarget(scope) || { targetRole: '', jobDescription: '' };
+  writeSavedTarget(
+    scope,
+    patch.targetRole !== undefined ? patch.targetRole : existing.targetRole,
+    patch.jobDescription !== undefined ? patch.jobDescription : existing.jobDescription
+  );
+}
+
 function findBuilderSection(category: Category) {
   const patterns: Record<Category, RegExp> = {
     skills: /skills|competencies|مهارات|الكفاءات/i,
@@ -615,7 +627,7 @@ export default function TargetJobTailor() {
                   onChange={(event) => {
                     const nextRole = event.target.value;
                     setTargetRole(nextRole);
-                    writeSavedTarget(currentStorageScope(), nextRole, jobDescription);
+                    patchSavedTarget(currentStorageScope(), { targetRole: nextRole });
                   }}
                   placeholder={copy.rolePlaceholder}
                   autoComplete="off"
@@ -629,7 +641,7 @@ export default function TargetJobTailor() {
                   onChange={(event) => {
                     const nextDescription = event.target.value;
                     setJobDescription(nextDescription);
-                    writeSavedTarget(currentStorageScope(), targetRole, nextDescription);
+                    patchSavedTarget(currentStorageScope(), { jobDescription: nextDescription });
                   }}
                   placeholder={copy.jdPlaceholder}
                   rows={7}
