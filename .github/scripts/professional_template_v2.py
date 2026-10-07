@@ -6,7 +6,7 @@ root = Path(sys.argv[1]).resolve()
 preview = root / "components" / "CvPreview.tsx"
 text = preview.read_text(encoding="utf-8")
 
-marker = "  return (\\n    <article className={`cv-sheet template-${template} ${template === 'compact' ? 'compact' : ''}`} dir={dir}>"
+marker = "  return (\n    <article className={`cv-sheet template-${template} ${template === 'compact' ? 'compact' : ''}`} dir={dir}>"
 if "professional-v2" not in text:
     modern = r'''  if (template === 'modern') {
     const skillLine = data.skills
