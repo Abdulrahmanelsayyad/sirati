@@ -71,6 +71,29 @@ assert(readinessText.includes('not an ATS score or a hiring guarantee'), 'CV Qua
 log('CV Quality Center shows essentials plus actionable content-quality checks');
 await readinessTrigger.click();
 
+await page.evaluate(() => {
+  const field = document.createElement('div');
+  field.className = 'field';
+  field.id = 'qa-experience-description-field';
+  field.innerHTML = '<label>Description</label><textarea id="qa-experience-description"></textarea>';
+  document.body.appendChild(field);
+});
+const qaExperienceDescription = page.locator('#qa-experience-description');
+await qaExperienceDescription.focus();
+const experiencePicker = page.locator('.experience-picker');
+assert.equal(await experiencePicker.count(), 1, 'experience description picker did not open on Description focus');
+assert((await experiencePicker.innerText()).includes('Experience description options'), 'experience picker title missing');
+const firstExperienceOption = experiencePicker.locator('.experience-picker__options article').first();
+const firstExperienceText = (await firstExperienceOption.locator('p').innerText()).trim();
+await firstExperienceOption.getByRole('button', { name: /Add/ }).click();
+await page.waitForTimeout(100);
+assert((await qaExperienceDescription.inputValue()).includes(firstExperienceText), 'selected experience description was not inserted');
+await qaExperienceDescription.fill((await qaExperienceDescription.inputValue()) + '\nManual custom responsibility');
+assert((await qaExperienceDescription.inputValue()).includes('Manual custom responsibility'), 'manual experience description editing was blocked');
+await experiencePicker.locator('.experience-picker__heading button').click();
+await page.evaluate(() => document.getElementById('qa-experience-description-field')?.remove());
+log('Experience Description Picker supports curated choices plus manual writing');
+
 const jobTailorTrigger = page.locator('.job-tailor__trigger');
 assert.equal(await jobTailorTrigger.count(), 1, 'target job tailoring trigger missing');
 await jobTailorTrigger.click();
@@ -80,7 +103,9 @@ await jobTailorPanel.locator('input').fill('ICU Nurse');
 await jobTailorPanel.locator('textarea').fill(
   "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
 );
-await page.waitForTimeout(1000);
+await page.waitForTimeout(100);
+assert.equal(await page.locator('.experience-picker').count(), 0, 'Job Match job description must not trigger Experience Description Picker');
+await page.waitForTimeout(900);
 const tailorText = (await jobTailorPanel.innerText()).replace(/\s+/g, ' ');
 for (const phrase of ['Overall coverage', 'Must-have coverage', 'Match breakdown', 'Requirements analysis']) {
   assert(tailorText.includes(phrase), 'target job V2 missing: ' + phrase);
