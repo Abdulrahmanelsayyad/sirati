@@ -160,6 +160,14 @@ if "professional-v2" not in text:
     if marker not in text:
         raise SystemExit("Could not locate CvPreview return marker")
     text = text.replace(marker, modern + marker, 1)
+    text = text.replace(
+        "<header className={\`cv-head \${template === 'modern' ? 'professional-head' : ''}\`}>",
+        '<header className="cv-head">'
+    )
+    text = text.replace(
+        "{template === 'modern' && data.photoDataUrl && <img className=\"professional-photo\" src={data.photoDataUrl} alt=\"Professional portrait\" />}",
+        ""
+    )
     preview.write_text(text, encoding="utf-8")
 
 css_path = root / "app" / "globals.css"
