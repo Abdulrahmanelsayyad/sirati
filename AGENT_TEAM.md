@@ -44,3 +44,15 @@ Sirati is operated by a coordinated multi-agent team. All agents must follow `AG
 - No task is marked complete until QA verifies the live user flow and the Manager confirms board/changelog closure.
 - If a deployment fails, the active owner pauses related downstream work until the failure is understood or rolled back.
 - Protected areas (auth, RLS, secrets, payment rules, repo/security settings) remain owner-approval gated regardless of agent ownership.
+
+
+## Benchmark-first, zero-cost rule
+- Before meaningful product work, the assigned agent performs a focused benchmark of leading, reputable products relevant to its specialty using current public information when available.
+- Examples by role: Design studies leading CV/design builders; CV Expert studies high-quality resume guidance and ATS-oriented builders; QA studies polished onboarding and checkout flows; Performance/SEO studies technically strong SaaS landing experiences; Customer Liaison studies excellent support/help-center patterns; Security studies established secure-by-default practices; Bug Fixer studies proven interaction/state patterns when relevant.
+- The goal is not to copy branding, layouts, wording, proprietary assets, or trade dress. Extract principles, friction-reduction ideas, interaction patterns, quality bars, and reusable lessons.
+- Each agent asks: "Can Sirati make this simpler, clearer, faster, more trustworthy, or more useful for its target user?"
+- Prefer solutions that are better for Sirati's actual audience rather than feature-for-feature imitation.
+- Every proposed implementation must remain zero-cost unless the owner explicitly approves spending: no paid APIs, no paid SaaS dependency, no paid templates/assets, no paid hosting upgrade, no paid AI calls, and no credit-consuming feature.
+- Free/open-source/browser-native capabilities are preferred when their licenses and security posture are suitable.
+- Benchmark findings must be concise and task-specific; research must not delay execution unnecessarily.
+- A benchmark-inspired change still follows normal ownership, conflict-prevention, protected-area, build, QA, and live-verification rules.
