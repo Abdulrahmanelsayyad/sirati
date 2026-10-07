@@ -5,7 +5,13 @@ Keep Sirati reliable, secure, polished, easy to use, and focused on the core cus
 Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 
 ## Now
-- No active autonomous task.
+- **SCV-01 — Nursing content model & benchmark** — Owner: CV Expert — Status: IN PROGRESS — Scope: research and define the zero-cost Nursing MVP taxonomy/content schema only; no builder code edits.
+- **SCV-02 — Guided specialty UX specification** — Owner: Design Agent — Status: QUEUED (after SCV-01 handoff) — Scope: flow/cards/checklists/mobile/RTL specification only; no state/persistence code.
+- **SCV-03 — Builder integration** — Owner: Bug Fixer — Status: QUEUED (after SCV-01 + SCV-02) — Scope: insert/remove/edit/dedupe/persist selected library items within existing builder; preserve current journey.
+- **SCV-04 — End-to-end verification** — Owner: QA & Release Agent — Status: QUEUED (after SCV-03) — Scope: desktop/mobile, Arabic/English, save/restore, preview and PDF-order regression verification.
+- **SCV-05 — Security review** — Owner: Security Agent — Status: QUEUED (after SCV-03) — Scope: review only storage/data-handling changes; protected settings remain owner-gated.
+- **SCV-06 — Performance review** — Owner: Performance & SEO Agent — Status: QUEUED (after SCV-04) — Scope: page weight/loading impact and safe zero-cost optimizations only.
+- **Coordination** — Owner: Deputy Manager — Status: ACTIVE — Maintain conflict map and enforce handoffs; agents may not start queued work before prerequisites are handed off.
 
 ## Backlog
 - Continuously improve agent playbooks from verified outcomes and record reusable lessons.
@@ -107,3 +113,17 @@ Reduce user thinking and typing. Let the customer choose a field/specialty, role
 - Selected content remains editable and saves/restores correctly.
 - Existing CV journey remains functional.
 - Live-site QA passes on mobile and desktop.
+
+
+### Manager benchmark brief — 2026-10-07
+Current public benchmark research found useful principles to adapt, not copy:
+- Resume.io exposes relevant skill suggestions and keyword-oriented sample sentences while keeping the resume editable.
+- Teal uses a reusable content library where users toggle bullets on/off for a tailored resume, preserving one source of truth and user control.
+- Canva reduces blank-page friction with ready-made, customizable starting points and supports mobile editing.
+- Sirati adaptation: specialty-first curated options + explicit user confirmation + editable insertion + zero-cost static/local content. This is intentionally narrower and simpler than copying full competitor feature sets.
+
+### Smart CV conflict map
+- SCV-01 may touch only taxonomy/content specification or dedicated content-data files.
+- SCV-02 may touch only UX specification/design artifacts until SCV-01 handoff.
+- SCV-03 is the sole owner allowed to touch builder state/insertion/persistence for this feature.
+- SCV-04/05/06 review after integration and must not concurrently edit SCV-03-owned files; defects return to SCV-03 as a handoff.
