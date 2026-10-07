@@ -46,18 +46,22 @@ if 'value="compact-ats"' not in s:
         s = s[:m.start()] + replacement + s[m.end():]
 # Preserve Compact ATS when starting a new CV or restoring a local draft.
 def expand_template_guard(text):
-    patterns = [
-        re.compile(r"([A-Za-z_$][\\w.$]*)\\s*===\\s*'classic'\\s*\\|\\|\\s*\\1\\s*===\\s*'compact'\\s*\\?\\s*\\1\\s*:\\s*'modern'"),
-        re.compile(r'([A-Za-z_$][\\w.$]*)\\s*===\\s*"classic"\\s*\\|\\|\\s*\\1\\s*===\\s*"compact"\\s*\\?\\s*\\1\\s*:\\s*"modern"')
-    ]
-    total = 0
-    for pattern in patterns:
-        def replacement(match):
-            value = match.group(1)
-            return value + " === 'classic' || " + value + " === 'compact' || " + value + " === 'compact-ats' ? " + value + " : 'modern'"
-        text, count = pattern.subn(replacement, text)
-        total += count
-    return text, total
+    pattern = re.compile(
+        r"(?P<value>[A-Za-z_$][\\w.$]*)\\s*===\\s*['\\\"]classic['\\\"]"
+        r"\\s*\\|\\|\\s*(?P=value)\\s*===\\s*['\\\"]compact['\\\"]"
+        r"\\s*\\?\\s*(?P=value)\\s*:\\s*['\\\"]modern['\\\"]"
+    )
+
+    def replacement(match):
+        value = match.group("value")
+        return (
+            value + " === 'classic' || " +
+            value + " === 'compact' || " +
+            value + " === 'compact-ats' ? " +
+            value + " : 'modern'"
+        )
+
+    return pattern.subn(replacement, text)
 
 s, expanded_guards = expand_template_guard(s)
 if expanded_guards < 2:
