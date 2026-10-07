@@ -135,19 +135,4 @@ if marker not in css:
 '''
     css_path.write_text(css, encoding="utf-8")
 
-layer_marker = "/* Keep Builder feedback above the sticky CV preview */"
-if layer_marker not in css:
-    css += r'''
-
-/* Keep Builder feedback above the sticky CV preview */
-.wizard-panel {
-  position: relative;
-  z-index: 2;
-}
-.wizard-preview-wrap {
-  z-index: 1;
-}
-'''
-    css_path.write_text(css, encoding="utf-8")
-
 print("Applied mobile builder containment fix.")
