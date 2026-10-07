@@ -90,10 +90,12 @@ import subprocess
 subprocess.run([sys.executable, str(Path(__file__).with_name('professional_template.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('professional_template_v2.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('compact_ats_template.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_nursing_library.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('support_section.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('guided_builder.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('home_polish.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('sirati_studio.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name('mobile_builder_fix.py')), str(root)], check=True)
 
 print("Prepared Sirati for GitHub Pages.")
 
