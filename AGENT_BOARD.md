@@ -17,10 +17,10 @@ Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 Implementation rule: one feature per branch/PR, full build + E2E QA before merge, then live verification before the next feature is treated as complete. Avoid overlapping Builder edits across open feature PRs.
 
 1. **F1 — CV Quality Center** — Status: DEPLOYED / LIVE VERIFICATION PENDING — PR #13 passed build + E2E QA, was merged, and deployed successfully. Final completion still requires live manual verification.
-2. **F2 — Multi-CV Versions / Duplicate CV** — Status: IN PROGRESS — Let an authenticated user duplicate and rename a saved CV for each target job without overwriting the source; copy only CV data/template/language, preserve account isolation and existing RLS, and do not copy payment orders.
-3. **F3 — Cover Letter Builder** — Status: PLANNED — Build a guided English/Arabic cover letter from verified CV facts plus the target job; use deterministic templates first, never invent claims, zero paid API dependency.
-4. **F4 — Job Application Tracker** — Status: PLANNED — Track company, role, job link, status, dates, notes and linked Sirati CV version with a simple application pipeline.
-5. **F5 — Achievement Bullet Coach** — Status: PLANNED — Convert factual responsibilities into stronger accomplishment bullets through guided prompts for action, scope and outcome; never invent metrics.
+2. **F2 — Multi-CV Versions / Duplicate CV** — Status: MERGED / LIVE VERIFICATION PENDING — PR #14 passed build + E2E QA and was merged. Final completion still requires live verification of the duplicate flow with a signed-in saved CV.
+3. **F3 — Guided Experience Description Picker** — Status: IN PROGRESS — When the user focuses the Experience Description field, show specialty-specific responsibility options that can be added one by one while keeping the field fully editable for manual writing. Never add responsibilities automatically.
+4. **F4 — Cover Letter Builder** — Status: PLANNED — Build a guided English/Arabic cover letter from verified CV facts plus the target job; use deterministic templates first, never invent claims, zero paid API dependency.
+5. **F5 — Job Application Tracker** — Status: PLANNED — Track company, role, job link, status, dates, notes and linked Sirati CV version with a simple application pipeline.
 6. **F6 — PDF Preflight Center** — Status: PLANNED — Before ordering/exporting, check A4 fit, likely overflow, page count, missing essentials and print-risk conditions with actionable fixes.
 7. **F7 — Existing CV Import** — Status: PLANNED — Import an existing CV into editable Sirati fields with explicit review/confirmation and conservative parsing; do not silently overwrite saved data.
 8. **F8 — Section Manager** — Status: PLANNED — Reorder, hide/show and add supported sections while preserving ATS reading order, Arabic/English behavior and saved data compatibility.
