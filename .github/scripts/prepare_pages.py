@@ -94,6 +94,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('smart_nursing_libr
 subprocess.run([sys.executable, str(Path(__file__).with_name('support_section.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('guided_builder.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('cv_readiness_check.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name('multi_cv_duplicate.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('target_job_tailoring.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('pdf_order_clarity.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('home_polish.py')), str(root)], check=True)
