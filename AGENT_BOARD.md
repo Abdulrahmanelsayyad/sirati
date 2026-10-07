@@ -5,9 +5,10 @@ Keep Sirati reliable, secure, polished, easy to use, and focused on the core cus
 Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 
 ## Now
+- **P1-READINESS-01 — Live CV Readiness Check** — Owner: Design Agent + Bug Fixer — Status: IN PROGRESS (2026-10-08) — Add a zero-cost live completion guide for essential CV sections; no fabricated ATS score, no paid API, and no changes to auth/payment/data rules.
 - **P0-BUILDER-01 — Builder status messages overlap the sticky CV preview** — Owner: Sirati Bug Fixer — Status: VERIFIED (2026-10-07) — CSS stacking regression fixed; PR #6 passed build + Sirati E2E QA and was verified on the live site after deployment.
 - **P0-AUTH-01 — Account Save/Restore + Data Isolation** — Owner: Security Agent + QA & Release Agent — Status: VERIFIED (2026-10-07) — Production RLS tested bidirectionally with rollback-only users; own create/update/version/PDF-order operations succeed; cross-user read/update/delete/insert/version/order operations are blocked; Data API grants tightened to least privilege.
-- **P0-PDF-01 — PDF order / payment clarity** — Owner: Customer Liaison + Design Agent — Status: IN PROGRESS (2026-10-07) — Simplify InstaPay/Vodafone Cash instructions, reference submission, pending state and next-step messaging without changing price, payment approval rules, or enabling automated collection.
+- **P0-PDF-01 — PDF order / payment clarity** — Owner: Customer Liaison + Design Agent — Status: VERIFIED (2026-10-08) — Manual EGP 50 clean-PDF flow clarified for InstaPay/Vodafone Cash, reference submission and pending/approval messaging; PR #7 passed build + E2E, deployed successfully, and was verified on the live site.
 - **Coordination** — Owner: Deputy Manager — Status: ACTIVE — Maintain conflict map and enforce handoffs; no production completion claim before QA and changelog entry.
 
 ## Backlog

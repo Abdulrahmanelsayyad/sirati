@@ -25,3 +25,11 @@ This file records autonomous maintenance changes made to Sirati.
 - Added regression coverage for new-CV intent, account-scoped draft restoration, saved-document priority and cross-account draft isolation.
 - Restored the Builder feedback-panel stacking rule after E2E caught the regression.
 - PR #6 passed the production build and Sirati E2E QA, was merged to `main`, deployed successfully to GitHub Pages, and was manually verified on the live site for refresh restore, fresh-CV behavior, PDF, mobile and English/Arabic presentation.
+
+
+## 2026-10-08 — PDF Order / Payment Clarity
+
+- Clarified the EGP 50 clean-PDF journey into explicit payment, reference-submission and manual-review steps.
+- Improved pending, approved and rejected payment states and added a real Sirati Support fallback when WhatsApp is not configured.
+- Added E2E coverage for payment guidance, support-link fallback and mobile layout.
+- PR #7 passed build and Sirati E2E QA, deployed successfully to GitHub Pages, and was manually verified on the live site.

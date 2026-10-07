@@ -51,6 +51,15 @@ assert.equal(await onboardingTemplateSelect.inputValue(), 'compact-ats');
 assert((await page.locator('.cv-sheet').getAttribute('class')).includes('template-compact-ats'));
 log('Compact ATS selection survives template onboarding');
 
+const readinessTrigger = page.locator('.cv-readiness__trigger');
+assert.equal(await readinessTrigger.count(), 1, 'CV readiness trigger missing');
+await readinessTrigger.click();
+const readinessPanel = page.locator('.cv-readiness__panel');
+assert.equal(await readinessPanel.count(), 1, 'CV readiness panel missing');
+assert.equal(await readinessPanel.locator('.cv-readiness__list li').count(), 6, 'CV readiness should show six essentials');
+assert((await readinessPanel.innerText()).includes('ATS-score guarantee'), 'CV readiness disclaimer missing');
+log('CV readiness check is visible with six essentials and safe disclaimer');
+
 const library = page.locator('details.smart-nursing-library');
 assert.equal(await library.count(), 1);
 await library.locator('summary').click();
@@ -86,7 +95,10 @@ log('inserted summary remains editable');
 
 await page.getByRole('button', { name: '← Back' }).click();
 await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
-await page.waitForTimeout(700);
+await page.waitForTimeout(800);
+const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
+assert(readinessScoreAfterName >= 15, 'CV readiness score did not recognize completed name');
+log('CV readiness score reacts to Builder input');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 log('local save survives reload');
@@ -210,7 +222,14 @@ for (const value of ['modern', 'classic', 'compact', 'compact-ats']) {
   }
   assert(overflow <= 2, value + ' mobile horizontal overflow=' + overflow);
 }
-log('mobile overflow check for all four templates');
+const mobileReadiness = page.locator('.cv-readiness');
+assert.equal(await mobileReadiness.count(), 1, 'mobile CV readiness missing');
+const readinessRect = await mobileReadiness.evaluate((el) => {
+  const rect = el.getBoundingClientRect();
+  return { left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width) };
+});
+assert(readinessRect.left >= -2 && readinessRect.right <= 392, 'mobile CV readiness exceeds viewport: ' + JSON.stringify(readinessRect));
+log('mobile overflow check for all four templates and readiness widget');
 
 await mobileTemplateSelect.selectOption('compact-ats');
 const mobileLibrary = page.locator('details.smart-nursing-library');
