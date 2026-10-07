@@ -49,7 +49,9 @@ jobs:
 
       - name: Run E2E QA
         working-directory: site-src/sirati-cv-source
-        run: node "$GITHUB_WORKSPACE/qa/e2e.mjs"
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/e2e.mjs" ./qa-e2e.mjs
+          node ./qa-e2e.mjs
 
       - name: Upload QA PDFs on failure
         if: failure()
