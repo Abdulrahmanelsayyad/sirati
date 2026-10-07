@@ -1,4 +1,5 @@
 name: Deploy Sirati to GitHub Pages
+# GitHub Pages source enabled
 
 on:
   push:
