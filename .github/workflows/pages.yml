@@ -12,92 +12,40 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
 
       - name: Reconstruct Sirati source
         run: |
-          rm -rf buildsrc
-          mkdir -p buildsrc
-          cat source.part1 source.part2 source.part3 | base64 -d > /tmp/sirati.zip
-          unzip -q /tmp/sirati.zip -d buildsrc
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Configure GitHub Pages paths
-        working-directory: buildsrc/sirati-cv-source
-        run: |
-          cat > next.config.ts <<'EOF'
-          import type { NextConfig } from 'next';
-
-          const nextConfig: NextConfig = {
-            output: 'export',
-            trailingSlash: true,
-            basePath: '/sirati-cv',
-            assetPrefix: '/sirati-cv/'
-          };
-
-          export default nextConfig;
-          EOF
-
-          python - <<'PY'
-          from pathlib import Path
-
-          # Plain browser navigations do not automatically honor Next.js basePath.
-          replacements = {
-              "window.location.href = '/auth';": "window.location.href = '/sirati-cv/auth/';",
-              "window.location.href = '/';": "window.location.href = '/sirati-cv/';",
-              "window.location.href = '/auth?next=/templates';": "window.location.href = '/sirati-cv/auth/?next=/templates';",
-              "window.location.href = \`/builder?template=\${template}&language=\${language}\`;": "window.location.href = \`/sirati-cv/builder/?template=\${template}&language=\${language}\`;",
-              "window.location.href = '/templates'": "window.location.href = '/sirati-cv/templates/'",
-              "window.location.href = \`/auth?next=\${encodeURIComponent(window.location.pathname + window.location.search)}\`;": "window.location.href = \`/sirati-cv/auth/?next=\${encodeURIComponent(window.location.pathname.replace('/sirati-cv', '') + window.location.search)}\`;"
-          }
-
-          for p in list(Path('app').rglob('*.tsx')) + list(Path('components').rglob('*.tsx')):
-              s = p.read_text()
-              for old, new in replacements.items():
-                  s = s.replace(old, new)
-              p.write_text(s)
-
-          auth = Path('app/auth/page.tsx')
-          s = auth.read_text()
-          s = s.replace("window.location.href = next;", "window.location.href = '/sirati-cv' + next;")
-          s = s.replace("window.location.href = nextPath;", "window.location.href = '/sirati-cv' + nextPath;")
-          s = s.replace(
-              "const redirectTo = \`\${window.location.origin}/auth/confirm?next=\${encodeURIComponent(nextPath)}\`;",
-              "const redirectTo = \`\${window.location.origin}/sirati-cv/auth/confirm/?next=\${encodeURIComponent(nextPath)}\`;"
-          )
-          auth.write_text(s)
-
-          confirm = Path('app/auth/confirm/page.tsx')
-          s = confirm.read_text()
-          s = s.replace("window.location.href = next;", "window.location.href = '/sirati-cv' + next;")
-          confirm.write_text(s)
-          PY
+          cat source.part1 source.part2 source.part3 source.part4a source.part4b source.part4c source.part5 source.part6 source.part7 | base64 -d > /tmp/sirati.zip
+          rm -rf site-src
+          mkdir site-src
+          unzip -q /tmp/sirati.zip -d site-src
+          python .github/scripts/prepare_pages.py site-src/sirati-cv-source
 
       - name: Install dependencies
-        working-directory: buildsrc/sirati-cv-source
+        working-directory: site-src/sirati-cv-source
         run: npm install
 
       - name: Build static site
-        working-directory: buildsrc/sirati-cv-source
+        working-directory: site-src/sirati-cv-source
         env:
+          NEXT_PUBLIC_BASE_PATH: /sirati-cv
           NEXT_PUBLIC_SUPABASE_URL: https://hzzojoiqzbeivxesjlyf.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_eHoILJwdvPp-F4WoLFm05g_hoj8hNDP
           NEXT_PUBLIC_SITE_URL: https://abdulrahmanelsayyad.github.io/sirati-cv
         run: npm run build
-
-      - name: Disable Jekyll
-        run: touch buildsrc/sirati-cv-source/out/.nojekyll
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -105,7 +53,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: buildsrc/sirati-cv-source/out
+          path: site-src/sirati-cv-source/out
 
   deploy:
     environment:
