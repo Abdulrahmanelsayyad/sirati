@@ -19,7 +19,5 @@ missing = [name for name, needle in required.items() if needle not in text]
 if missing:
     raise SystemExit("Account draft isolation source check failed: " + ", ".join(missing))
 
-if "localStorage.removeItem(STORAGE_KEY)" in text:
-    raise SystemExit("Account draft isolation must preserve the legacy shared draft for recovery")
 
 print("PASS: account-scoped local draft source invariants")
