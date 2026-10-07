@@ -14,16 +14,15 @@ const LEGACY_STORAGE_KEY = 'sirati.cv.v1';
 const LEGACY_STORAGE_KEY = 'sirati.cv.v1';
 
 function accountDraftStorageKey(userId: string) {
-  return \`\${STORAGE_KEY}.\${userId}\`;
+  return `${STORAGE_KEY}.${userId}`;
 }
 """
     if constants not in text:
         raise SystemExit("Could not locate builder storage constants")
     text = text.replace(constants, replacement, 1)
 
-# When cloud accounts are configured, never auto-load the shared legacy device draft.
-# It is deliberately preserved in localStorage for recovery, but account sessions use
-# user-scoped draft keys to prevent cross-account exposure on shared browsers.
+# In cloud/account mode, never auto-load the shared legacy device draft.
+# Preserve the legacy key for recovery; signed-in sessions use user-scoped keys.
 old_else = """    } else {
       const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
 """
@@ -81,7 +80,7 @@ new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
             );
             setLanguage(parsed.language === 'ar' ? 'ar' : 'en');
           } catch {
-            // Keep the new blank CV when this user's device draft is invalid.
+            // Keep the blank CV when this user's device draft is invalid.
           }
         }
 
