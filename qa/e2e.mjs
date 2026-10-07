@@ -138,6 +138,38 @@ let overflow = await page.evaluate(() => document.documentElement.scrollWidth - 
 assert(overflow <= 2, 'desktop horizontal overflow=' + overflow);
 log('desktop page-level overflow check');
 
+await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
+for (let step = 0; step < 8; step++) {
+  const next = page.getByRole('button', { name: /Continue/ }).last();
+  assert((await next.count()) > 0, 'missing Continue button before clean-PDF review step');
+  await next.click();
+  await page.waitForTimeout(50);
+}
+const paymentCard = page.locator('.manual-payment-card');
+assert.equal(await paymentCard.count(), 1, 'clean-PDF payment card missing');
+const paymentCopy = (await paymentCard.innerText()).replace(/\s+/g, ' ');
+for (const phrase of [
+  'Clean PDF · EGP 50',
+  'Get payment details from Sirati Support',
+  'Pay EGP 50 by InstaPay or Vodafone Cash',
+  'Payment transaction reference',
+  'Submit payment reference'
+]) {
+  assert(paymentCopy.includes(phrase), 'missing payment guidance: ' + phrase);
+}
+const supportLink = paymentCard.getByRole('link', { name: /Get payment details from Sirati Support/ });
+const supportHref = await supportLink.getAttribute('href');
+assert(supportHref && supportHref !== '#', 'payment support link must have a real fallback');
+assert(supportHref.startsWith('mailto:') || supportHref.startsWith('http'), 'unexpected payment support link: ' + supportHref);
+log('clean PDF payment flow clarity and support fallback');
+
+await page.setViewportSize({ width: 390, height: 844 });
+overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+assert(overflow <= 2, 'payment review mobile horizontal overflow=' + overflow);
+const paymentCardWidth = await paymentCard.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+assert(paymentCardWidth <= 390, 'payment card exceeds mobile viewport: ' + paymentCardWidth);
+log('clean PDF payment card mobile layout');
+
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
 

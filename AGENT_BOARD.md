@@ -5,9 +5,9 @@ Keep Sirati reliable, secure, polished, easy to use, and focused on the core cus
 Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 
 ## Now
-- **P0-BUILDER-01 — Builder status messages overlap the sticky CV preview** — Owner: Sirati Bug Fixer — Status: IN PROGRESS (2026-10-07) — CSS stacking fix only; preserve auth, save/restore, payment and PDF behavior; require build, E2E/regression, and manager approval before deployment.
+- **P0-BUILDER-01 — Builder status messages overlap the sticky CV preview** — Owner: Sirati Bug Fixer — Status: VERIFIED (2026-10-07) — CSS stacking regression fixed; PR #6 passed build + Sirati E2E QA and was verified on the live site after deployment.
 - **P0-AUTH-01 — Account Save/Restore + Data Isolation** — Owner: Security Agent + QA & Release Agent — Status: VERIFIED (2026-10-07) — Production RLS tested bidirectionally with rollback-only users; own create/update/version/PDF-order operations succeed; cross-user read/update/delete/insert/version/order operations are blocked; Data API grants tightened to least privilege.
-- **P0-PDF-01 — PDF order / payment clarity** — Owner: Customer Liaison + Design Agent — Status: NEXT — Simplify InstaPay/Vodafone Cash instructions, reference submission, pending state and next-step messaging without changing price or payment approval rules.
+- **P0-PDF-01 — PDF order / payment clarity** — Owner: Customer Liaison + Design Agent — Status: IN PROGRESS (2026-10-07) — Simplify InstaPay/Vodafone Cash instructions, reference submission, pending state and next-step messaging without changing price, payment approval rules, or enabling automated collection.
 - **Coordination** — Owner: Deputy Manager — Status: ACTIVE — Maintain conflict map and enforce handoffs; no production completion claim before QA and changelog entry.
 
 ## Backlog
