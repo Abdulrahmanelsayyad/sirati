@@ -17,3 +17,11 @@ This file records autonomous maintenance changes made to Sirati.
 - Added `qa/supabase_rls.sql` regression test and tracked the production migration under `supabase/migrations/`.
 - Remaining credential-dependent manual check: a full browser logout -> login -> reopen cloud CV round trip with a second real loginable account. The project currently has one real Auth user, so this was not fabricated or bypassed.
 - Security follow-up: Supabase Security Advisor currently warns that leaked-password protection is disabled.
+
+
+## 2026-10-07 — New CV Draft Restoration
+
+- Fixed the new-CV onboarding flow so a fresh CV remains blank instead of restoring an older account draft after onboarding/effect replay.
+- Added regression coverage for new-CV intent, account-scoped draft restoration, saved-document priority and cross-account draft isolation.
+- Restored the Builder feedback-panel stacking rule after E2E caught the regression.
+- PR #6 passed the production build and Sirati E2E QA, was merged to `main`, deployed successfully to GitHub Pages, and was manually verified on the live site for refresh restore, fresh-CV behavior, PDF, mobile and English/Arabic presentation.
