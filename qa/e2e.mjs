@@ -103,7 +103,9 @@ await jobTailorPanel.locator('input').fill('ICU Nurse');
 await jobTailorPanel.locator('textarea').fill(
   "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
 );
-await page.waitForTimeout(1000);
+await page.waitForTimeout(100);
+assert.equal(await page.locator('.experience-picker').count(), 0, 'Job Match job description must not trigger Experience Description Picker');
+await page.waitForTimeout(900);
 const tailorText = (await jobTailorPanel.innerText()).replace(/\s+/g, ' ');
 for (const phrase of ['Overall coverage', 'Must-have coverage', 'Match breakdown', 'Requirements analysis']) {
   assert(tailorText.includes(phrase), 'target job V2 missing: ' + phrase);
