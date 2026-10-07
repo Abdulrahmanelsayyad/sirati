@@ -31,6 +31,9 @@ jobs:
       - name: Check account draft isolation
         run: python qa/account_storage_check.py site-src/sirati-cv-source
 
+      - name: Check duplicate CV safety
+        run: python qa/multi_cv_duplicate_check.py site-src/sirati-cv-source
+
       - name: Install and build
         working-directory: site-src/sirati-cv-source
         env:
