@@ -89,6 +89,7 @@ patch("app/builder/page.tsx", [
 import subprocess
 subprocess.run([sys.executable, str(Path(__file__).with_name('professional_template.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('professional_template_v2.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name('compact_ats_template.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('support_section.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('guided_builder.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('home_polish.py')), str(root)], check=True)
