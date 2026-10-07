@@ -134,29 +134,48 @@ assert(overflow <= 2, 'desktop horizontal overflow=' + overflow);
 log('desktop page-level overflow check');
 
 await page.setViewportSize({ width: 390, height: 844 });
-await page.goto(base + '/builder/?template=compact-ats&language=en', { waitUntil: 'networkidle' });
-overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-if (overflow > 2) {
-  const offenders = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('*'))
-      .map((el) => {
-        const rect = el.getBoundingClientRect();
-        return {
-          tag: el.tagName,
-          cls: String(el.className || '').slice(0, 120),
-          width: Math.round(rect.width),
-          left: Math.round(rect.left),
-          right: Math.round(rect.right),
-          scrollWidth: el.scrollWidth
-        };
-      })
-      .filter((item) => item.right > window.innerWidth + 2 || item.left < -2)
-      .sort((a, b) => b.right - a.right)
-      .slice(0, 18)
-  );
-  console.log('MOBILE_OVERFLOW_ELEMENTS', JSON.stringify(offenders));
+await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
+
+let mobileTemplateSelect = null;
+const mobileSelects = page.locator('select');
+for (let i = 0; i < await mobileSelects.count(); i++) {
+  const values = await optionValues(mobileSelects.nth(i));
+  if (['modern', 'classic', 'compact', 'compact-ats'].every((value) => values.includes(value))) {
+    mobileTemplateSelect = mobileSelects.nth(i);
+    break;
+  }
 }
-assert(overflow <= 2, 'mobile horizontal overflow=' + overflow);
+assert(mobileTemplateSelect, 'mobile template selector not found');
+
+for (const value of ['modern', 'classic', 'compact', 'compact-ats']) {
+  await mobileTemplateSelect.selectOption(value);
+  await page.waitForTimeout(80);
+  overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (overflow > 2) {
+    const offenders = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('*'))
+        .map((el) => {
+          const rect = el.getBoundingClientRect();
+          return {
+            tag: el.tagName,
+            cls: String(el.className || '').slice(0, 120),
+            width: Math.round(rect.width),
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            scrollWidth: el.scrollWidth
+          };
+        })
+        .filter((item) => item.right > window.innerWidth + 2 || item.left < -2)
+        .sort((a, b) => b.right - a.right)
+        .slice(0, 18)
+    );
+    console.log('MOBILE_OVERFLOW_ELEMENTS_' + value, JSON.stringify(offenders));
+  }
+  assert(overflow <= 2, value + ' mobile horizontal overflow=' + overflow);
+}
+log('mobile overflow check for all four templates');
+
+await mobileTemplateSelect.selectOption('compact-ats');
 const mobileLibrary = page.locator('details.smart-nursing-library');
 if ((await mobileLibrary.getAttribute('open')) === null) await mobileLibrary.locator('summary').click();
 const gridColumns = await mobileLibrary.locator('.smart-nursing-selectors').evaluate((el) => getComputedStyle(el).gridTemplateColumns);
