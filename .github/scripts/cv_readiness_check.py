@@ -39,6 +39,55 @@ function anyControlByType(type: string): string {
   return control?.value?.trim() || '';
 }
 
+function allBuilderValues(): string[] {
+  return Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'))
+    .filter((item) => !item.closest('.job-tailor') && !item.closest('.cv-readiness'))
+    .map((item) => item.value.trim())
+    .filter(Boolean);
+}
+
+function valuesFor(pattern: RegExp): string[] {
+  const fields = Array.from(document.querySelectorAll<HTMLElement>('.field, label, .wizard-section-card'));
+  const values: string[] = [];
+  for (const field of fields) {
+    const text = (field.innerText || field.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!pattern.test(text)) continue;
+    for (const control of Array.from(field.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'))) {
+      const value = control.value.trim();
+      if (value) values.push(value);
+    }
+  }
+  return Array.from(new Set(values));
+}
+
+function countItems(value: string) {
+  return Array.from(new Set(
+    value.split(/[\n,;•|]+/).map((item) => item.trim().toLowerCase()).filter((item) => item.length >= 2)
+  )).length;
+}
+
+function hasActionLanguage(value: string) {
+  const text = value.toLowerCase();
+  const verbs = [
+    'managed','led','supervised','coordinated','implemented','improved','reduced','increased','developed',
+    'performed','administered','assessed','monitored','trained','maintained','documented',
+    'أدرت','ادرت','قدت','أشرفت','اشرفت','نسقت','نفذت','حسنت','راقبت','دربت','وثقت'
+  ];
+  return verbs.some((verb) => text.includes(verb.toLowerCase()));
+}
+
+function hasMeasuredImpact(value: string) {
+  return /\b\d{1,3}\s*%/.test(value)
+    || /\b\d+\+?\s+(patients?|cases?|staff|employees?|projects?|beds?|calls?|clients?)\b/i.test(value)
+    || /\b\d+\+?\s+(مريض|مرضى|حالة|حالات|موظف|موظفين|مشروع|مشاريع|سرير|أسرة|اسرة)\b/i.test(value);
+}
+
+function hasPlaceholder(value: string) {
+  const text = value.toLowerCase();
+  return ['lorem ipsum','test test','xxx','asdf','sample text','your name','company name','اكتب هنا','نص تجريبي','اسمك هنا','اسم الشركة']
+    .some((item) => text.includes(item.toLowerCase()));
+}
+
 function detectLanguage(): 'en' | 'ar' {
   const cv = document.querySelector<HTMLElement>('.cv-sheet');
   if (cv?.getAttribute('dir') === 'rtl') return 'ar';
@@ -54,15 +103,28 @@ function scanChecks(): Check[] {
   const experience = fieldValue(/job title|position|company|employer|experience|المسمى|الوظيفة|الشركة|جهة العمل|الخبرة/i);
   const education = fieldValue(/education|degree|university|school|التعليم|المؤهل|الجامعة|الكلية/i);
   const skills = fieldValue(/skills|مهارات/i);
+  const skillValues = valuesFor(/skills|competenc|مهارات|كفاءات/i).join('\n');
+  const experienceValues = valuesFor(/experience|job title|position|company|employer|responsibilit|achievement|الخبرة|المسمى|الوظيفة|الشركة|المسؤوليات|الإنجازات|الانجازات/i).join('\n');
+  const allText = allBuilderValues().join('\n');
+  const emailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 
   return [
-    { id: 'name', labelEn: 'Full name', labelAr: 'الاسم الكامل', weight: 15, passed: fullName.length >= 2 },
-    { id: 'contact', labelEn: 'Contact details', labelAr: 'بيانات التواصل', weight: 15, passed: email.length >= 5 || phone.length >= 6 },
-    { id: 'summary', labelEn: 'Professional summary', labelAr: 'الملخص المهني', weight: 20, passed: summary.length >= 60 },
-    { id: 'experience', labelEn: 'Work experience', labelAr: 'الخبرة العملية', weight: 20, passed: experience.length >= 2 },
-    { id: 'education', labelEn: 'Education', labelAr: 'التعليم', weight: 15, passed: education.length >= 2 },
-    { id: 'skills', labelEn: 'Skills', labelAr: 'المهارات', weight: 15, passed: skills.length >= 2 },
-  ];
+    { id: 'name', labelEn: 'Full name', labelAr: 'الاسم الكامل', weight: 10, passed: fullName.length >= 2 },
+    { id: 'contact', labelEn: 'Contact details', labelAr: 'بيانات التواصل', weight: 10, passed: email.length >= 5 || phone.length >= 6 },
+    { id: 'summary', labelEn: 'Professional summary', labelAr: 'الملخص المهني', weight: 10, passed: summary.length >= 60 },
+    { id: 'experience', labelEn: 'Work experience', labelAr: 'الخبرة العملية', weight: 10, passed: experience.length >= 2 },
+    { id: 'education', labelEn: 'Education', labelAr: 'التعليم', weight: 10, passed: education.length >= 2 },
+    { id: 'skills', labelEn: 'Skills', labelAr: 'المهارات', weight: 10, passed: skills.length >= 2 },
+    { id: 'email-quality', labelEn: 'Valid professional email', labelAr: 'بريد إلكتروني صحيح', weight: 8, passed: emailValid },
+    { id: 'summary-focus', labelEn: 'Focused summary (60–350 chars)', labelAr: 'ملخص مركز (60–350 حرف)', weight: 8, passed: summary.length >= 60 && summary.length <= 350 },
+    { id: 'skills-depth', labelEn: '5+ relevant skills', labelAr: '5 مهارات مناسبة أو أكثر', weight: 8, passed: countItems(skillValues) >= 5 },
+    { id: 'action-language', labelEn: 'Action-oriented experience wording', labelAr: 'صياغة خبرة بأفعال قوية', weight: 8, passed: experienceValues.length >= 20 && hasActionLanguage(experienceValues) },
+    { id: 'impact', labelEn: 'Measurable impact when available', labelAr: 'أثر قابل للقياس عند توفره', weight: 8, passed: hasMeasuredImpact(experienceValues) },
+  ].map((check) =>
+    check.id === 'impact' && hasPlaceholder(allText)
+      ? { ...check, labelEn: 'Remove placeholder/test content', labelAr: 'احذف النصوص التجريبية', passed: false }
+      : check
+  );
 }
 
 export default function CvReadinessCheck() {
@@ -101,22 +163,22 @@ export default function CvReadinessCheck() {
   const passedCount = checks.filter((item) => item.passed).length;
   const status =
     score >= 85
-      ? (language === 'ar' ? 'جاهز للمراجعة' : 'Ready to review')
+      ? (language === 'ar' ? 'قوي وجاهز للمراجعة' : 'Strong and ready to review')
       : score >= 55
-        ? (language === 'ar' ? 'قريب من الاكتمال' : 'Almost there')
-        : (language === 'ar' ? 'يحتاج استكمال' : 'Needs work');
+        ? (language === 'ar' ? 'جيد ويحتاج بعض التحسين' : 'Good, with a few improvements')
+        : (language === 'ar' ? 'يحتاج تحسين قبل الإرسال' : 'Needs improvement before sending');
 
   if (!enabled) return null;
 
   return (
-    <aside className="cv-readiness" dir={language === 'ar' ? 'rtl' : 'ltr'} aria-label={language === 'ar' ? 'فحص جاهزية السيرة الذاتية' : 'CV readiness check'}>
+    <aside className="cv-readiness" dir={language === 'ar' ? 'rtl' : 'ltr'} aria-label={language === 'ar' ? 'مركز جودة السيرة الذاتية' : 'CV Quality Center'}>
       <button
         type="button"
         className="cv-readiness__trigger"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
       >
-        <span>{language === 'ar' ? 'جاهزية CV' : 'CV readiness'}</span>
+        <span>{language === 'ar' ? 'جودة CV' : 'CV quality'}</span>
         <strong>{score}%</strong>
       </button>
 
@@ -124,7 +186,7 @@ export default function CvReadinessCheck() {
         <div className="cv-readiness__panel">
           <div className="cv-readiness__heading">
             <div>
-              <small>{language === 'ar' ? 'فحص سريع أثناء الكتابة' : 'Live completion check'}</small>
+              <small>{language === 'ar' ? 'SIRATI QUALITY CENTER' : 'SIRATI QUALITY CENTER'}</small>
               <h3>{status}</h3>
             </div>
             <strong>{score}%</strong>
@@ -136,8 +198,8 @@ export default function CvReadinessCheck() {
 
           <p className="cv-readiness__summary">
             {language === 'ar'
-              ? `${passedCount} من ${checks.length} عناصر أساسية مكتملة`
-              : `${passedCount} of ${checks.length} essentials complete`}
+              ? `${passedCount} من ${checks.length} فحص جودة مكتمل`
+              : `${passedCount} of ${checks.length} quality checks complete`}
           </p>
 
           <ul className="cv-readiness__list">
@@ -151,8 +213,8 @@ export default function CvReadinessCheck() {
 
           <p className="cv-readiness__note">
             {language === 'ar'
-              ? 'هذا مؤشر جاهزية عملي وليس ضمانًا لنتيجة أي نظام ATS.'
-              : 'This is a practical readiness guide, not an ATS-score guarantee.'}
+              ? 'هذه نسبة جودة عملية مبنية على فحوص واضحة داخل Sirati؛ ليست ATS Score ولا ضمانًا للمقابلة أو القبول.'
+              : 'This is a transparent Sirati quality guide, not an ATS score or a hiring guarantee.'}
           </p>
         </div>
       )}
