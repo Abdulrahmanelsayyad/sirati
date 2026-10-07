@@ -43,10 +43,10 @@ jobs:
       - name: Build static site
         working-directory: site-src/sirati-cv-source
         env:
-          NEXT_PUBLIC_BASE_PATH: /sirati-cv
+          NEXT_PUBLIC_BASE_PATH: /sirati
           NEXT_PUBLIC_SUPABASE_URL: https://hzzojoiqzbeivxesjlyf.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_eHoILJwdvPp-F4WoLFm05g_hoj8hNDP
-          NEXT_PUBLIC_SITE_URL: https://abdulrahmanelsayyad.github.io/sirati-cv
+          NEXT_PUBLIC_SITE_URL: https://abdulrahmanelsayyad.github.io/sirati
         run: npm run build
 
       - name: Configure Pages
