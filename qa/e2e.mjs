@@ -204,6 +204,8 @@ await page.waitForTimeout(800);
 const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
 assert(readinessScoreAfterName >= 10, 'CV Quality Center did not recognize completed name');
 log('CV Quality Center score reacts to Builder input');
+const savedTargetBeforeReload = await page.evaluate(() => sessionStorage.getItem('sirati.jobTailor.v2.draft'));
+assert(savedTargetBeforeReload && savedTargetBeforeReload.includes('ICU Nurse'), 'Job Match draft was not persisted before reload');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 await page.locator('.job-tailor__trigger').click();
