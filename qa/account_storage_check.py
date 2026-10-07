@@ -21,3 +21,10 @@ if missing:
 
 
 print("PASS: account-scoped local draft source invariants")
+
+# Run behavior regressions against the same prepared builder used by the build.
+import subprocess
+subprocess.run([
+    'node', str(Path(__file__).with_name('new_cv_regression.cjs')),
+    str(root),
+], check=True)

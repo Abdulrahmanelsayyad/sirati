@@ -5,6 +5,23 @@ root = Path(sys.argv[1]).resolve()
 path = root / "app" / "builder" / "page.tsx"
 text = path.read_text(encoding="utf-8")
 
+# Retain new-CV intent after onboarding keys are consumed, including effect replay.
+ref_old = "  const cloudReadyRef = useRef(false);"
+ref_new = ref_old + "\n  const newCvRequestedRef = useRef(false);"
+if "const newCvRequestedRef = useRef(false);" not in text:
+    if ref_old not in text:
+        raise SystemExit("Could not locate builder readiness ref")
+    text = text.replace(ref_old, ref_new, 1)
+intent_old = "    const onboardingNew = localStorage.getItem('sirati.onboarding.newCv') === '1';"
+intent_new = """    const onboardingNew = !params.get('doc') && (
+      newCvRequestedRef.current || localStorage.getItem('sirati.onboarding.newCv') === '1'
+    );
+    newCvRequestedRef.current = onboardingNew;"""
+if intent_old in text:
+    text = text.replace(intent_old, intent_new, 1)
+elif intent_new not in text:
+    raise SystemExit("Could not locate new CV intent")
+
 marker = "function accountDraftStorageKey(userId: string)"
 if marker not in text:
     constants = """const STORAGE_KEY = 'sirati.cv.v2';
@@ -66,7 +83,9 @@ old_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
 """
 new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.location.search).get('doc');
       if (!requestedDocumentId) {
-        const raw = localStorage.getItem(accountDraftStorageKey(user.id));
+        const raw = newCvRequestedRef.current
+          ? null
+          : localStorage.getItem(accountDraftStorageKey(user.id));
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
