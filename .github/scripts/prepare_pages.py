@@ -88,6 +88,7 @@ patch("app/builder/page.tsx", [
 
 import subprocess
 subprocess.run([sys.executable, str(Path(__file__).with_name('professional_template.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name('professional_template_v2.py')), str(root)], check=True)
 
 print("Prepared Sirati for GitHub Pages.")
 
