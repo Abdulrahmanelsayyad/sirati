@@ -41,3 +41,12 @@ Before deploying:
 Do not ask the owner for approval for allowed changes.
 After a successful deployment, send only a concise summary of what changed and why.
 If no safe improvement is available, make no change.
+
+
+## Zero-cost constraint
+- Autonomous work must use zero-cost implementation paths.
+- Do not activate, purchase, subscribe to, or depend on paid APIs, paid AI inference, paid SaaS, paid templates/assets, paid hosting upgrades, premium plugins, or credit-consuming services without explicit owner approval.
+- Do not require the owner to add billing details as part of autonomous work.
+- Prefer existing infrastructure, free/open-source libraries with suitable licenses, native browser/platform features, and currently available free tiers.
+- If the best-known approach requires payment, document the idea as an optional future upgrade and implement the strongest safe zero-cost alternative now.
+- Zero-cost does not override security, privacy, licensing, protected settings, or quality gates.
