@@ -168,6 +168,8 @@ if "professional-v2" not in text:
         "{template === 'modern' && data.photoDataUrl && <img className=\"professional-photo\" src={data.photoDataUrl} alt=\"Professional portrait\" />}",
         ""
     )
+    text = text.replace("template === 'modern' ? 'professional-head' : ''", "false ? 'professional-head' : ''")
+    text = text.replace("template === 'modern' && data.photoDataUrl &&", "false && data.photoDataUrl &&")
     preview.write_text(text, encoding="utf-8")
 
 css_path = root / "app" / "globals.css"
