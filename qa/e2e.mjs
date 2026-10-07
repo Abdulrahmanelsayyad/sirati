@@ -32,6 +32,11 @@ await page.waitForLoadState('networkidle');
 assert(page.url().includes('/builder'));
 log('template flow reaches builder');
 
+const panelZIndex = Number(await page.locator('.wizard-panel').evaluate((el) => getComputedStyle(el).zIndex));
+const previewZIndex = Number(await page.locator('.wizard-preview-wrap').evaluate((el) => getComputedStyle(el).zIndex));
+assert(panelZIndex > previewZIndex, 'Builder feedback panel must stack above the live CV preview');
+log('Builder feedback layers above live CV preview');
+
 let onboardingTemplateSelect = null;
 const onboardingSelects = page.locator('select');
 for (let i = 0; i < await onboardingSelects.count(); i++) {
