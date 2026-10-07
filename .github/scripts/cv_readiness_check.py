@@ -105,8 +105,7 @@ function scanChecks(): Check[] {
   const skills = fieldValue(/skills|مهارات/i);
   const skillValues = valuesFor(/skills|competenc|مهارات|كفاءات/i).join('\n');
   const experienceValues = valuesFor(/experience|job title|position|company|employer|responsibilit|achievement|الخبرة|المسمى|الوظيفة|الشركة|المسؤوليات|الإنجازات|الانجازات/i).join('\n');
-  const allText = allBuilderValues().join('\n');
-  const emailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  const emailValid = email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 
   return [
     { id: 'name', labelEn: 'Full name', labelAr: 'الاسم الكامل', weight: 10, passed: fullName.length >= 2 },
@@ -120,11 +119,7 @@ function scanChecks(): Check[] {
     { id: 'skills-depth', labelEn: '5+ relevant skills', labelAr: '5 مهارات مناسبة أو أكثر', weight: 8, passed: countItems(skillValues) >= 5 },
     { id: 'action-language', labelEn: 'Action-oriented experience wording', labelAr: 'صياغة خبرة بأفعال قوية', weight: 8, passed: experienceValues.length >= 20 && hasActionLanguage(experienceValues) },
     { id: 'impact', labelEn: 'Measurable impact when available', labelAr: 'أثر قابل للقياس عند توفره', weight: 8, passed: hasMeasuredImpact(experienceValues) },
-  ].map((check) =>
-    check.id === 'impact' && hasPlaceholder(allText)
-      ? { ...check, labelEn: 'Remove placeholder/test content', labelAr: 'احذف النصوص التجريبية', passed: false }
-      : check
-  );
+  ];
 }
 
 export default function CvReadinessCheck() {
