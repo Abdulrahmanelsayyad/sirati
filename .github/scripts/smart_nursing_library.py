@@ -786,14 +786,20 @@ if import_line not in text:
     text = "".join(lines)
 
 if "<NursingSmartLibrary" not in text:
-    match = re.search(r"(?m)^(\s*)\{step\s*===\s*0\s*&&\s*\(", text)
-    if not match:
-        raise SystemExit("Could not locate step 0 insertion point in builder")
-    indent = match.group(1)
-    widget = (
-        indent + "<NursingSmartLibrary data={data} setData={setData} language={language} />\n"
-    )
-    text = text[:match.start()] + widget + text[match.start():]
+    anchors = [
+        '<div className="field"><label>Full name</label>',
+        '<div className="field">\n                <label>Full name</label>',
+        '<label>Full name</label>'
+    ]
+    anchor = next((item for item in anchors if item in text), None)
+    if not anchor:
+        raise SystemExit("Could not locate Full name field insertion point in builder")
+    index = text.index(anchor)
+    line_start = text.rfind("\n", 0, index) + 1
+    indent_match = re.match(r"\s*", text[line_start:index])
+    indent = indent_match.group(0) if indent_match else ""
+    widget = indent + '<NursingSmartLibrary data={data} setData={setData} language={language} />\n'
+    text = text[:line_start] + widget + text[line_start:]
 
 builder.write_text(text, encoding="utf-8")
 
