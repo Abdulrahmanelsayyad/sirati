@@ -5,19 +5,15 @@ Keep Sirati reliable, secure, polished, easy to use, and focused on the core cus
 Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 
 ## Now
-- **SCV-01 — Nursing content model & benchmark** — Owner: CV Expert — Status: IN PROGRESS — Scope: research and define the zero-cost Nursing MVP taxonomy/content schema only; no builder code edits.
-- **SCV-02 — Guided specialty UX specification** — Owner: Design Agent — Status: QUEUED (after SCV-01 handoff) — Scope: flow/cards/checklists/mobile/RTL specification only; no state/persistence code.
-- **SCV-03 — Builder integration** — Owner: Bug Fixer — Status: QUEUED (after SCV-01 + SCV-02) — Scope: insert/remove/edit/dedupe/persist selected library items within existing builder; preserve current journey.
-- **SCV-04 — End-to-end verification** — Owner: QA & Release Agent — Status: QUEUED (after SCV-03) — Scope: desktop/mobile, Arabic/English, save/restore, preview and PDF-order regression verification.
-- **SCV-05 — Security review** — Owner: Security Agent — Status: QUEUED (after SCV-03) — Scope: review only storage/data-handling changes; protected settings remain owner-gated.
-- **SCV-06 — Performance review** — Owner: Performance & SEO Agent — Status: QUEUED (after SCV-04) — Scope: page weight/loading impact and safe zero-cost optimizations only.
-- **Coordination** — Owner: Deputy Manager — Status: ACTIVE — Maintain conflict map and enforce handoffs; agents may not start queued work before prerequisites are handed off.
+- **P0-AUTH-01 — Account Save/Restore + Data Isolation** — Owner: Security Agent + QA & Release Agent — Status: VERIFIED (2026-10-07) — Production RLS tested bidirectionally with rollback-only users; own create/update/version/PDF-order operations succeed; cross-user read/update/delete/insert/version/order operations are blocked; Data API grants tightened to least privilege.
+- **P0-PDF-01 — PDF order / payment clarity** — Owner: Customer Liaison + Design Agent — Status: NEXT — Simplify InstaPay/Vodafone Cash instructions, reference submission, pending state and next-step messaging without changing price or payment approval rules.
+- **Coordination** — Owner: Deputy Manager — Status: ACTIVE — Maintain conflict map and enforce handoffs; no production completion claim before QA and changelog entry.
 
 ## Backlog
 - Continuously improve agent playbooks from verified outcomes and record reusable lessons.
 - Improve customer-facing polish when clear, low-risk opportunities are found.
 - Continuously watch for reproducible UI or deployment defects.
-- Review security posture without exposing or modifying secrets.
+- Review security posture without exposing or modifying secrets.\n- Auth hardening follow-up: Supabase Security Advisor reports leaked-password protection is disabled; enable when available/approved.
 
 ## Blocked
 - In-page AI CV assistance requires an approved AI backend/API or equivalent runtime integration.
@@ -136,7 +132,7 @@ Add a fourth Sirati CV template focused on maximum ATS readability and compact p
 
 ### TPL-01 — Design specification
 - **Owner:** Sirati Design Agent
-- **Status:** QUEUED (start after SCV-02 handoff to avoid ownership conflict)
+- **Status:** COMPLETE (2026-10-07)
 - Benchmark leading ATS-oriented resume builders and extract principles without copying branding, layouts, wording, or proprietary assets.
 - Template working name: **Compact ATS**.
 - Use a true single-column reading order.
@@ -150,7 +146,7 @@ Add a fourth Sirati CV template focused on maximum ATS readability and compact p
 
 ### TPL-02 — Builder/preview integration
 - **Owner:** Sirati Bug Fixer
-- **Status:** QUEUED (after TPL-01 and SCV-03 handoffs)
+- **Status:** COMPLETE (2026-10-07)
 - Add Compact ATS as a selectable fourth template using the existing template-selection architecture.
 - Reuse the existing CV data model; do not fork user data or persistence.
 - Preserve manual editing, save/restore, preview, Arabic/English, mobile behavior, and PDF-order flow.
@@ -158,14 +154,14 @@ Add a fourth Sirati CV template focused on maximum ATS readability and compact p
 
 ### TPL-03 — QA and release verification
 - **Owner:** Sirati QA & Release Agent
-- **Status:** QUEUED (after TPL-02)
+- **Status:** COMPLETE (2026-10-07)
 - Verify template selection, switching between all templates, persistence after refresh/sign-out/sign-in where supported, desktop/mobile rendering, Arabic RTL, English LTR, long-content wrapping, page breaks, print/PDF fidelity, and regression of the existing customer journey.
 - Test ATS-safe reading order by copying/extracting rendered text in expected logical order where feasible.
 - Record reproducible defects; no production completion claim until live-site verification passes.
 
 ### TPL-04 — Security/performance review
 - **Owner:** Security Agent + Performance & SEO Agent (serialized reviews)
-- **Status:** QUEUED (after TPL-03)
+- **Status:** COMPLETE (2026-10-07)
 - Confirm no new external assets, paid dependencies, tracking, secret exposure, or unnecessary page-weight regression.
 
 ### Acceptance criteria
