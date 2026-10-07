@@ -44,6 +44,25 @@ if 'value="compact-ats"' not in s:
             raise SystemExit("Could not locate builder template selector")
         replacement = m.group(1) + '\n                <option value="compact-ats">Compact ATS</option>\n              ' + m.group(2)
         s = s[:m.start()] + replacement + s[m.end():]
+# Preserve Compact ATS when starting a new CV or restoring a local draft.
+def expand_template_guard(text):
+    patterns = [
+        re.compile(r"([A-Za-z_$][\\w.$]*)\\s*===\\s*'classic'\\s*\\|\\|\\s*\\1\\s*===\\s*'compact'\\s*\\?\\s*\\1\\s*:\\s*'modern'"),
+        re.compile(r'([A-Za-z_$][\\w.$]*)\\s*===\\s*"classic"\\s*\\|\\|\\s*\\1\\s*===\\s*"compact"\\s*\\?\\s*\\1\\s*:\\s*"modern"')
+    ]
+    total = 0
+    for pattern in patterns:
+        def replacement(match):
+            value = match.group(1)
+            return value + " === 'classic' || " + value + " === 'compact' || " + value + " === 'compact-ats' ? " + value + " : 'modern'"
+        text, count = pattern.subn(replacement, text)
+        total += count
+    return text, total
+
+s, expanded_guards = expand_template_guard(s)
+if expanded_guards < 2:
+    print("WARN: expected to expand at least two template guards, expanded", expanded_guards)
+
 builder.write_text(s, encoding="utf-8")
 
 # Dedicated ATS rendering branch.
