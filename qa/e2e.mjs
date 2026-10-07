@@ -88,16 +88,33 @@ assert((await experiencePicker.innerText()).includes('Auto-detected from role'),
 assert.equal(await experiencePicker.locator('.experience-picker__selectors select').nth(0).inputValue(), 'icu', 'ICU specialty was not auto-detected');
 assert.equal(await experiencePicker.locator('.experience-picker__selectors select').nth(1).inputValue(), 'senior', 'Senior level was not auto-detected');
 assert.equal(await experiencePicker.locator('.experience-picker__categories button').count(), 6, 'Experience Pro category filters missing');
-const firstExperienceOption = experiencePicker.locator('.experience-picker__options article').first();
-const firstExperienceText = (await firstExperienceOption.locator('p').innerText()).trim();
-await firstExperienceOption.getByRole('button', { name: /Add/ }).click();
+await experiencePicker.getByRole('button', { name: 'Select recommended' }).click();
+const selectedExperienceOptions = experiencePicker.locator('.experience-picker__options input:checked');
+assert((await selectedExperienceOptions.count()) >= 2, 'recommended multi-select did not select enough experience options');
+const selectedTexts = await experiencePicker.locator('.experience-picker__options article.is-selected label span').allTextContents();
+const addSelectedExperience = experiencePicker.getByRole('button', { name: 'Add selected' });
+assert(await addSelectedExperience.isEnabled(), 'Add selected should be enabled');
+await addSelectedExperience.click();
 await page.waitForTimeout(100);
-assert((await qaExperienceDescription.inputValue()).includes(firstExperienceText), 'selected experience description was not inserted');
+const insertedExperience = await qaExperienceDescription.inputValue();
+assert(selectedTexts.some((value) => insertedExperience.includes(value.trim())), 'selected experience descriptions were not inserted');
+
+await experiencePicker.locator('.experience-picker__search input').fill('monitor');
+assert((await experiencePicker.locator('.experience-picker__options article').count()) >= 1, 'experience suggestion search returned no matching options');
+await experiencePicker.locator('.experience-picker__search input').fill('');
+
 await qaExperienceDescription.fill((await qaExperienceDescription.inputValue()) + '\nManual custom responsibility');
 assert((await qaExperienceDescription.inputValue()).includes('Manual custom responsibility'), 'manual experience description editing was blocked');
+
 await experiencePicker.locator('.experience-picker__heading button').click();
+const experienceTrigger = page.locator('.experience-picker-trigger');
+assert.equal(await experienceTrigger.count(), 1, 'Experience Pro reopen trigger missing after close');
+await experienceTrigger.click();
+assert.equal(await page.locator('.experience-picker').count(), 1, 'Experience Pro did not reopen from trigger');
+await page.locator('.experience-picker__heading button').click();
+
 await page.evaluate(() => document.getElementById('qa-experience-description-field')?.remove());
-log('Experience Description Picker supports curated choices plus manual writing');
+log('Experience Description Pro auto-detects role/level, filters suggestions, supports multi-select and manual writing');
 
 const jobTailorTrigger = page.locator('.job-tailor__trigger');
 assert.equal(await jobTailorTrigger.count(), 1, 'target job tailoring trigger missing');
