@@ -612,7 +612,11 @@ export default function TargetJobTailor() {
                 <input
                   type="text"
                   value={targetRole}
-                  onChange={(event) => setTargetRole(event.target.value)}
+                  onChange={(event) => {
+                    const nextRole = event.target.value;
+                    setTargetRole(nextRole);
+                    writeSavedTarget(currentStorageScope(), nextRole, jobDescription);
+                  }}
                   placeholder={copy.rolePlaceholder}
                   autoComplete="off"
                 />
@@ -622,7 +626,11 @@ export default function TargetJobTailor() {
                 <span>{copy.jd}</span>
                 <textarea
                   value={jobDescription}
-                  onChange={(event) => setJobDescription(event.target.value)}
+                  onChange={(event) => {
+                    const nextDescription = event.target.value;
+                    setJobDescription(nextDescription);
+                    writeSavedTarget(currentStorageScope(), targetRole, nextDescription);
+                  }}
                   placeholder={copy.jdPlaceholder}
                   rows={7}
                 />
@@ -637,6 +645,7 @@ export default function TargetJobTailor() {
                     onClick={() => {
                       setTargetRole('');
                       setJobDescription('');
+                      writeSavedTarget(currentStorageScope(), '', '');
                     }}
                   >
                     {copy.clear}
