@@ -56,9 +56,19 @@ assert.equal(await readinessTrigger.count(), 1, 'CV readiness trigger missing');
 await readinessTrigger.click();
 const readinessPanel = page.locator('.cv-readiness__panel');
 assert.equal(await readinessPanel.count(), 1, 'CV readiness panel missing');
-assert.equal(await readinessPanel.locator('.cv-readiness__list li').count(), 6, 'CV readiness should show six essentials');
-assert((await readinessPanel.innerText()).includes('ATS-score guarantee'), 'CV readiness disclaimer missing');
-log('CV readiness check is visible with six essentials and safe disclaimer');
+assert.equal(await readinessPanel.locator('.cv-readiness__list li').count(), 11, 'CV Quality Center should show eleven transparent checks');
+const readinessText = (await readinessPanel.innerText()).replace(/\s+/g, ' ');
+for (const phrase of [
+  'Valid professional email',
+  'Focused summary (60–350 chars)',
+  '5+ relevant skills',
+  'Action-oriented experience wording',
+  'Measurable impact when available'
+]) {
+  assert(readinessText.includes(phrase), 'CV Quality Center missing check: ' + phrase);
+}
+assert(readinessText.includes('not an ATS score or a hiring guarantee'), 'CV Quality Center disclaimer missing');
+log('CV Quality Center shows essentials plus actionable content-quality checks');
 await readinessTrigger.click();
 
 const jobTailorTrigger = page.locator('.job-tailor__trigger');
@@ -145,8 +155,8 @@ await page.getByRole('button', { name: '← Back' }).click();
 await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
 await page.waitForTimeout(800);
 const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
-assert(readinessScoreAfterName >= 15, 'CV readiness score did not recognize completed name');
-log('CV readiness score reacts to Builder input');
+assert(readinessScoreAfterName >= 10, 'CV Quality Center did not recognize completed name');
+log('CV Quality Center score reacts to Builder input');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 await page.locator('.job-tailor__trigger').click();
