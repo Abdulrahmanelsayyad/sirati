@@ -28,6 +28,12 @@ function normalize(value: string) {
 function isExperienceDescription(target: EventTarget | null): target is HTMLTextAreaElement {
   if (!(target instanceof HTMLTextAreaElement)) return false;
 
+  // Never treat textareas from other Sirati tools as work-experience descriptions.
+  // "Job description" in Job Match Center was the important false positive here.
+  if (target.closest('.job-tailor, .smart-nursing-library, .cv-readiness, .duplicate-cv, .experience-picker')) {
+    return false;
+  }
+
   const own = [
     target.name,
     target.id,
@@ -37,10 +43,19 @@ function isExperienceDescription(target: EventTarget | null): target is HTMLText
 
   const field = target.closest<HTMLElement>('.field, label, .wizard-section-card, fieldset');
   const fieldText = field ? (field.innerText || field.textContent || '') : '';
+  const section = target.closest<HTMLElement>('.wizard-section-card, fieldset, section');
+  const sectionText = section ? (section.innerText || section.textContent || '') : '';
 
   const text = (own + ' ' + fieldText).replace(/\s+/g, ' ').toLowerCase();
+  const context = sectionText.replace(/\s+/g, ' ').toLowerCase();
 
-  return /description|details|responsibilit|duties|الوصف|التفاصيل|المسؤوليات|المهام/.test(text);
+  const descriptionLike = /description|details|responsibilit|duties|الوصف|التفاصيل|المسؤوليات|المهام/.test(text);
+  if (!descriptionLike) return false;
+
+  // When broader section context is available, prefer explicit work-experience context.
+  // Fall back to the description label itself for the current Builder markup.
+  const hasExperienceContext = /work experience|experience|employment|الخبره|الخبرة|العمل السابق|الخبرات/.test(context);
+  return hasExperienceContext || !context || context === fieldText.toLowerCase();
 }
 
 function setTextareaValue(target: HTMLTextAreaElement, value: string) {
@@ -73,7 +88,14 @@ export default function ExperienceDescriptionPicker() {
     scanLanguage();
 
     const onFocus = (event: FocusEvent) => {
-      if (!isExperienceDescription(event.target)) return;
+      const element = event.target instanceof HTMLElement ? event.target : null;
+      if (element?.closest('.experience-picker')) return;
+
+      if (!isExperienceDescription(event.target)) {
+        setOpen(false);
+        return;
+      }
+
       targetRef.current = event.target;
       setVersion((value) => value + 1);
       setOpen(true);
