@@ -87,3 +87,14 @@ patch("app/builder/page.tsx", [
 (root / "public" / ".nojekyll").write_text("", encoding="utf-8")
 
 print("Prepared Sirati for GitHub Pages.")
+
+
+# createClient() is nullable by design, but every Builder call is guarded first.
+# Non-null assertions keep that runtime guard while satisfying strict TypeScript
+# across async callbacks where control-flow narrowing is not retained.
+builder_path = root / "app/builder/page.tsx"
+builder_text = builder_path.read_text(encoding="utf-8")
+builder_text = builder_text.replace("await supabase.auth", "await supabase!.auth")
+builder_text = builder_text.replace("await supabase\n        .from", "await supabase!\n        .from")
+builder_text = builder_text.replace("await supabase\n      .from", "await supabase!\n      .from")
+builder_path.write_text(builder_text, encoding="utf-8")
