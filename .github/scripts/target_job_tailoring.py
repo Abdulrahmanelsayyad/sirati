@@ -10,7 +10,7 @@ component_path.write_text(r''' 'use client';
 import { useEffect, useMemo, useState } from 'react';
 
 type Language = 'en' | 'ar';
-type Category = 'skills' | 'experience' | 'certifications' | 'education';
+type Category = 'skills' | 'experience' | 'certifications' | 'education' | 'languages';
 type Priority = 'required' | 'preferred' | 'general';
 
 type Requirement = {
@@ -34,6 +34,7 @@ const STOPWORDS = new Set([
   'required','preferred','including','include','responsible','responsibilities','requirements','requirement','qualification',
   'qualifications','years','year','experience','skills','skill','ability','strong','excellent','good','team','teams',
   'position','candidate','minimum','plus','knowledge','understanding','demonstrated','proven','support','supports','supporting',
+  'basic','patient','patients','nursing','nurse','emergency','department','hospital','healthcare','clinical','medical','license','licence','licensed','certification','certified',
   'في','من','على','إلى','الى','عن','مع','هذا','هذه','ذلك','تلك','التي','الذي','الذين','و','أو','او','أن','ان','كما',
   'يجب','يفضل','مطلوب','المطلوب','خبرة','سنوات','سنة','مهارات','مهارة','القدرة','العمل','فريق','ضمن','مسؤول','مسؤوليات',
   'الوظيفة','الدور','المتطلبات','المؤهلات','جيد','ممتاز','قوي','لدى','لديه','لديها','معرفة','فهم','دعم','خبرات'
@@ -70,9 +71,19 @@ const SYNONYM_GROUPS: SynonymGroup[] = [
   { label: 'Bachelor Degree', category: 'education', variants: ['bachelor degree','bachelor\'s degree','bsc','bsn','bachelor of science','درجة البكالوريوس','بكالوريوس'] },
   { label: 'Master Degree', category: 'education', variants: ['master degree','master\'s degree','msc','master of science','درجة الماجستير','ماجستير'] },
   { label: 'Diploma', category: 'education', variants: ['diploma','postgraduate diploma','دبلومة','دبلوم'] },
+  { label: 'Dubai Health Authority (DHA) License', category: 'certifications', variants: ['dha license','dha licence','dha eligibility','dha eligible','dubai health authority','ترخيص dha','اهلية dha','أهلية dha'] },
+  { label: 'Department of Health Abu Dhabi (DOH/HAAD) License', category: 'certifications', variants: ['doh license','doh licence','doh eligibility','haad license','haad licence','department of health abu dhabi','ترخيص doh','ترخيص haad'] },
+  { label: 'MOHAP License', category: 'certifications', variants: ['mohap license','mohap licence','moh license','ministry of health uae license','ترخيص mohap','ترخيص وزارة الصحة الامارات'] },
+  { label: 'SCFHS Registration', category: 'certifications', variants: ['scfhs','saudi commission for health specialties','saudi council license','saudi nursing license','تصنيف الهيئة السعودية','تسجيل الهيئة السعودية','الهيئة السعودية للتخصصات الصحية'] },
+  { label: 'Trauma Nursing Core Course (TNCC)', category: 'certifications', variants: ['tncc','trauma nursing core course','دورة تمريض الإصابات','تمريض الاصابات'] },
+  { label: 'Vital Signs Monitoring', category: 'skills', variants: ['vital signs','vital signs monitoring','monitor vital signs','العلامات الحيوية','مراقبة العلامات الحيوية'] },
+  { label: 'Communication Skills', category: 'skills', variants: ['communication skills','effective communication','interpersonal communication','مهارات التواصل','التواصل الفعال'] },
+  { label: 'Computer Skills', category: 'skills', variants: ['computer skills','computer proficiency','basic computer skills','it skills','مهارات الحاسب','مهارات الكمبيوتر','مهارات الحاسب الآلي'] },
+  { label: 'English Language', category: 'languages', variants: ['english language','english proficiency','fluent english','english speaking','english','اللغة الإنجليزية','اللغه الانجليزيه','الإنجليزية','انجليزي'] },
+  { label: 'Arabic Language', category: 'languages', variants: ['arabic language','arabic proficiency','fluent arabic','arabic speaking','arabic','اللغة العربية','اللغه العربيه','العربية'] },
 ];
 
-const CATEGORY_ORDER: Category[] = ['skills', 'experience', 'certifications', 'education'];
+const CATEGORY_ORDER: Category[] = ['skills', 'experience', 'certifications', 'education', 'languages'];
 
 const REQUIRED_MARKERS = [
   'required','must','essential','mandatory','minimum','need to','needs to','shall',
@@ -101,6 +112,10 @@ const CATEGORY_MARKERS: Record<Category, string[]> = {
   education: [
     'education','degree','bachelor','master','diploma','university','college','academic',
     'تعليم','مؤهل','بكالوريوس','ماجستير','دبلوم','دبلومة','جامعة','كلية','اكاديمي','أكاديمي'
+  ],
+  languages: [
+    'language','languages','english','arabic','fluent','proficiency',
+    'لغة','لغات','انجليزي','إنجليزي','عربي','العربية','الإنجليزية'
   ],
 };
 
@@ -168,6 +183,80 @@ function requirementWeight(priority: Priority, known: boolean) {
   return priorityWeight + (known ? 2 : 0);
 }
 
+function extractMinimumExperience(segments: string[]) {
+  const found: Array<{ years: number; priority: Priority; source: string }> = [];
+  const patterns = [
+    /(\d{1,2})\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:relevant\s+|clinical\s+|professional\s+)?experience/i,
+    /(?:minimum|min\.?|at least)\s*(\d{1,2})\s*\+?\s*(?:years?|yrs?)/i,
+    /(?:خبرة|خبره)\s*(?:لا تقل عن\s*)?(\d{1,2})\s*(?:سنوات|سنين|سنة|سنه)/i,
+    /(?:حد ادنى|حد أدنى)\s*(\d{1,2})\s*(?:سنوات|سنين|سنة|سنه)/i,
+  ];
+
+  for (const segment of segments) {
+    for (const pattern of patterns) {
+      const match = segment.match(pattern);
+      if (!match) continue;
+      const years = Number(match[1]);
+      if (!Number.isFinite(years) || years < 1 || years > 30) continue;
+      found.push({ years, priority: getPriority(segment), source: segment });
+      break;
+    }
+  }
+
+  if (!found.length) return null;
+  return found.sort((a, b) => b.years - a.years)[0];
+}
+
+function conceptFallbacks(segments: string[]) {
+  const candidates: Array<{ term: string; category: Category; priority: Priority; score: number }> = [];
+
+  for (const segment of segments) {
+    const priority = getPriority(segment);
+    const category = getCategory(segment);
+    const clean = normalize(segment)
+      .replace(/\b(required|preferred|essential|mandatory|minimum|responsible for|requirements?|qualifications?)\b/g, ' ')
+      .replace(/\b(مطلوب|يفضل|اساسي|أساسي|ضروري|المتطلبات|المؤهلات|المسؤوليات|المهام)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const chunks = clean
+      .split(/,|\band\b|\bor\b|\bwith\b|\bplus\b|،| و | أو /)
+      .map((chunk) => chunk.trim())
+      .filter(Boolean);
+
+    for (const chunk of chunks) {
+      const words = chunk.split(' ').filter((word) =>
+        word.length >= 3 &&
+        !STOPWORDS.has(word) &&
+        !/^\d+$/.test(word)
+      );
+      if (words.length < 2 || words.length > 5) continue;
+      const term = words.join(' ');
+      if (term.length < 7) continue;
+      if (SYNONYM_GROUPS.some((group) =>
+        group.variants.some((variant) => containsNormalized(term, variant) || containsNormalized(normalize(variant), term))
+      )) continue;
+      candidates.push({
+        term,
+        category,
+        priority,
+        score: (priority === 'required' ? 5 : priority === 'preferred' ? 3 : 1) + Math.min(words.length, 3),
+      });
+    }
+  }
+
+  const unique = new Map<string, { term: string; category: Category; priority: Priority; score: number }>();
+  for (const candidate of candidates) {
+    const key = normalize(candidate.term);
+    const existing = unique.get(key);
+    if (!existing || candidate.score > existing.score) unique.set(key, candidate);
+  }
+
+  return Array.from(unique.values())
+    .sort((a, b) => b.score - a.score || b.term.length - a.term.length)
+    .slice(0, 5);
+}
+
 function extractRequirements(title: string, description: string) {
   const cleanDescription = normalize(description);
   const found = new Map<string, Omit<Requirement, 'matched'>>();
@@ -187,79 +276,64 @@ function extractRequirements(title: string, description: string) {
     if (!key || key.length < 2 || STOPWORDS.has(key)) return;
     const existing = found.get(key);
     if (!existing || weight > existing.weight) {
-      found.set(key, { term, category, priority, variants, weight });
+      found.set(key, {
+        term,
+        category,
+        priority,
+        variants: Array.from(new Set(variants.map((variant) => normalize(variant)).filter(Boolean))),
+        weight,
+      });
     }
   };
 
   for (const group of SYNONYM_GROUPS) {
-    const hit = group.variants.find((variant) => containsNormalized(cleanDescription, variant));
-    if (!hit) continue;
     const sourceSegment = segments.find((segment) =>
       group.variants.some((variant) => containsNormalized(normalize(segment), variant))
-    ) || description;
+    );
+    if (!sourceSegment) continue;
     const priority = getPriority(sourceSegment);
     add(group.label, group.category, priority, group.variants, requirementWeight(priority, true));
   }
 
-  const frequency = new Map<string, { count: number; category: Category; priority: Priority; original: string }>();
-  for (const segment of segments) {
-    const priority = getPriority(segment);
-    const category = getCategory(segment);
-    const clean = normalize(segment);
-    const tokens = clean.split(' ').filter((token) =>
-      token.length >= 4 &&
-      !STOPWORDS.has(token) &&
-      !/^\d+$/.test(token) &&
-      !SYNONYM_GROUPS.some((group) => group.variants.some((variant) => normalize(variant) === token))
+  const minimumExperience = extractMinimumExperience(segments);
+  if (minimumExperience) {
+    const y = minimumExperience.years;
+    add(
+      `Minimum ${y} years experience`,
+      'experience',
+      minimumExperience.priority === 'general' ? 'required' : minimumExperience.priority,
+      [`${y} years experience`, `${y}+ years experience`, `${y} yrs experience`, `${y}+ yrs`],
+      requirementWeight(minimumExperience.priority === 'general' ? 'required' : minimumExperience.priority, true) + 1
     );
-
-    const unique = Array.from(new Set(tokens));
-    for (const token of unique) {
-      const previous = frequency.get(token);
-      if (previous) {
-        previous.count += 1;
-        if (priority === 'required') previous.priority = 'required';
-        else if (priority === 'preferred' && previous.priority === 'general') previous.priority = 'preferred';
-      } else {
-        frequency.set(token, { count: 1, category, priority, original: token });
-      }
-    }
   }
 
-  const titleTokens = normalize(title).split(' ').filter((token) => token.length >= 4 && !STOPWORDS.has(token));
-  for (const token of titleTokens) {
-    const previous = frequency.get(token);
-    if (previous) previous.count += 3;
+  for (const fallback of conceptFallbacks(segments)) {
+    add(
+      fallback.term,
+      fallback.category,
+      fallback.priority,
+      [fallback.term],
+      requirementWeight(fallback.priority, false)
+    );
   }
-
-  Array.from(frequency.entries())
-    .map(([term, meta]) => ({
-      term,
-      ...meta,
-      score: meta.count * 2 + (meta.priority === 'required' ? 4 : meta.priority === 'preferred' ? 2 : 0),
-    }))
-    .filter((item) => item.count >= 2 || item.priority !== 'general' || titleTokens.includes(item.term))
-    .sort((a, b) => b.score - a.score || b.term.length - a.term.length)
-    .slice(0, 8)
-    .forEach((item) => {
-      add(
-        item.original,
-        item.category,
-        item.priority,
-        [item.term],
-        requirementWeight(item.priority, false) + Math.min(item.count, 3)
-      );
-    });
 
   return Array.from(found.values())
     .sort((a, b) => {
       const priorityRank = { required: 3, preferred: 2, general: 1 };
       return priorityRank[b.priority] - priorityRank[a.priority] || b.weight - a.weight;
     })
-    .slice(0, 20);
+    .slice(0, 22);
 }
 
 function matchRequirement(cvText: string, requirement: Omit<Requirement, 'matched'>) {
+  const yearsMatch = requirement.term.match(/^Minimum (\d{1,2}) years experience$/i);
+  if (yearsMatch) {
+    const requiredYears = Number(yearsMatch[1]);
+    const explicitYears = Array.from(cvText.matchAll(/(\d{1,2})\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?experience/gi))
+      .map((match) => Number(match[1]))
+      .filter((value) => Number.isFinite(value));
+    if (explicitYears.some((value) => value >= requiredYears)) return true;
+  }
   return requirement.variants.some((variant) => containsNormalized(cvText, variant));
 }
 
@@ -309,6 +383,7 @@ function findBuilderSection(category: Category) {
     experience: /experience|employment|work history|الخبرة|العمل/i,
     certifications: /certifications|licenses|credentials|الشهادات|التراخيص/i,
     education: /education|degree|academic|التعليم|المؤهل/i,
+    languages: /languages|language|اللغات|اللغة/i,
   };
   const headings = Array.from(
     document.querySelectorAll<HTMLElement>('main h2, main h3, main legend, .wizard-panel h2, .wizard-panel h3')
@@ -435,6 +510,7 @@ export default function TargetJobTailor() {
         experience: 'الخبرة والمسؤوليات',
         certifications: 'الشهادات والتراخيص',
         education: 'التعليم',
+        languages: 'اللغات',
         alreadyThere: 'موجود',
         missingLabel: 'راجع',
         reviewSection: 'راجع هذا القسم',
@@ -471,6 +547,7 @@ export default function TargetJobTailor() {
         experience: 'Experience & responsibilities',
         certifications: 'Certifications & licenses',
         education: 'Education',
+        languages: 'Languages',
         alreadyThere: 'Found',
         missingLabel: 'Review',
         reviewSection: 'Review this section',
@@ -489,7 +566,7 @@ export default function TargetJobTailor() {
     priority === 'required' ? copy.required : priority === 'preferred' ? copy.preferred : copy.general;
 
   const goToSection = (category: Category) => {
-    const section = findBuilderSection(category);
+    const section = findBuilderSection(category) || (category === 'languages' ? findBuilderSection('skills') : undefined);
     setOpen(false);
     if (section) {
       window.setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);

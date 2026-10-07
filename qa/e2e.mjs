@@ -68,7 +68,7 @@ const jobTailorPanel = page.locator('.job-tailor__panel');
 assert.equal(await jobTailorPanel.count(), 1, 'target job tailoring panel missing');
 await jobTailorPanel.locator('input').fill('ICU Nurse');
 await jobTailorPanel.locator('textarea').fill(
-  "Required: ICU nurse must provide critical care, ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control and BLS certification. Bachelor's degree required. Preferred: multidisciplinary teamwork and quality improvement."
+  "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
 );
 await page.waitForTimeout(1000);
 const tailorText = (await jobTailorPanel.innerText()).replace(/\s+/g, ' ');
@@ -76,10 +76,27 @@ for (const phrase of ['Overall coverage', 'Must-have coverage', 'Match breakdown
   assert(tailorText.includes(phrase), 'target job V2 missing: ' + phrase);
 }
 assert(tailorText.includes('not an ATS score or a hiring guarantee'), 'target job ATS disclaimer missing');
-assert((await jobTailorPanel.locator('.job-tailor__breakdown article').count()) >= 3, 'target job category breakdown too small');
-assert((await jobTailorPanel.locator('.job-tailor__requirements article').count()) >= 6, 'target job requirements analysis too small');
+assert((await jobTailorPanel.locator('.job-tailor__breakdown article').count()) >= 4, 'target job category breakdown too small');
+
+const requirementLabels = await jobTailorPanel.locator('.job-tailor__requirements strong').allTextContents();
+for (const expected of [
+  'Minimum 2 years experience',
+  'Dubai Health Authority (DHA) License',
+  'Basic Life Support (BLS)',
+  'Advanced Cardiovascular Life Support (ACLS)',
+  'Trauma Nursing Core Course (TNCC)',
+  'Communication Skills',
+  'Computer Skills',
+  'English Language'
+]) {
+  assert(requirementLabels.includes(expected), 'Job Match V2.1 missing structured requirement: ' + expected);
+}
+for (const noise of ['basic', 'patient', 'nursing', 'emergency', 'department', 'license']) {
+  assert(!requirementLabels.some((label) => label.toLowerCase() === noise), 'generic noise leaked into requirements: ' + noise);
+}
+assert(requirementLabels.filter((label) => label.toLowerCase().includes('dha')).length === 1, 'DHA requirement duplicated');
 const tailorCoverageBefore = Number((await jobTailorPanel.locator('.job-tailor__score').first().locator('strong').innerText()).replace('%', ''));
-log('Job Match Center analyzes categorized target-job requirements');
+log('Job Match V2.1 extracts structured requirements without generic-word noise');
 await jobTailorPanel.locator('.job-tailor__close').click();
 
 const library = page.locator('details.smart-nursing-library');
@@ -107,7 +124,7 @@ const tailorCoverageAfter = Number((await page.locator('.job-tailor__score').fir
 assert(tailorCoverageAfter > tailorCoverageBefore, 'target job coverage did not react to relevant CV content');
 assert((await page.locator('.job-tailor__safety').innerText()).includes('Only add a skill'), 'target job factuality warning missing');
 assert((await page.locator('.job-tailor__priority-list').count()) <= 1, 'unexpected duplicate must-have list');
-log('Job Match Center coverage reacts to confirmed CV content');
+log('Job Match V2.1 coverage reacts to confirmed CV content');
 await page.locator('.job-tailor__close').click();
 
 const continueButton = page.getByRole('button', { name: /Continue/ }).last();
