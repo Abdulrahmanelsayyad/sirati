@@ -127,3 +127,52 @@ Current public benchmark research found useful principles to adapt, not copy:
 - SCV-02 may touch only UX specification/design artifacts until SCV-01 handoff.
 - SCV-03 is the sole owner allowed to touch builder state/insertion/persistence for this feature.
 - SCV-04/05/06 review after integration and must not concurrently edit SCV-03-owned files; defects return to SCV-03 as a handoff.
+
+
+## Template Program — Compact ATS
+
+### Owner request — 2026-10-07
+Add a fourth Sirati CV template focused on maximum ATS readability and compact professional presentation.
+
+### TPL-01 — Design specification
+- **Owner:** Sirati Design Agent
+- **Status:** QUEUED (start after SCV-02 handoff to avoid ownership conflict)
+- Benchmark leading ATS-oriented resume builders and extract principles without copying branding, layouts, wording, or proprietary assets.
+- Template working name: **Compact ATS**.
+- Use a true single-column reading order.
+- Keep contact information in the main document body.
+- Use standard section headings and highly readable typography.
+- Avoid content-bearing sidebars, tables, text boxes, skill bars, charts, profile-photo dependence, and decorative elements that may impair parsing.
+- Prioritize Experience, Skills, Education, Certifications, and optional Projects/Achievements.
+- Support both English LTR and Arabic RTL with equivalent hierarchy.
+- Target clean A4 output and a strong one-page presentation for moderate content without forcing all users into one page.
+- The design must remain visually distinct from Sirati's existing templates while preserving the same CV data model.
+
+### TPL-02 — Builder/preview integration
+- **Owner:** Sirati Bug Fixer
+- **Status:** QUEUED (after TPL-01 and SCV-03 handoffs)
+- Add Compact ATS as a selectable fourth template using the existing template-selection architecture.
+- Reuse the existing CV data model; do not fork user data or persistence.
+- Preserve manual editing, save/restore, preview, Arabic/English, mobile behavior, and PDF-order flow.
+- Do not modify Authentication, RLS, payment rules, secrets, pricing, or protected settings.
+
+### TPL-03 — QA and release verification
+- **Owner:** Sirati QA & Release Agent
+- **Status:** QUEUED (after TPL-02)
+- Verify template selection, switching between all templates, persistence after refresh/sign-out/sign-in where supported, desktop/mobile rendering, Arabic RTL, English LTR, long-content wrapping, page breaks, print/PDF fidelity, and regression of the existing customer journey.
+- Test ATS-safe reading order by copying/extracting rendered text in expected logical order where feasible.
+- Record reproducible defects; no production completion claim until live-site verification passes.
+
+### TPL-04 — Security/performance review
+- **Owner:** Security Agent + Performance & SEO Agent (serialized reviews)
+- **Status:** QUEUED (after TPL-03)
+- Confirm no new external assets, paid dependencies, tracking, secret exposure, or unnecessary page-weight regression.
+
+### Acceptance criteria
+- Sirati offers four selectable CV templates.
+- Compact ATS is genuinely single-column and content-first, not merely a recolor of an existing template.
+- English and Arabic layouts both render correctly.
+- Existing saved CV data can switch into/out of Compact ATS without data loss.
+- A4 preview/PDF output has no clipping, overlap, broken page breaks, or hidden text in the verified test set.
+- No paid dependency or API is introduced.
+- Task is closed only after live QA and an entry in `AGENT_CHANGELOG.md`.
