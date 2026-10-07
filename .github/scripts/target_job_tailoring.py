@@ -399,6 +399,7 @@ export default function TargetJobTailor() {
   const [jobDescription, setJobDescription] = useState('');
   const [cvText, setCvText] = useState('');
   const [storageScope, setStorageScope] = useState<{ key: string; persistent: boolean }>({ key: '', persistent: false });
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -413,6 +414,9 @@ export default function TargetJobTailor() {
       setTargetRole(saved.targetRole);
       setJobDescription(saved.jobDescription);
     }
+    // Do not persist until the initial storage read has finished.
+    // Otherwise the first empty render can erase a valid saved Job Match draft.
+    setStorageReady(true);
 
     const scan = () => {
       setLanguage(detectLanguage());
@@ -438,9 +442,9 @@ export default function TargetJobTailor() {
   }, []);
 
   useEffect(() => {
-    if (!enabled || !storageScope.key) return;
+    if (!enabled || !storageReady || !storageScope.key) return;
     writeSavedTarget(storageScope, targetRole, jobDescription);
-  }, [enabled, storageScope, targetRole, jobDescription]);
+  }, [enabled, storageReady, storageScope, targetRole, jobDescription]);
 
   useEffect(() => {
     if (!open) return;
