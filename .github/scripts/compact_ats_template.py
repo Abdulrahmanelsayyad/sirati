@@ -18,12 +18,16 @@ for rel in ["lib/types.ts", "app/builder/page.tsx", "app/templates/page.tsx", "c
 templates = root / "app" / "templates" / "page.tsx"
 s = templates.read_text(encoding="utf-8")
 if "id: 'compact-ats'" not in s:
-    m = re.search(r"(const\s+templates\s*=\s*\[\s*)", s)
-    if not m:
-        raise SystemExit("Could not locate templates array")
-    card = """{ id: 'compact-ats', name: 'Compact ATS', description: 'Single-column, content-first resume built for clear ATS parsing and fast recruiter scanning.', badge: 'ATS Focused' },
-  """
-    s = s[:m.end()] + card + s[m.end():]
+    card = "{ id: 'compact-ats', name: 'Compact ATS', description: 'Single-column, content-first resume built for clear ATS parsing and fast recruiter scanning.', badge: 'ATS Focused' },\n  "
+    anchors = [
+        "{ id: 'modern', name: 'Professional ATS'",
+        "{ id: 'modern', name: 'Modern'",
+        "{ id: 'classic'",
+    ]
+    anchor = next((item for item in anchors if item in s), None)
+    if not anchor:
+        raise SystemExit("Could not locate a template card anchor")
+    s = s.replace(anchor, card + anchor, 1)
 templates.write_text(s, encoding="utf-8")
 
 # Add the fourth option in the builder.
