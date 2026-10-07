@@ -86,6 +86,9 @@ patch("app/builder/page.tsx", [
 
 (root / "public" / ".nojekyll").write_text("", encoding="utf-8")
 
+import subprocess
+subprocess.run([sys.executable, str(Path(__file__).with_name('professional_template.py')), str(root)], check=True)
+
 print("Prepared Sirati for GitHub Pages.")
 
 
