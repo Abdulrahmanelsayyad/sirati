@@ -16,8 +16,8 @@ Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 
 Implementation rule: one feature per branch/PR, full build + E2E QA before merge, then live verification before the next feature is treated as complete. Avoid overlapping Builder edits across open feature PRs.
 
-1. **F1 — CV Quality Center** — Status: IN PROGRESS — Upgrade the six-item readiness widget into transparent content-quality guidance: contact quality, focused summary, skills depth, action-oriented experience, measurable impact, Arabic/English, mobile, and explicit non-ATS disclaimer.
-2. **F2 — Multi-CV Versions / Duplicate CV** — Status: PLANNED — Let an authenticated user duplicate and rename a CV for each target job without overwriting the source; preserve account isolation and existing RLS.
+1. **F1 — CV Quality Center** — Status: DEPLOYED / LIVE VERIFICATION PENDING — PR #13 passed build + E2E QA, was merged, and deployed successfully. Final completion still requires live manual verification.
+2. **F2 — Multi-CV Versions / Duplicate CV** — Status: IN PROGRESS — Let an authenticated user duplicate and rename a saved CV for each target job without overwriting the source; copy only CV data/template/language, preserve account isolation and existing RLS, and do not copy payment orders.
 3. **F3 — Cover Letter Builder** — Status: PLANNED — Build a guided English/Arabic cover letter from verified CV facts plus the target job; use deterministic templates first, never invent claims, zero paid API dependency.
 4. **F4 — Job Application Tracker** — Status: PLANNED — Track company, role, job link, status, dates, notes and linked Sirati CV version with a simple application pipeline.
 5. **F5 — Achievement Bullet Coach** — Status: PLANNED — Convert factual responsibilities into stronger accomplishment bullets through guided prompts for action, scope and outcome; never invent metrics.
