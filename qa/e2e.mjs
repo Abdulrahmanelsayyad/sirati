@@ -68,16 +68,19 @@ const jobTailorPanel = page.locator('.job-tailor__panel');
 assert.equal(await jobTailorPanel.count(), 1, 'target job tailoring panel missing');
 await jobTailorPanel.locator('input').fill('ICU Nurse');
 await jobTailorPanel.locator('textarea').fill(
-  'Critical care nurse responsible for ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control and multidisciplinary teamwork.'
+  "Required: ICU nurse must provide critical care, ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control and BLS certification. Bachelor's degree required. Preferred: multidisciplinary teamwork and quality improvement."
 );
 await page.waitForTimeout(1000);
 const tailorText = (await jobTailorPanel.innerText()).replace(/\s+/g, ' ');
-assert(tailorText.includes('Keyword coverage'), 'target job keyword coverage missing');
-assert(tailorText.includes('Review if true for you'), 'target job review guidance missing');
-assert(tailorText.includes('not an ATS score or hiring guarantee'), 'target job ATS disclaimer missing');
-const tailorCoverageBefore = Number((await jobTailorPanel.locator('.job-tailor__score strong').innerText()).replace('%', ''));
-log('target job tailoring accepts role and job description with safe keyword guidance');
-await jobTailorTrigger.click();
+for (const phrase of ['Overall coverage', 'Must-have coverage', 'Match breakdown', 'Requirements analysis']) {
+  assert(tailorText.includes(phrase), 'target job V2 missing: ' + phrase);
+}
+assert(tailorText.includes('not an ATS score or a hiring guarantee'), 'target job ATS disclaimer missing');
+assert((await jobTailorPanel.locator('.job-tailor__breakdown article').count()) >= 3, 'target job category breakdown too small');
+assert((await jobTailorPanel.locator('.job-tailor__requirements article').count()) >= 6, 'target job requirements analysis too small');
+const tailorCoverageBefore = Number((await jobTailorPanel.locator('.job-tailor__score').first().locator('strong').innerText()).replace('%', ''));
+log('Job Match Center analyzes categorized target-job requirements');
+await jobTailorPanel.locator('.job-tailor__close').click();
 
 const library = page.locator('details.smart-nursing-library');
 assert.equal(await library.count(), 1);
@@ -100,11 +103,12 @@ log('curated content insertion with explicit confirmation');
 
 await page.waitForTimeout(1200);
 await jobTailorTrigger.click();
-const tailorCoverageAfter = Number((await page.locator('.job-tailor__score strong').innerText()).replace('%', ''));
+const tailorCoverageAfter = Number((await page.locator('.job-tailor__score').first().locator('strong').innerText()).replace('%', ''));
 assert(tailorCoverageAfter > tailorCoverageBefore, 'target job coverage did not react to relevant CV content');
-assert((await page.locator('.job-tailor__safety').innerText()).includes('Only add a missing term'), 'target job factuality warning missing');
-log('target job keyword coverage reacts to confirmed CV content');
-await jobTailorTrigger.click();
+assert((await page.locator('.job-tailor__safety').innerText()).includes('Only add a skill'), 'target job factuality warning missing');
+assert((await page.locator('.job-tailor__priority-list').count()) <= 1, 'unexpected duplicate must-have list');
+log('Job Match Center coverage reacts to confirmed CV content');
+await page.locator('.job-tailor__close').click();
 
 const continueButton = page.getByRole('button', { name: /Continue/ }).last();
 await continueButton.click();
@@ -128,7 +132,12 @@ assert(readinessScoreAfterName >= 15, 'CV readiness score did not recognize comp
 log('CV readiness score reacts to Builder input');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
-log('local save survives reload');
+await page.locator('.job-tailor__trigger').click();
+assert.equal(await page.locator('.job-tailor__panel input').inputValue(), 'ICU Nurse');
+assert((await page.locator('.job-tailor__panel textarea').inputValue()).includes('ventilator care'));
+assert((await page.locator('.job-tailor__input-meta').innerText()).includes('Kept in this tab'));
+await page.locator('.job-tailor__close').click();
+log('local CV save and target-job draft survive reload');
 
 let templateSelect = null;
 const selects = page.locator('select');
@@ -262,8 +271,13 @@ const tailorRect = await mobileTailor.evaluate((el) => {
   const rect = el.getBoundingClientRect();
   return { left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width) };
 });
-assert(tailorRect.left >= -2 && tailorRect.right <= 392, 'mobile target job tailoring exceeds viewport: ' + JSON.stringify(tailorRect));
-log('mobile overflow check for all four templates, readiness and target job tailoring');
+assert(tailorRect.left >= -2 && tailorRect.right <= 392, 'mobile target job tailoring trigger exceeds viewport: ' + JSON.stringify(tailorRect));
+await page.locator('.job-tailor__trigger').click();
+const mobileTailorPanelWidth = await page.locator('.job-tailor__panel').evaluate((el) => Math.round(el.getBoundingClientRect().width));
+assert(mobileTailorPanelWidth <= 390, 'mobile Job Match panel exceeds viewport: ' + mobileTailorPanelWidth);
+assert((await page.locator('.job-tailor__score-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns)).split(' ').length === 1, 'mobile Job Match score cards are not stacked');
+await page.locator('.job-tailor__close').click();
+log('mobile overflow check for all four templates, readiness and Job Match Center');
 
 await mobileTemplateSelect.selectOption('compact-ats');
 const mobileLibrary = page.locator('details.smart-nursing-library');
