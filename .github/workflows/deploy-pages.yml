@@ -1,0 +1,66 @@
+name: Deploy Sirati to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Reconstruct Sirati source
+        run: |
+          cat source.part1 source.part2 source.part3 | base64 -d > /tmp/sirati.zip
+          rm -rf site-src
+          mkdir site-src
+          unzip -q /tmp/sirati.zip -d site-src
+          python .github/scripts/prepare_pages.py site-src/sirati-cv-source
+
+      - name: Install dependencies
+        working-directory: site-src/sirati-cv-source
+        run: npm install
+
+      - name: Build static site
+        working-directory: site-src/sirati-cv-source
+        env:
+          NEXT_PUBLIC_BASE_PATH: /sirati-cv
+          NEXT_PUBLIC_SUPABASE_URL: https://hzzojoiqzbeivxesjlyf.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_eHoILJwdvPp-F4WoLFm05g_hoj8hNDP
+        run: npm run build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site-src/sirati-cv-source/out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
