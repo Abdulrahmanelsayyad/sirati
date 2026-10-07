@@ -2,3 +2,18 @@
 
 This file records autonomous maintenance changes made to Sirati.
 
+
+## 2026-10-07 — Smart Nursing Library, Compact ATS and Account Data QA
+
+- Shipped Smart Nursing CV Library with eight nursing specialties, four experience levels and three target-market wording modes. Content insertion requires explicit user confirmation and remains editable.
+- Shipped Compact ATS as the fourth CV template.
+- Fixed mobile Builder horizontal overflow; browser E2E passed all four templates at 390px.
+- Browser E2E passed template selection, Compact ATS onboarding persistence, Smart Nursing insertion, local draft persistence after refresh, four-template switching, Arabic RTL and PDF smoke tests.
+- Supabase production data layer reviewed against current RLS guidance.
+- Applied migration `20261007131224_tighten_cv_data_api_grants`: removed Data API table privileges from `anon` and reduced `authenticated` to the exact CRUD capabilities needed per table.
+- Ran rollback-only two-user RLS tests. Own CV create/update, version creation and PDF-order creation passed. Cross-user read/update/delete/owner spoofing/version creation/PDF-order creation were blocked.
+- Verified version numbering and retention: after 31 saves, only versions 2–31 remained, for a 30-version cap.
+- Verified existing production integrity without reading CV content: 2 documents, 4 versions, zero orphan versions, zero owner mismatches and zero duplicate version numbers.
+- Added `qa/supabase_rls.sql` regression test and tracked the production migration under `supabase/migrations/`.
+- Remaining credential-dependent manual check: a full browser logout -> login -> reopen cloud CV round trip with a second real loginable account. The project currently has one real Auth user, so this was not fabricated or bypassed.
+- Security follow-up: Supabase Security Advisor currently warns that leaked-password protection is disabled.

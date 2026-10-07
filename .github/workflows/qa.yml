@@ -28,6 +28,9 @@ jobs:
           unzip -q /tmp/sirati.zip -d site-src
           python .github/scripts/prepare_pages.py site-src/sirati-cv-source
 
+      - name: Check account draft isolation
+        run: python qa/account_storage_check.py site-src/sirati-cv-source
+
       - name: Install and build
         working-directory: site-src/sirati-cv-source
         env:
