@@ -33,3 +33,12 @@ This file records autonomous maintenance changes made to Sirati.
 - Improved pending, approved and rejected payment states and added a real Sirati Support fallback when WhatsApp is not configured.
 - Added E2E coverage for payment guidance, support-link fallback and mobile layout.
 - PR #7 passed build and Sirati E2E QA, deployed successfully to GitHub Pages, and was manually verified on the live site.
+
+
+## 2026-10-08 — Live CV Readiness Check
+
+- Added a zero-cost live CV readiness indicator inside the Builder.
+- Checks six essentials: full name, contact details, professional summary, work experience, education and skills.
+- Supports English and Arabic, updates while the user edits, and includes a clear disclaimer that the percentage is not a guaranteed ATS score.
+- Added E2E coverage for visibility, score response, disclaimer and mobile containment.
+- PR #8 passed build and Sirati E2E QA, deployed successfully to GitHub Pages, and was manually verified on the live site.
