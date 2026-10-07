@@ -12,6 +12,21 @@ Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 - **P0-PDF-01 — PDF order / payment clarity** — Owner: Customer Liaison + Design Agent — Status: VERIFIED (2026-10-08) — Manual EGP 50 clean-PDF flow clarified for InstaPay/Vodafone Cash, reference submission and pending/approval messaging; PR #7 passed build + E2E, deployed successfully, and was verified on the live site.
 - **Coordination** — Owner: Deputy Manager — Status: ACTIVE — Maintain conflict map and enforce handoffs; no production completion claim before QA and changelog entry.
 
+## Top 10 Feature Roadmap — First Customer Growth Program
+
+Implementation rule: one feature per branch/PR, full build + E2E QA before merge, then live verification before the next feature is treated as complete. Avoid overlapping Builder edits across open feature PRs.
+
+1. **F1 — CV Quality Center** — Status: IN PROGRESS — Upgrade the six-item readiness widget into transparent content-quality guidance: contact quality, focused summary, skills depth, action-oriented experience, measurable impact, Arabic/English, mobile, and explicit non-ATS disclaimer.
+2. **F2 — Multi-CV Versions / Duplicate CV** — Status: PLANNED — Let an authenticated user duplicate and rename a CV for each target job without overwriting the source; preserve account isolation and existing RLS.
+3. **F3 — Cover Letter Builder** — Status: PLANNED — Build a guided English/Arabic cover letter from verified CV facts plus the target job; use deterministic templates first, never invent claims, zero paid API dependency.
+4. **F4 — Job Application Tracker** — Status: PLANNED — Track company, role, job link, status, dates, notes and linked Sirati CV version with a simple application pipeline.
+5. **F5 — Achievement Bullet Coach** — Status: PLANNED — Convert factual responsibilities into stronger accomplishment bullets through guided prompts for action, scope and outcome; never invent metrics.
+6. **F6 — PDF Preflight Center** — Status: PLANNED — Before ordering/exporting, check A4 fit, likely overflow, page count, missing essentials and print-risk conditions with actionable fixes.
+7. **F7 — Existing CV Import** — Status: PLANNED — Import an existing CV into editable Sirati fields with explicit review/confirmation and conservative parsing; do not silently overwrite saved data.
+8. **F8 — Section Manager** — Status: PLANNED — Reorder, hide/show and add supported sections while preserving ATS reading order, Arabic/English behavior and saved data compatibility.
+9. **F9 — Private Share Link** — Status: PLANNED — Optional read-only CV sharing with explicit publish/unpublish controls, privacy-first defaults and no public exposure without user action.
+10. **F10 — Interview Prep Kit** — Status: PLANNED — Generate a structured practice checklist and question bank from the chosen role/job requirements using verified CV facts and local curated content first.
+
 ## Backlog
 - Continuously improve agent playbooks from verified outcomes and record reusable lessons.
 - Improve customer-facing polish when clear, low-risk opportunities are found.
