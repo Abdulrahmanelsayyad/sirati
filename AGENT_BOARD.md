@@ -58,3 +58,52 @@ Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 
 ### Completion rule
 No task is complete until the relevant user flow is verified on the live site and the change is recorded in AGENT_CHANGELOG.md.
+
+
+## Feature Program — Smart CV Library / Guided Specialty Builder
+
+### Goal
+Reduce user thinking and typing. Let the customer choose a field/specialty, role, experience level, and target market, then show curated factual options that can be selected and inserted into the CV.
+
+### P0 — Product design and content model
+- Define the guided flow: Field -> Specialty -> Job title -> Experience level -> Target market -> Suggested content -> Add selected items to CV.
+- Start with Healthcare/Nursing before expanding to other sectors.
+- Define reusable content categories: Professional Summary, Skills, Experience Bullets, Achievements, Certifications, ATS Keywords, optional section guidance.
+- User must explicitly select or confirm every factual item before it is added. Never invent employment, dates, licenses, certifications, achievements, or clinical competencies.
+- Keep implementation zero-cost: local/static JSON or existing database structures only; no paid AI/API dependency.
+
+### P0 — Initial Nursing library
+- Build the first curated library for nursing roles, beginning with Emergency Nurse, ICU Nurse, OR Nurse, Ward/Medical-Surgical Nurse, Infection Control Nurse, Dialysis Nurse, Pediatric Nurse, and Nursing Supervisor.
+- Include experience levels such as Beginner / Experienced / Senior / Supervisor where appropriate.
+- Include target-market variants only when they are factually and safely supportable (for example Egypt/Gulf/ATS-oriented wording), without implying legal or licensing eligibility.
+- Each content item must be concise, editable, and suitable for ATS-friendly CV use.
+
+### P0 — Builder integration
+- Add a guided specialty selector inside the CV Builder.
+- Show curated checklists/cards instead of forcing users to write from scratch.
+- Provide a clear action such as "Add selected items to my CV".
+- Preserve manual editing after insertion.
+- Do not break existing save/restore, preview, templates, Arabic/English, or mobile behavior.
+
+### P1 — Quality and expansion
+- Benchmark respected CV/resume builders and specialty onboarding flows before implementation; extract principles without copying branding, wording, layouts, or proprietary assets.
+- Validate Arabic/English clarity and medical terminology.
+- Add QA for mobile/desktop, save/restore, duplicates, removal/editing, preview, and PDF order flow.
+- Expand to Doctors, Pharmacy, Lab, Radiology, Infection Control, Quality, Patient Safety, and Healthcare Administration only after the Nursing MVP is verified.
+
+### Delegation
+- Manager: owns sequencing, scope, zero-cost constraint, and final closeout.
+- CV Expert: owns specialty taxonomy, factual content library, ATS wording, and anti-hallucination/factuality rules.
+- Design Agent: owns guided selection UX, cards/checklists, low-friction mobile interaction, and Arabic/English presentation.
+- Bug Fixer: owns safe integration with builder state, insertion/removal, persistence, duplicate handling, and regressions.
+- QA & Release Agent: owns end-to-end verification on desktop/mobile and live-site validation.
+- Security Agent: reviews any storage/data-handling changes for privacy/security regressions.
+- Performance & SEO Agent: reviews page weight and loading impact after the MVP is stable.
+- Deputy Manager: prevents overlap, manages handoffs, and maintains the conflict map.
+
+### Completion criteria
+- A user can choose a nursing specialty and experience level and receive relevant selectable content without paid AI.
+- Nothing factual is inserted without user selection/confirmation.
+- Selected content remains editable and saves/restores correctly.
+- Existing CV journey remains functional.
+- Live-site QA passes on mobile and desktop.
