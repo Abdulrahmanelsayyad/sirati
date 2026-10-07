@@ -21,5 +21,4 @@ jobs:
           unzip -q /tmp/sirati.zip -d site-src
       - name: Show local draft logic
         run: |
-          grep -n -C 28 "sirati.cv.v2" site-src/sirati-cv-source/app/builder/page.tsx || true
-          grep -n -C 20 "auth.getUser" site-src/sirati-cv-source/app/builder/page.tsx || true
+          nl -ba site-src/sirati-cv-source/app/builder/page.tsx | sed -n '155,255p'
