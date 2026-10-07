@@ -80,10 +80,10 @@ assert(foundSummary);
 log('inserted summary remains editable');
 
 await page.getByRole('button', { name: '← Back' }).click();
-await page.getByLabel('Full name').fill('QA Sirati Nurse');
-await page.waitForTimeout(250);
+await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
+await page.waitForTimeout(700);
 await page.reload({ waitUntil: 'networkidle' });
-assert.equal(await page.getByLabel('Full name').inputValue(), 'QA Sirati Nurse');
+assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 log('local save survives reload');
 
 let templateSelect = null;
@@ -109,7 +109,7 @@ for (const [value, expectedClass] of Object.entries(expectedClasses)) {
   await page.waitForTimeout(70);
   const className = await page.locator('.cv-sheet').getAttribute('class');
   assert(className.includes(expectedClass), value + ' did not render expected class');
-  assert.equal(await page.getByLabel('Full name').inputValue(), 'QA Sirati Nurse');
+  assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 }
 log('switching all four templates retains CV data');
 
@@ -148,7 +148,7 @@ log('mobile responsive Smart Library');
 
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
-await page.getByLabel('Full name').fill('QA Sirati Nurse');
+await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
 
 let printTemplateSelect = null;
 const printSelects = page.locator('select');
