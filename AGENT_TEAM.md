@@ -30,3 +30,17 @@ Sirati is operated by a coordinated multi-agent team. All agents must follow `AG
 - The Deputy checks that lessons are not duplicated, speculative, or contradictory.
 - Agents improve methods, checklists, prompts, tests, and execution patterns; they do not alter model weights, permissions, or protected safety boundaries.
 - A learned technique is applied to the site only when it is relevant, low-risk, reversible, and verified.
+
+
+## Coordination & conflict-prevention protocol
+- Every active task must have exactly one **Owner**, one status, and one clearly defined scope in `AGENT_BOARD.md`.
+- No agent may edit files or UI areas currently owned by another active task unless the Manager explicitly reassigns or merges the work.
+- Before starting, each agent must check: current board ownership, recent commits, and any open handoff notes.
+- Work touching the same feature must be serialized: **Design/Content proposal → Implementation/Fix → QA verification → Security/Performance review when relevant → Manager closeout**.
+- Handoffs must state: what changed, files/areas touched, what remains, verification completed, and known risks.
+- If two agents detect overlapping work, both stop changes and the Deputy resolves ownership before either continues.
+- The Deputy maintains a conflict map for active tasks and flags shared files/components before work starts.
+- The Manager is the only role that may reprioritize or reassign overlapping tasks.
+- No task is marked complete until QA verifies the live user flow and the Manager confirms board/changelog closure.
+- If a deployment fails, the active owner pauses related downstream work until the failure is understood or rolled back.
+- Protected areas (auth, RLS, secrets, payment rules, repo/security settings) remain owner-approval gated regardless of agent ownership.
