@@ -10,32 +10,99 @@ component_path.write_text(r''' 'use client';
 import { useEffect, useMemo, useState } from 'react';
 
 type Language = 'en' | 'ar';
+type Category = 'skills' | 'experience' | 'certifications' | 'education';
+type Priority = 'required' | 'preferred' | 'general';
 
-type KeywordResult = {
+type Requirement = {
   term: string;
-  score: number;
+  category: Category;
+  priority: Priority;
+  weight: number;
+  variants: string[];
   matched: boolean;
+};
+
+type SynonymGroup = {
+  label: string;
+  category: Category;
+  variants: string[];
 };
 
 const STOPWORDS = new Set([
   'and','the','for','with','that','this','from','your','you','our','are','will','have','has','into','who','job','role',
   'work','working','using','within','about','their','they','them','but','not','all','any','can','may','must','should',
-  'required','preferred','including','include','responsible','responsibilities','requirements','qualification','qualifications',
-  'years','year','experience','skills','skill','ability','strong','excellent','good','team','teams','position','candidate',
+  'required','preferred','including','include','responsible','responsibilities','requirements','requirement','qualification',
+  'qualifications','years','year','experience','skills','skill','ability','strong','excellent','good','team','teams',
+  'position','candidate','minimum','plus','knowledge','understanding','demonstrated','proven','support','supports','supporting',
   'في','من','على','إلى','الى','عن','مع','هذا','هذه','ذلك','تلك','التي','الذي','الذين','و','أو','او','أن','ان','كما',
   'يجب','يفضل','مطلوب','المطلوب','خبرة','سنوات','سنة','مهارات','مهارة','القدرة','العمل','فريق','ضمن','مسؤول','مسؤوليات',
-  'الوظيفة','الدور','المتطلبات','المؤهلات','جيد','ممتاز','قوي','لدى','لديه','لديها'
+  'الوظيفة','الدور','المتطلبات','المؤهلات','جيد','ممتاز','قوي','لدى','لديه','لديها','معرفة','فهم','دعم','خبرات'
 ]);
 
-const COMMON_PHRASES = [
-  'patient safety','clinical documentation','quality improvement','infection control','critical care','emergency nursing',
-  'patient care','care coordination','medication administration','team leadership','project management','data analysis',
-  'customer service','problem solving','time management','risk management','quality assurance','healthcare quality',
-  'electronic medical records','registered nurse','multidisciplinary team','communication skills','continuous improvement',
-  'سلامة المرضى','التوثيق السريري','تحسين الجودة','مكافحة العدوى','الرعاية الحرجة','تمريض الطوارئ','رعاية المرضى',
-  'تنسيق الرعاية','إعطاء الأدوية','قيادة الفريق','إدارة المشاريع','تحليل البيانات','خدمة العملاء','حل المشكلات',
-  'إدارة الوقت','إدارة المخاطر','ضمان الجودة','جودة الرعاية الصحية','السجلات الطبية الإلكترونية','فريق متعدد التخصصات'
+const SYNONYM_GROUPS: SynonymGroup[] = [
+  { label: 'Emergency Department', category: 'experience', variants: ['emergency department','emergency room','er','ed','قسم الطوارئ','الطوارئ'] },
+  { label: 'Critical Care / ICU', category: 'experience', variants: ['critical care','intensive care','icu','العناية المركزة','الرعاية الحرجة'] },
+  { label: 'Triage', category: 'skills', variants: ['triage','patient prioritization','فرز','الفرز','ترتيب اولوية المرضى','ترتيب أولوية المرضى'] },
+  { label: 'Patient Safety', category: 'skills', variants: ['patient safety','سلامة المرضى'] },
+  { label: 'Clinical Documentation', category: 'skills', variants: ['clinical documentation','medical documentation','documentation','التوثيق السريري','التوثيق الطبي'] },
+  { label: 'Infection Prevention and Control', category: 'skills', variants: ['infection prevention and control','infection control','ipc','مكافحة العدوى','منع العدوى'] },
+  { label: 'Quality Improvement', category: 'skills', variants: ['quality improvement','continuous improvement','qi','تحسين الجودة','التحسين المستمر'] },
+  { label: 'Medication Administration', category: 'skills', variants: ['medication administration','medication safety','administer medications','إعطاء الأدوية','سلامة الدواء'] },
+  { label: 'ECG Monitoring', category: 'skills', variants: ['ecg monitoring','ecg','ekg','cardiac monitoring','مراقبة تخطيط القلب','تخطيط القلب'] },
+  { label: 'Ventilator Care', category: 'skills', variants: ['ventilator care','mechanical ventilation','ventilation','جهاز التنفس الصناعي','التنفس الصناعي'] },
+  { label: 'Hemodynamic Monitoring', category: 'skills', variants: ['hemodynamic monitoring','haemodynamic monitoring','المراقبة الديناميكية الدموية'] },
+  { label: 'Wound Care', category: 'skills', variants: ['wound care','wound management','العناية بالجروح'] },
+  { label: 'Care Coordination', category: 'skills', variants: ['care coordination','clinical coordination','تنسيق الرعاية'] },
+  { label: 'Multidisciplinary Collaboration', category: 'skills', variants: ['multidisciplinary collaboration','multidisciplinary team','interdisciplinary team','multidisciplinary teamwork','فريق متعدد التخصصات','التعاون متعدد التخصصات'] },
+  { label: 'Leadership', category: 'skills', variants: ['leadership','team leadership','staff leadership','قيادة الفريق','القيادة'] },
+  { label: 'Supervision', category: 'experience', variants: ['supervision','supervisory','shift supervision','staff supervision','الإشراف','مشرف','إشراف الوردية'] },
+  { label: 'Project Management', category: 'skills', variants: ['project management','project coordination','إدارة المشاريع','تنسيق المشاريع'] },
+  { label: 'Data Analysis', category: 'skills', variants: ['data analysis','analytics','تحليل البيانات'] },
+  { label: 'Risk Management', category: 'skills', variants: ['risk management','clinical risk','إدارة المخاطر'] },
+  { label: 'Customer Service', category: 'skills', variants: ['customer service','client service','خدمة العملاء'] },
+  { label: 'Problem Solving', category: 'skills', variants: ['problem solving','problem-solving','حل المشكلات'] },
+  { label: 'Microsoft Excel', category: 'skills', variants: ['microsoft excel','excel','اكسل','إكسل'] },
+  { label: 'Electronic Medical Records', category: 'skills', variants: ['electronic medical records','electronic health records','emr','ehr','السجلات الطبية الإلكترونية','السجل الطبي الإلكتروني'] },
+  { label: 'Basic Life Support (BLS)', category: 'certifications', variants: ['basic life support','bls','دعم الحياة الأساسي'] },
+  { label: 'Advanced Cardiovascular Life Support (ACLS)', category: 'certifications', variants: ['advanced cardiovascular life support','advanced cardiac life support','acls','دعم الحياة القلبي المتقدم'] },
+  { label: 'Pediatric Advanced Life Support (PALS)', category: 'certifications', variants: ['pediatric advanced life support','paediatric advanced life support','pals','دعم الحياة المتقدم للأطفال'] },
+  { label: 'Registered Nurse / RN License', category: 'certifications', variants: ['registered nurse','rn license','nursing license','licensure','ترخيص التمريض','ترخيص مزاولة المهنة','ممرض مسجل'] },
+  { label: 'Bachelor Degree', category: 'education', variants: ['bachelor degree','bachelor\'s degree','bsc','bsn','bachelor of science','درجة البكالوريوس','بكالوريوس'] },
+  { label: 'Master Degree', category: 'education', variants: ['master degree','master\'s degree','msc','master of science','درجة الماجستير','ماجستير'] },
+  { label: 'Diploma', category: 'education', variants: ['diploma','postgraduate diploma','دبلومة','دبلوم'] },
 ];
+
+const CATEGORY_ORDER: Category[] = ['skills', 'experience', 'certifications', 'education'];
+
+const REQUIRED_MARKERS = [
+  'required','must','essential','mandatory','minimum','need to','needs to','shall',
+  'مطلوب','يجب','شرط','اساسي','أساسي','ضروري','حد ادنى','حد أدنى'
+];
+
+const PREFERRED_MARKERS = [
+  'preferred','desirable','nice to have','a plus','advantage','ideally',
+  'يفضل','مفضل','ميزة اضافية','ميزة إضافية','افضلية','أفضلية'
+];
+
+const CATEGORY_MARKERS: Record<Category, string[]> = {
+  skills: [
+    'skill','skills','proficiency','competency','competencies','knowledge','ability','abilities',
+    'مهارة','مهارات','إجادة','اجادة','كفاءة','كفاءات','معرفة','قدرة'
+  ],
+  experience: [
+    'experience','responsibility','responsibilities','duties','responsible for','manage','monitor','assess','administer',
+    'coordinate','perform','provide','lead','supervise','maintain','document','خبرة','مسؤوليات','مهام','إدارة','ادارة',
+    'مراقبة','تقييم','تنسيق','تنفيذ','تقديم','قيادة','إشراف','اشراف','توثيق'
+  ],
+  certifications: [
+    'certification','certifications','certified','license','licence','licensure','registration','credential',
+    'شهادة','شهادات','معتمد','ترخيص','تسجيل مهني','اعتماد مهني'
+  ],
+  education: [
+    'education','degree','bachelor','master','diploma','university','college','academic',
+    'تعليم','مؤهل','بكالوريوس','ماجستير','دبلوم','دبلومة','جامعة','كلية','اكاديمي','أكاديمي'
+  ],
+};
 
 function normalize(value: string) {
   return value
@@ -47,6 +114,15 @@ function normalize(value: string) {
     .replace(/[^a-z0-9\u0600-\u06FF+#./-]+/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function containsNormalized(haystack: string, needle: string) {
+  const cleanNeedle = normalize(needle);
+  if (!cleanNeedle) return false;
+  if (cleanNeedle.length <= 3 && !cleanNeedle.includes(' ')) {
+    return (` ${haystack} `).includes(` ${cleanNeedle} `);
+  }
+  return haystack.includes(cleanNeedle);
 }
 
 function detectLanguage(): Language {
@@ -66,39 +142,178 @@ function collectCvText() {
   return normalize(preview + ' ' + controls);
 }
 
-function extractKeywords(title: string, description: string): Array<{ term: string; score: number }> {
-  const normalizedTitle = normalize(title);
-  const normalizedDescription = normalize(description);
-  const weights = new Map<string, number>();
+function getPriority(text: string): Priority {
+  const clean = normalize(text);
+  if (REQUIRED_MARKERS.some((marker) => containsNormalized(clean, marker))) return 'required';
+  if (PREFERRED_MARKERS.some((marker) => containsNormalized(clean, marker))) return 'preferred';
+  return 'general';
+}
 
-  const add = (term: string, score: number) => {
-    const clean = normalize(term);
-    if (!clean || clean.length < 2 || STOPWORDS.has(clean)) return;
-    weights.set(clean, (weights.get(clean) || 0) + score);
+function getCategory(text: string): Category {
+  const clean = normalize(text);
+  const scores = CATEGORY_ORDER.map((category) => ({
+    category,
+    score: CATEGORY_MARKERS[category].reduce(
+      (sum, marker) => sum + (containsNormalized(clean, marker) ? 1 : 0),
+      0
+    ),
+  })).sort((a, b) => b.score - a.score);
+
+  if (scores[0].score > 0) return scores[0].category;
+  return 'skills';
+}
+
+function requirementWeight(priority: Priority, known: boolean) {
+  const priorityWeight = priority === 'required' ? 5 : priority === 'preferred' ? 3 : 2;
+  return priorityWeight + (known ? 2 : 0);
+}
+
+function extractRequirements(title: string, description: string) {
+  const cleanDescription = normalize(description);
+  const found = new Map<string, Omit<Requirement, 'matched'>>();
+  const segments = description
+    .split(/\n|[.!?;•]+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  const add = (
+    term: string,
+    category: Category,
+    priority: Priority,
+    variants: string[],
+    weight: number
+  ) => {
+    const key = normalize(term);
+    if (!key || key.length < 2 || STOPWORDS.has(key)) return;
+    const existing = found.get(key);
+    if (!existing || weight > existing.weight) {
+      found.set(key, { term, category, priority, variants, weight });
+    }
   };
 
-  if (normalizedTitle) {
-    add(normalizedTitle, 8);
-    normalizedTitle.split(' ').forEach((token) => {
-      if (token.length >= 3 && !STOPWORDS.has(token)) add(token, 4);
-    });
+  for (const group of SYNONYM_GROUPS) {
+    const hit = group.variants.find((variant) => containsNormalized(cleanDescription, variant));
+    if (!hit) continue;
+    const sourceSegment = segments.find((segment) =>
+      group.variants.some((variant) => containsNormalized(normalize(segment), variant))
+    ) || description;
+    const priority = getPriority(sourceSegment);
+    add(group.label, group.category, priority, group.variants, requirementWeight(priority, true));
   }
 
-  const tokens = normalizedDescription.split(' ').filter(Boolean);
-  tokens.forEach((token) => {
-    if (token.length < 3 || STOPWORDS.has(token) || /^\d+$/.test(token)) return;
-    add(token, 1);
-  });
+  const frequency = new Map<string, { count: number; category: Category; priority: Priority; original: string }>();
+  for (const segment of segments) {
+    const priority = getPriority(segment);
+    const category = getCategory(segment);
+    const clean = normalize(segment);
+    const tokens = clean.split(' ').filter((token) =>
+      token.length >= 4 &&
+      !STOPWORDS.has(token) &&
+      !/^\d+$/.test(token) &&
+      !SYNONYM_GROUPS.some((group) => group.variants.some((variant) => normalize(variant) === token))
+    );
 
-  COMMON_PHRASES.forEach((phrase) => {
-    const clean = normalize(phrase);
-    if (clean && normalizedDescription.includes(clean)) add(clean, 5);
-  });
+    const unique = Array.from(new Set(tokens));
+    for (const token of unique) {
+      const previous = frequency.get(token);
+      if (previous) {
+        previous.count += 1;
+        if (priority === 'required') previous.priority = 'required';
+        else if (priority === 'preferred' && previous.priority === 'general') previous.priority = 'preferred';
+      } else {
+        frequency.set(token, { count: 1, category, priority, original: token });
+      }
+    }
+  }
 
-  return Array.from(weights.entries())
-    .map(([term, score]) => ({ term, score }))
+  const titleTokens = normalize(title).split(' ').filter((token) => token.length >= 4 && !STOPWORDS.has(token));
+  for (const token of titleTokens) {
+    const previous = frequency.get(token);
+    if (previous) previous.count += 3;
+  }
+
+  Array.from(frequency.entries())
+    .map(([term, meta]) => ({
+      term,
+      ...meta,
+      score: meta.count * 2 + (meta.priority === 'required' ? 4 : meta.priority === 'preferred' ? 2 : 0),
+    }))
+    .filter((item) => item.count >= 2 || item.priority !== 'general' || titleTokens.includes(item.term))
     .sort((a, b) => b.score - a.score || b.term.length - a.term.length)
-    .slice(0, 12);
+    .slice(0, 8)
+    .forEach((item) => {
+      add(
+        item.original,
+        item.category,
+        item.priority,
+        [item.term],
+        requirementWeight(item.priority, false) + Math.min(item.count, 3)
+      );
+    });
+
+  return Array.from(found.values())
+    .sort((a, b) => {
+      const priorityRank = { required: 3, preferred: 2, general: 1 };
+      return priorityRank[b.priority] - priorityRank[a.priority] || b.weight - a.weight;
+    })
+    .slice(0, 20);
+}
+
+function matchRequirement(cvText: string, requirement: Omit<Requirement, 'matched'>) {
+  return requirement.variants.some((variant) => containsNormalized(cvText, variant));
+}
+
+function coverageFor(items: Requirement[]) {
+  const total = items.reduce((sum, item) => sum + item.weight, 0);
+  if (!total) return 0;
+  const matched = items.reduce((sum, item) => sum + (item.matched ? item.weight : 0), 0);
+  return Math.round((matched / total) * 100);
+}
+
+function currentStorageScope() {
+  if (typeof window === 'undefined') return { key: '', persistent: false };
+  const docId = new URLSearchParams(window.location.search).get('doc');
+  return docId
+    ? { key: `sirati.jobTailor.v2.doc.${docId}`, persistent: true }
+    : { key: 'sirati.jobTailor.v2.draft', persistent: false };
+}
+
+function readSavedTarget(scope: { key: string; persistent: boolean }) {
+  if (!scope.key || typeof window === 'undefined') return null;
+  try {
+    const raw = scope.persistent ? localStorage.getItem(scope.key) : sessionStorage.getItem(scope.key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      targetRole: typeof parsed.targetRole === 'string' ? parsed.targetRole : '',
+      jobDescription: typeof parsed.jobDescription === 'string' ? parsed.jobDescription : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedTarget(scope: { key: string; persistent: boolean }, targetRole: string, jobDescription: string) {
+  if (!scope.key || typeof window === 'undefined') return;
+  const store = scope.persistent ? localStorage : sessionStorage;
+  if (!targetRole.trim() && !jobDescription.trim()) {
+    store.removeItem(scope.key);
+    return;
+  }
+  store.setItem(scope.key, JSON.stringify({ version: 2, targetRole, jobDescription }));
+}
+
+function findBuilderSection(category: Category) {
+  const patterns: Record<Category, RegExp> = {
+    skills: /skills|competencies|مهارات|الكفاءات/i,
+    experience: /experience|employment|work history|الخبرة|العمل/i,
+    certifications: /certifications|licenses|credentials|الشهادات|التراخيص/i,
+    education: /education|degree|academic|التعليم|المؤهل/i,
+  };
+  const headings = Array.from(
+    document.querySelectorAll<HTMLElement>('main h2, main h3, main legend, .wizard-panel h2, .wizard-panel h3')
+  );
+  return headings.find((heading) => patterns[category].test((heading.innerText || heading.textContent || '').trim()));
 }
 
 export default function TargetJobTailor() {
@@ -108,6 +323,7 @@ export default function TargetJobTailor() {
   const [targetRole, setTargetRole] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [cvText, setCvText] = useState('');
+  const [storageScope, setStorageScope] = useState<{ key: string; persistent: boolean }>({ key: '', persistent: false });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -115,9 +331,23 @@ export default function TargetJobTailor() {
     setEnabled(onBuilder);
     if (!onBuilder) return;
 
+    const initialScope = currentStorageScope();
+    setStorageScope(initialScope);
+    const saved = readSavedTarget(initialScope);
+    if (saved) {
+      setTargetRole(saved.targetRole);
+      setJobDescription(saved.jobDescription);
+    }
+
     const scan = () => {
       setLanguage(detectLanguage());
       setCvText(collectCvText());
+      const nextScope = currentStorageScope();
+      setStorageScope((previous) =>
+        previous.key === nextScope.key && previous.persistent === nextScope.persistent
+          ? previous
+          : nextScope
+      );
     };
 
     scan();
@@ -132,72 +362,146 @@ export default function TargetJobTailor() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!enabled || !storageScope.key) return;
+    writeSavedTarget(storageScope, targetRole, jobDescription);
+  }, [enabled, storageScope, targetRole, jobDescription]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   const analysisReady = normalize(jobDescription).length >= 40;
 
-  const results = useMemo<KeywordResult[]>(() => {
+  const requirements = useMemo<Requirement[]>(() => {
     if (!analysisReady) return [];
-    return extractKeywords(targetRole, jobDescription).map((item) => ({
+    return extractRequirements(targetRole, jobDescription).map((item) => ({
       ...item,
-      matched: cvText.includes(item.term),
+      matched: matchRequirement(cvText, item),
     }));
   }, [targetRole, jobDescription, cvText, analysisReady]);
 
-  const coverage = useMemo(() => {
-    const total = results.reduce((sum, item) => sum + item.score, 0);
-    if (!total) return 0;
-    const matched = results.reduce((sum, item) => sum + (item.matched ? item.score : 0), 0);
-    return Math.round((matched / total) * 100);
-  }, [results]);
+  const coverage = coverageFor(requirements);
+  const requiredItems = requirements.filter((item) => item.priority === 'required');
+  const requiredCoverage = requiredItems.length ? coverageFor(requiredItems) : null;
+  const missing = requirements.filter((item) => !item.matched);
+  const missingRequired = missing.filter((item) => item.priority === 'required');
 
-  const matched = results.filter((item) => item.matched);
-  const missing = results.filter((item) => !item.matched);
+  const breakdowns = CATEGORY_ORDER.map((category) => {
+    const items = requirements.filter((item) => item.category === category);
+    return {
+      category,
+      items,
+      coverage: coverageFor(items),
+      matched: items.filter((item) => item.matched).length,
+      total: items.length,
+    };
+  }).filter((item) => item.total > 0);
 
   if (!enabled) return null;
 
   const copy = language === 'ar'
     ? {
-        trigger: 'خصّص للوظيفة',
-        eyebrow: 'تخصيص حسب الوظيفة المستهدفة',
-        title: 'قارن سيرتك بإعلان الوظيفة',
+        trigger: 'مركز مطابقة الوظيفة',
+        eyebrow: 'SIRATI JOB MATCH',
+        title: 'خصّص سيرتك للوظيفة المستهدفة',
+        subtitle: 'حلّل المتطلبات المهمة واعرف أين تحتاج سيرتك إلى مراجعة — بدون إضافة معلومات من تلقاء نفسها.',
         role: 'المسمى الوظيفي المستهدف',
         rolePlaceholder: 'مثال: ممرض طوارئ',
-        jd: 'وصف الوظيفة',
-        jdPlaceholder: 'الصق وصف أو إعلان الوظيفة هنا...',
-        helper: 'الصق وصف الوظيفة للحصول على مقارنة محلية بدون AI أو تكلفة.',
-        coverage: 'تغطية الكلمات المهمة',
-        found: 'موجود في سيرتك',
-        review: 'راجعها إذا كانت صحيحة لديك',
-        noneMatched: 'لم يتم العثور على كلمات مطابقة بعد.',
-        noneMissing: 'كل الكلمات المهمة المختارة موجودة في سيرتك.',
+        jd: 'إعلان / وصف الوظيفة',
+        jdPlaceholder: 'الصق إعلان الوظيفة هنا...',
+        helper: 'الصق وصفًا لا يقل عن عدة أسطر لبدء تحليل المتطلبات.',
+        overall: 'التغطية الإجمالية',
+        mustHave: 'المتطلبات الأساسية',
+        requiredMissing: 'متطلبات أساسية تحتاج مراجعة',
+        breakdown: 'تفصيل المطابقة',
+        matched: 'مطابق',
+        review: 'يحتاج مراجعة',
+        requirementAnalysis: 'تحليل المتطلبات',
+        required: 'أساسي',
+        preferred: 'مفضل',
+        general: 'عام',
+        skills: 'المهارات',
+        experience: 'الخبرة والمسؤوليات',
+        certifications: 'الشهادات والتراخيص',
+        education: 'التعليم',
+        alreadyThere: 'موجود',
+        missingLabel: 'راجع',
+        reviewSection: 'راجع هذا القسم',
+        noRequirements: 'لم يتم استخراج متطلبات كافية بعد.',
+        noRequiredMissing: 'لا توجد متطلبات أساسية ناقصة ضمن العناصر المستخرجة.',
         clear: 'مسح',
-        safety: 'أضف أي كلمة ناقصة فقط إذا كانت تعكس خبرتك ومهاراتك الحقيقية. Sirati لا يضيف معلومات تلقائيًا.',
-        disclaimer: 'هذه مقارنة كلمات مفتاحية وليست درجة ATS أو ضمانًا للقبول.',
+        close: 'إغلاق',
+        storagePersistent: 'محفوظ على هذا الجهاز لهذه السيرة.',
+        storageDraft: 'محفوظ مؤقتًا في هذا التبويب حتى تصبح للسيرة نسخة محفوظة.',
+        safety: 'لا تضف أي مهارة أو خبرة أو شهادة إلا إذا كانت صحيحة لديك بالفعل. Sirati لا ينسخ ادعاءات إعلان الوظيفة إلى سيرتك تلقائيًا.',
+        disclaimer: 'النسب هنا لقياس تغطية المتطلبات والكلمات المهمة فقط؛ ليست ATS Score ولا ضمانًا للمقابلة أو القبول.',
       }
     : {
-        trigger: 'Tailor to job',
-        eyebrow: 'TARGET JOB TAILORING',
-        title: 'Compare your CV with the job ad',
+        trigger: 'Job Match Center',
+        eyebrow: 'SIRATI JOB MATCH',
+        title: 'Tailor your CV to the target job',
+        subtitle: 'Break down the important requirements and see exactly where your CV needs review — without inventing facts.',
         role: 'Target job title',
         rolePlaceholder: 'e.g. Emergency Nurse',
-        jd: 'Job description',
+        jd: 'Job ad / description',
         jdPlaceholder: 'Paste the job description here...',
-        helper: 'Paste the job description for a local, zero-cost comparison without AI.',
-        coverage: 'Keyword coverage',
-        found: 'Already in your CV',
-        review: 'Review if true for you',
-        noneMatched: 'No selected keywords are matched yet.',
-        noneMissing: 'All selected keywords are already represented in your CV.',
+        helper: 'Paste a few lines of the job description to start the requirements analysis.',
+        overall: 'Overall coverage',
+        mustHave: 'Must-have coverage',
+        requiredMissing: 'Must-have items to review',
+        breakdown: 'Match breakdown',
+        matched: 'Matched',
+        review: 'Needs review',
+        requirementAnalysis: 'Requirements analysis',
+        required: 'Required',
+        preferred: 'Preferred',
+        general: 'General',
+        skills: 'Skills',
+        experience: 'Experience & responsibilities',
+        certifications: 'Certifications & licenses',
+        education: 'Education',
+        alreadyThere: 'Found',
+        missingLabel: 'Review',
+        reviewSection: 'Review this section',
+        noRequirements: 'Not enough requirements were extracted yet.',
+        noRequiredMissing: 'No missing must-have items were found in the extracted requirements.',
         clear: 'Clear',
-        safety: 'Only add a missing term if it truthfully reflects your real experience or skills. Sirati never adds facts automatically.',
-        disclaimer: 'This is keyword coverage, not an ATS score or hiring guarantee.',
+        close: 'Close',
+        storagePersistent: 'Saved on this device for this CV.',
+        storageDraft: 'Kept in this tab until the CV has a saved document ID.',
+        safety: 'Only add a skill, responsibility, certification, or qualification when it is genuinely true for you. Sirati never copies job-ad claims into your CV automatically.',
+        disclaimer: 'These percentages measure requirement and keyword coverage only. They are not an ATS score or a hiring guarantee.',
       };
+
+  const categoryLabel = (category: Category) => copy[category];
+  const priorityLabel = (priority: Priority) =>
+    priority === 'required' ? copy.required : priority === 'preferred' ? copy.preferred : copy.general;
+
+  const goToSection = (category: Category) => {
+    const section = findBuilderSection(category);
+    setOpen(false);
+    if (section) {
+      window.setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
+  };
 
   return (
     <aside className="job-tailor" dir={language === 'ar' ? 'rtl' : 'ltr'} aria-label={copy.trigger}>
       <button
         type="button"
         className="job-tailor__trigger"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen(true)}
         aria-expanded={open}
       >
         <span>{copy.trigger}</span>
@@ -205,83 +509,159 @@ export default function TargetJobTailor() {
       </button>
 
       {open && (
-        <div className="job-tailor__panel">
-          <div className="job-tailor__heading">
-            <div>
-              <small>{copy.eyebrow}</small>
-              <h3>{copy.title}</h3>
+        <div
+          className="job-tailor__backdrop"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setOpen(false);
+          }}
+        >
+          <div className="job-tailor__panel" role="dialog" aria-modal="true" aria-label={copy.title}>
+            <header className="job-tailor__heading">
+              <div>
+                <small>{copy.eyebrow}</small>
+                <h3>{copy.title}</h3>
+                <p>{copy.subtitle}</p>
+              </div>
+              <button type="button" className="job-tailor__close" onClick={() => setOpen(false)} aria-label={copy.close}>×</button>
+            </header>
+
+            <div className="job-tailor__inputs">
+              <label className="job-tailor__field">
+                <span>{copy.role}</span>
+                <input
+                  type="text"
+                  value={targetRole}
+                  onChange={(event) => setTargetRole(event.target.value)}
+                  placeholder={copy.rolePlaceholder}
+                  autoComplete="off"
+                />
+              </label>
+
+              <label className="job-tailor__field">
+                <span>{copy.jd}</span>
+                <textarea
+                  value={jobDescription}
+                  onChange={(event) => setJobDescription(event.target.value)}
+                  placeholder={copy.jdPlaceholder}
+                  rows={7}
+                />
+              </label>
+
+              <div className="job-tailor__input-meta">
+                <small>{storageScope.persistent ? copy.storagePersistent : copy.storageDraft}</small>
+                {(targetRole || jobDescription) && (
+                  <button
+                    type="button"
+                    className="job-tailor__clear"
+                    onClick={() => {
+                      setTargetRole('');
+                      setJobDescription('');
+                    }}
+                  >
+                    {copy.clear}
+                  </button>
+                )}
+              </div>
             </div>
-            {(targetRole || jobDescription) && (
-              <button
-                type="button"
-                className="job-tailor__clear"
-                onClick={() => {
-                  setTargetRole('');
-                  setJobDescription('');
-                }}
-              >
-                {copy.clear}
-              </button>
+
+            {!analysisReady ? (
+              <div className="job-tailor__empty">
+                <strong>◎</strong>
+                <p>{copy.helper}</p>
+              </div>
+            ) : requirements.length === 0 ? (
+              <div className="job-tailor__empty">
+                <strong>○</strong>
+                <p>{copy.noRequirements}</p>
+              </div>
+            ) : (
+              <div className="job-tailor__analysis">
+                <section className="job-tailor__score-grid">
+                  <article className="job-tailor__score">
+                    <small>{copy.overall}</small>
+                    <strong>{coverage}%</strong>
+                    <div className="job-tailor__bar" aria-hidden="true"><span style={{ width: `${coverage}%` }} /></div>
+                  </article>
+                  <article className="job-tailor__score">
+                    <small>{copy.mustHave}</small>
+                    <strong>{requiredCoverage === null ? '—' : `${requiredCoverage}%`}</strong>
+                    <div className="job-tailor__bar" aria-hidden="true">
+                      <span style={{ width: `${requiredCoverage ?? 0}%` }} />
+                    </div>
+                  </article>
+                </section>
+
+                <section className="job-tailor__section">
+                  <div className="job-tailor__section-title">
+                    <h4>{copy.requiredMissing}</h4>
+                    <span>{missingRequired.length}</span>
+                  </div>
+                  {missingRequired.length ? (
+                    <div className="job-tailor__priority-list">
+                      {missingRequired.slice(0, 6).map((item) => (
+                        <article key={`${item.category}-${item.term}`}>
+                          <div>
+                            <span className="job-tailor__status job-tailor__status--review">!</span>
+                            <div>
+                              <strong>{item.term}</strong>
+                              <small>{categoryLabel(item.category)}</small>
+                            </div>
+                          </div>
+                          <button type="button" onClick={() => goToSection(item.category)}>{copy.reviewSection}</button>
+                        </article>
+                      ))}
+                    </div>
+                  ) : <p className="job-tailor__muted">{copy.noRequiredMissing}</p>}
+                </section>
+
+                <section className="job-tailor__section">
+                  <div className="job-tailor__section-title">
+                    <h4>{copy.breakdown}</h4>
+                  </div>
+                  <div className="job-tailor__breakdown">
+                    {breakdowns.map((item) => (
+                      <article key={item.category}>
+                        <div className="job-tailor__breakdown-head">
+                          <strong>{categoryLabel(item.category)}</strong>
+                          <span>{item.coverage}%</span>
+                        </div>
+                        <div className="job-tailor__mini-bar" aria-hidden="true"><span style={{ width: `${item.coverage}%` }} /></div>
+                        <small>{item.matched}/{item.total} {copy.matched.toLowerCase()}</small>
+                        <button type="button" onClick={() => goToSection(item.category)}>{copy.reviewSection}</button>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="job-tailor__section">
+                  <div className="job-tailor__section-title">
+                    <h4>{copy.requirementAnalysis}</h4>
+                    <span>{requirements.length}</span>
+                  </div>
+                  <div className="job-tailor__requirements">
+                    {requirements.map((item) => (
+                      <article className={item.matched ? 'is-match' : 'is-review'} key={`${item.category}-${item.term}`}>
+                        <span className={`job-tailor__status ${item.matched ? 'job-tailor__status--match' : 'job-tailor__status--review'}`}>
+                          {item.matched ? '✓' : '!'}
+                        </span>
+                        <div>
+                          <strong>{item.term}</strong>
+                          <div className="job-tailor__tags">
+                            <span>{categoryLabel(item.category)}</span>
+                            <span className={`priority-${item.priority}`}>{priorityLabel(item.priority)}</span>
+                            <span>{item.matched ? copy.alreadyThere : copy.missingLabel}</span>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <p className="job-tailor__safety">{copy.safety}</p>
+                <p className="job-tailor__disclaimer">{copy.disclaimer}</p>
+              </div>
             )}
           </div>
-
-          <label className="job-tailor__field">
-            <span>{copy.role}</span>
-            <input
-              type="text"
-              value={targetRole}
-              onChange={(event) => setTargetRole(event.target.value)}
-              placeholder={copy.rolePlaceholder}
-              autoComplete="off"
-            />
-          </label>
-
-          <label className="job-tailor__field">
-            <span>{copy.jd}</span>
-            <textarea
-              value={jobDescription}
-              onChange={(event) => setJobDescription(event.target.value)}
-              placeholder={copy.jdPlaceholder}
-              rows={6}
-            />
-          </label>
-
-          {!analysisReady ? (
-            <p className="job-tailor__helper">{copy.helper}</p>
-          ) : (
-            <>
-              <div className="job-tailor__score">
-                <div>
-                  <small>{copy.coverage}</small>
-                  <strong>{coverage}%</strong>
-                </div>
-                <div className="job-tailor__bar" aria-hidden="true">
-                  <span style={{ width: `${coverage}%` }} />
-                </div>
-              </div>
-
-              <section className="job-tailor__group">
-                <h4>{copy.found}</h4>
-                {matched.length ? (
-                  <div className="job-tailor__chips">
-                    {matched.map((item) => <span className="is-match" key={item.term}>✓ {item.term}</span>)}
-                  </div>
-                ) : <p>{copy.noneMatched}</p>}
-              </section>
-
-              <section className="job-tailor__group">
-                <h4>{copy.review}</h4>
-                {missing.length ? (
-                  <div className="job-tailor__chips">
-                    {missing.map((item) => <span key={item.term}>{item.term}</span>)}
-                  </div>
-                ) : <p>{copy.noneMissing}</p>}
-              </section>
-
-              <p className="job-tailor__safety">{copy.safety}</p>
-              <p className="job-tailor__disclaimer">{copy.disclaimer}</p>
-            </>
-          )}
         </div>
       )}
     </aside>
@@ -319,8 +699,11 @@ if marker not in css:
   top: 88px;
   left: 16px;
   z-index: 87;
-  width: min(390px, calc(100vw - 32px));
   font-size: 14px;
+}
+[dir="rtl"].job-tailor {
+  left: auto;
+  right: 16px;
 }
 .job-tailor__trigger {
   display: inline-flex;
@@ -334,7 +717,7 @@ if marker not in css:
   box-shadow: 0 12px 30px rgba(15, 23, 42, .12);
   color: #0f172a;
   font: inherit;
-  font-weight: 700;
+  font-weight: 750;
   cursor: pointer;
 }
 .job-tailor__trigger strong {
@@ -346,52 +729,83 @@ if marker not in css:
   background: #0f172a;
   color: #fff;
 }
+.job-tailor__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px;
+  background: rgba(15, 23, 42, .32);
+  backdrop-filter: blur(3px);
+}
+[dir="rtl"] .job-tailor__backdrop {
+  justify-content: flex-start;
+}
 .job-tailor__panel {
-  margin-top: 8px;
-  max-height: calc(100vh - 150px);
+  width: min(680px, calc(100vw - 28px));
+  height: calc(100vh - 28px);
   overflow: auto;
-  padding: 17px;
+  padding: 22px;
   border: 1px solid rgba(15, 23, 42, .10);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, .985);
-  box-shadow: 0 18px 48px rgba(15, 23, 42, .16);
-  backdrop-filter: blur(12px);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .28);
 }
 .job-tailor__heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 16px;
+  align-items: start;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e2e8f0;
 }
 .job-tailor__heading small {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   color: #64748b;
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .08em;
+  font-weight: 850;
+  letter-spacing: .10em;
 }
 .job-tailor__heading h3 {
   margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.15;
 }
-.job-tailor__clear {
-  border: 0;
-  background: transparent;
+.job-tailor__heading p {
+  max-width: 560px;
+  margin: 8px 0 0;
   color: #64748b;
-  font: inherit;
-  font-size: 12px;
-  text-decoration: underline;
+  line-height: 1.55;
+}
+.job-tailor__close {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1;
   cursor: pointer;
+}
+.job-tailor__inputs {
+  display: grid;
+  gap: 13px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
 }
 .job-tailor__field {
   display: grid;
   gap: 6px;
-  margin-top: 12px;
   color: #334155;
-  font-weight: 700;
+  font-weight: 750;
 }
 .job-tailor__field input,
 .job-tailor__field textarea {
@@ -406,97 +820,264 @@ if marker not in css:
   line-height: 1.5;
 }
 .job-tailor__field input {
-  min-height: 42px;
-  padding: 8px 10px;
+  min-height: 44px;
+  padding: 9px 11px;
 }
 .job-tailor__field textarea {
-  padding: 10px;
+  padding: 11px;
   resize: vertical;
 }
-.job-tailor__helper,
-.job-tailor__group p {
-  margin: 12px 0 0;
+.job-tailor__input-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.job-tailor__input-meta small {
   color: #64748b;
-  line-height: 1.5;
+  line-height: 1.4;
+}
+.job-tailor__clear {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.job-tailor__empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  margin-top: 18px;
+  padding: 24px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  text-align: center;
+  color: #64748b;
+}
+.job-tailor__empty strong {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 24px;
+}
+.job-tailor__empty p {
+  max-width: 430px;
+  margin: 12px 0 0;
+}
+.job-tailor__analysis {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+.job-tailor__score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 .job-tailor__score {
-  margin-top: 16px;
-  padding: 12px;
-  border-radius: 13px;
-  background: #f8fafc;
-}
-.job-tailor__score > div:first-child {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  background: #fff;
 }
 .job-tailor__score small {
+  display: block;
   color: #64748b;
 }
 .job-tailor__score strong {
-  font-size: 24px;
+  display: block;
+  margin-top: 4px;
+  font-size: 32px;
 }
-.job-tailor__bar {
+.job-tailor__bar,
+.job-tailor__mini-bar {
   height: 7px;
-  margin-top: 8px;
+  margin-top: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: #e2e8f0;
 }
-.job-tailor__bar span {
+.job-tailor__bar span,
+.job-tailor__mini-bar span {
   display: block;
   height: 100%;
   border-radius: inherit;
   background: #0f172a;
   transition: width .2s ease;
 }
-.job-tailor__group {
-  margin-top: 15px;
-}
-.job-tailor__group h4 {
-  margin: 0 0 8px;
-  font-size: 13px;
-}
-.job-tailor__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-.job-tailor__chips span {
-  max-width: 100%;
-  padding: 6px 9px;
-  border: 1px solid #dbe3ee;
-  border-radius: 999px;
+.job-tailor__section {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
   background: #fff;
-  color: #475569;
+}
+.job-tailor__section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.job-tailor__section-title h4 {
+  margin: 0;
+  font-size: 16px;
+}
+.job-tailor__section-title > span {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
   font-size: 12px;
+  font-weight: 800;
+}
+.job-tailor__priority-list {
+  display: grid;
+  gap: 9px;
+}
+.job-tailor__priority-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.job-tailor__priority-list article > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.job-tailor__priority-list strong,
+.job-tailor__requirements strong {
   overflow-wrap: anywhere;
 }
-.job-tailor__chips span.is-match {
-  border-color: #cbd5e1;
-  background: #f1f5f9;
+.job-tailor__priority-list small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+}
+.job-tailor__priority-list button,
+.job-tailor__breakdown button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
   color: #0f172a;
-  font-weight: 700;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.job-tailor__status {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-weight: 900;
+}
+.job-tailor__status--match {
+  background: #0f172a;
+  color: #fff;
+}
+.job-tailor__status--review {
+  background: #f1f5f9;
+  color: #334155;
+}
+.job-tailor__breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.job-tailor__breakdown article {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.job-tailor__breakdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.job-tailor__breakdown article > small {
+  display: block;
+  margin-top: 7px;
+  color: #64748b;
+}
+.job-tailor__breakdown button {
+  margin-top: 8px;
+  padding: 0;
+}
+.job-tailor__requirements {
+  display: grid;
+  gap: 8px;
+}
+.job-tailor__requirements article {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+.job-tailor__requirements article.is-match {
+  background: #f8fafc;
+}
+.job-tailor__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.job-tailor__tags span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+}
+.job-tailor__tags .priority-required {
+  background: #e2e8f0;
+  color: #0f172a;
+  font-weight: 800;
+}
+.job-tailor__muted {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
 }
 .job-tailor__safety {
-  margin: 16px 0 0;
-  padding: 11px 12px;
-  border-radius: 11px;
+  margin: 0;
+  padding: 13px 14px;
+  border-radius: 12px;
   background: #f8fafc;
   color: #334155;
   font-size: 12px;
   line-height: 1.55;
 }
 .job-tailor__disclaimer {
-  margin: 9px 0 0;
+  margin: 0;
   color: #64748b;
   font-size: 11px;
   line-height: 1.5;
-}
-[dir="rtl"].job-tailor {
-  left: auto;
-  right: 16px;
 }
 @media (max-width: 760px) {
   .job-tailor,
@@ -504,22 +1085,46 @@ if marker not in css:
     top: 126px;
     left: 8px;
     right: auto;
-    width: min(374px, calc(100vw - 16px));
   }
   [dir="rtl"].job-tailor {
     left: auto;
     right: 8px;
   }
-  .job-tailor__panel {
-    max-height: calc(100vh - 190px);
-    padding: 14px;
-  }
   .job-tailor__trigger {
     min-height: 40px;
     padding: 6px 10px;
+  }
+  .job-tailor__backdrop,
+  [dir="rtl"] .job-tailor__backdrop {
+    justify-content: stretch;
+    padding: 0;
+  }
+  .job-tailor__panel {
+    width: 100vw;
+    height: 100vh;
+    padding: 16px;
+    border: 0;
+    border-radius: 0;
+  }
+  .job-tailor__heading {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+  .job-tailor__heading h3 {
+    font-size: 26px;
+  }
+  .job-tailor__score-grid,
+  .job-tailor__breakdown {
+    grid-template-columns: 1fr;
+  }
+  .job-tailor__priority-list article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .job-tailor__priority-list button {
+    margin-inline-start: 37px;
   }
 }
 '''
     css_path.write_text(css, encoding="utf-8")
 
-print("Applied target job tailoring.")
+print("Applied target job tailoring V2.")
