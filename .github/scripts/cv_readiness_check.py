@@ -39,13 +39,6 @@ function anyControlByType(type: string): string {
   return control?.value?.trim() || '';
 }
 
-function allBuilderValues(): string[] {
-  return Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'))
-    .filter((item) => !item.closest('.job-tailor') && !item.closest('.cv-readiness'))
-    .map((item) => item.value.trim())
-    .filter(Boolean);
-}
-
 function valuesFor(pattern: RegExp): string[] {
   const fields = Array.from(document.querySelectorAll<HTMLElement>('.field, label, .wizard-section-card'));
   const values: string[] = [];
@@ -80,12 +73,6 @@ function hasMeasuredImpact(value: string) {
   return /\b\d{1,3}\s*%/.test(value)
     || /\b\d+\+?\s+(patients?|cases?|staff|employees?|projects?|beds?|calls?|clients?)\b/i.test(value)
     || /\b\d+\+?\s+(مريض|مرضى|حالة|حالات|موظف|موظفين|مشروع|مشاريع|سرير|أسرة|اسرة)\b/i.test(value);
-}
-
-function hasPlaceholder(value: string) {
-  const text = value.toLowerCase();
-  return ['lorem ipsum','test test','xxx','asdf','sample text','your name','company name','اكتب هنا','نص تجريبي','اسمك هنا','اسم الشركة']
-    .some((item) => text.includes(item.toLowerCase()));
 }
 
 function detectLanguage(): 'en' | 'ar' {
