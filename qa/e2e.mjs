@@ -75,14 +75,14 @@ await page.evaluate(() => {
   const field = document.createElement('div');
   field.className = 'field';
   field.id = 'qa-experience-description-field';
-  field.innerHTML = '<label>Description</label><textarea id="qa-experience-description"></textarea>';
+  field.innerHTML = '<label>Job title<input id="qa-experience-role" value="Senior ICU Nurse"></label><label>Description<textarea id="qa-experience-description"></textarea></label>';
   document.body.appendChild(field);
 });
 const qaExperienceDescription = page.locator('#qa-experience-description');
 await qaExperienceDescription.focus();
 const experiencePicker = page.locator('.experience-picker');
 assert.equal(await experiencePicker.count(), 1, 'experience description picker did not open on Description focus');
-assert((await experiencePicker.innerText()).includes('Experience description options'), 'experience picker title missing');
+assert((await experiencePicker.innerText()).includes('Experience Description Pro'), 'Experience Pro title missing');
 const firstExperienceOption = experiencePicker.locator('.experience-picker__options article').first();
 const firstExperienceText = (await firstExperienceOption.locator('p').innerText()).trim();
 await firstExperienceOption.getByRole('button', { name: /Add/ }).click();
