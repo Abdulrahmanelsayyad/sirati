@@ -32,6 +32,20 @@ await page.waitForLoadState('networkidle');
 assert(page.url().includes('/builder'));
 log('template flow reaches builder');
 
+let onboardingTemplateSelect = null;
+const onboardingSelects = page.locator('select');
+for (let i = 0; i < await onboardingSelects.count(); i++) {
+  const values = await optionValues(onboardingSelects.nth(i));
+  if (['modern', 'classic', 'compact', 'compact-ats'].every((value) => values.includes(value))) {
+    onboardingTemplateSelect = onboardingSelects.nth(i);
+    break;
+  }
+}
+assert(onboardingTemplateSelect, 'onboarding template selector not found');
+assert.equal(await onboardingTemplateSelect.inputValue(), 'compact-ats');
+assert((await page.locator('.cv-sheet').getAttribute('class')).includes('template-compact-ats'));
+log('Compact ATS selection survives template onboarding');
+
 const library = page.locator('details.smart-nursing-library');
 assert.equal(await library.count(), 1);
 await library.locator('summary').click();
