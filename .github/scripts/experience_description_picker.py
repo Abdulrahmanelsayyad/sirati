@@ -322,7 +322,10 @@ export default function ExperienceDescriptionPicker() {
     const onFocus = (event: FocusEvent) => {
       const element = event.target instanceof HTMLElement ? event.target : null;
       if (element?.closest('.experience-picker')) return;
-      if (!isExperienceDescription(event.target)) return;
+      if (!isExperienceDescription(event.target)) {
+        setOpen(false);
+        return;
+      }
       activate(event.target);
     };
 
