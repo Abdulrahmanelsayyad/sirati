@@ -45,27 +45,25 @@ if 'value="compact-ats"' not in s:
         replacement = m.group(1) + '\n                <option value="compact-ats">Compact ATS</option>\n              ' + m.group(2)
         s = s[:m.start()] + replacement + s[m.end():]
 # Preserve Compact ATS when starting a new CV or restoring a local draft.
-def expand_template_guard(text):
-    pattern = re.compile(
-        r"(?P<value>[A-Za-z_$][\\w.$]*)\\s*===\\s*['\\\"]classic['\\\"]"
-        r"\\s*\\|\\|\\s*(?P=value)\\s*===\\s*['\\\"]compact['\\\"]"
-        r"\\s*\\?\\s*(?P=value)\\s*:\\s*['\\\"]modern['\\\"]"
+guard_pattern = re.compile(
+    r"(?P<value>[A-Za-z_$][\w.$]*)\s*===\s*['\"]classic['\"]"
+    r"\s*\|\|\s*(?P=value)\s*===\s*['\"]compact['\"]"
+    r"\s*\?\s*(?P=value)\s*:\s*['\"]modern['\"]"
+)
+
+def guard_replacement(match):
+    value = match.group("value")
+    return (
+        value + " === 'classic' || " +
+        value + " === 'compact' || " +
+        value + " === 'compact-ats' ? " +
+        value + " : 'modern'"
     )
 
-    def replacement(match):
-        value = match.group("value")
-        return (
-            value + " === 'classic' || " +
-            value + " === 'compact' || " +
-            value + " === 'compact-ats' ? " +
-            value + " : 'modern'"
-        )
-
-    return pattern.subn(replacement, text)
-
-s, expanded_guards = expand_template_guard(s)
-if expanded_guards < 2:
-    print("WARN: expected to expand at least two template guards, expanded", expanded_guards)
+s, expanded_guards = guard_pattern.subn(guard_replacement, s)
+if expanded_guards < 1:
+    raise SystemExit("Could not locate template onboarding/draft guard")
+print("Expanded template guards:", expanded_guards)
 
 builder.write_text(s, encoding="utf-8")
 
