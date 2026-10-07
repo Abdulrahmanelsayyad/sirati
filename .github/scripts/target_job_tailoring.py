@@ -455,6 +455,9 @@ export default function TargetJobTailor() {
 
   useEffect(() => {
     if (!enabled || !storageReady || !storageScope.key) return;
+    // Empty initial renders must never erase a draft that was just written by the user.
+    // Clearing is handled explicitly by the Clear button.
+    if (!targetRole.trim() && !jobDescription.trim()) return;
     writeSavedTarget(storageScope, targetRole, jobDescription);
   }, [enabled, storageReady, storageScope, targetRole, jobDescription]);
 
