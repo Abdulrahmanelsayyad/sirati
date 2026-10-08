@@ -66,7 +66,7 @@ if "const templateBenefits" in source:
     raise RuntimeError("Already has demo template benefits")
 source = source.replace(anchor, fixtures + anchor, 1)
 
-old_thumb = '''              <div className={\`template-choice-preview \${option.id}\`} aria-hidden="true">
+old_thumb = '''              <div className={`template-choice-preview ${option.id}`} aria-hidden="true">
                 <div className="choice-name" />
                 <div className="choice-role" />
                 <div className="choice-rule" />
@@ -74,7 +74,7 @@ old_thumb = '''              <div className={\`template-choice-preview \${option
                 <div className="choice-section"><span /><i /><i /></div>
                 <div className="choice-columns"><div /><div /></div>
               </div>'''
-new_thumb = '''              <div className={\`template-choice-preview \${option.id} template-real-preview\`} aria-hidden="true">
+new_thumb = '''              <div className={`template-choice-preview ${option.id} template-real-preview`} aria-hidden="true">
                 <div className="template-real-preview__stage" data-demo-template={option.id}>
                   <CvPreview
                     data={language === 'ar' ? arabicDemoCv : sampleNurseCv}
