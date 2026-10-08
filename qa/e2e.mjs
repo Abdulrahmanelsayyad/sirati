@@ -35,6 +35,37 @@ for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'He
 }
 log('all six template names');
 
+const carousel = page.locator('.template-carousel-track');
+assert.equal(await carousel.count(), 1, 'horizontal template carousel missing');
+const desktopMetrics = await carousel.evaluate(el => ({
+  client: el.clientWidth, scroll: el.scrollWidth,
+  card: Math.round(el.querySelector('.template-choice').getBoundingClientRect().width),
+  preview: Math.round(el.querySelector('.template-choice-preview').getBoundingClientRect().height),
+}));
+assert(desktopMetrics.scroll > desktopMetrics.client + 100, 'desktop templates must scroll horizontally');
+assert(desktopMetrics.card <= 205 && desktopMetrics.preview <= 120, 'desktop cards must be compact');
+const nextTemplates = page.getByRole('button', { name: 'Next templates' });
+const previousTemplates = page.getByRole('button', { name: 'Previous templates' });
+assert(await previousTemplates.isDisabled(), 'previous arrow should start disabled');
+assert(await nextTemplates.isEnabled(), 'next arrow should be available');
+await nextTemplates.click();
+await page.waitForFunction(() => document.querySelector('.template-carousel-track').scrollLeft > 30);
+assert(await previousTemplates.isEnabled(), 'previous arrow should enable after scrolling');
+log('compact desktop carousel with working horizontal arrow navigation');
+
+await page.setViewportSize({ width: 390, height: 844 });
+const mobileMetrics = await carousel.evaluate(el => ({
+  client: el.clientWidth, scroll: el.scrollWidth,
+  card: Math.round(el.querySelector('.template-choice').getBoundingClientRect().width),
+  page: document.documentElement.scrollWidth,
+}));
+assert(mobileMetrics.scroll > mobileMetrics.client + 100, 'mobile templates must scroll horizontally');
+assert(mobileMetrics.card <= 160, 'mobile template card too wide');
+assert(mobileMetrics.page <= 392, 'mobile template carousel causes page overflow');
+await page.setViewportSize({ width: 1440, height: 1000 });
+log('mobile horizontal template strip stays inside viewport');
+
+
 await cards.filter({ hasText: 'Compact ATS' }).click();
 await page.getByRole('button', { name: 'Continue to CV details →' }).click();
 await page.waitForLoadState('networkidle');
