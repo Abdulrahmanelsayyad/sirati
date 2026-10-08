@@ -407,6 +407,21 @@ await page.waitForTimeout(100);
 assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'nursing widget must not return after step navigation');
 log('guided builder continues without standalone Nursing library');
 
+// Verify actual controlled Personal Summary field -> preview -> local draft restore.
+const realSummary = page.locator('.field').filter({ hasText: /Personal summary|Professional summary|نبذة|ملخص/i }).locator('textarea').first();
+assert.equal(await realSummary.count(), 1, 'actual Personal Summary field must exist');
+await realSummary.focus();
+const realSummaryTrigger = page.locator('.sirati-summary-trigger').last();
+assert.equal(await realSummaryTrigger.count(), 1, 'real Personal Summary must offer contextual suggestions');
+await realSummaryTrigger.click();
+const realSummaryPanel = page.locator('.sirati-summary-panel');
+await realSummaryPanel.locator('.sirati-summary-role input').fill('Accountant');
+const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choices span').first().innerText()).trim();
+await realSummaryPanel.getByRole('button', { name: 'Use this summary' }).click();
+assert.equal(await realSummary.inputValue(), realSummaryChoice, 'template must update controlled Personal Summary field');
+await page.waitForFunction(text => document.querySelector('.cv-sheet')?.textContent?.includes(text), realSummaryChoice);
+log('Personal Summary template updates the real CV preview');
+
 await page.getByRole('button', { name: '← Back' }).click();
 await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
 await page.waitForTimeout(800);
@@ -417,7 +432,8 @@ log('CV Quality Center score reacts to Builder input');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 assert.equal(await page.locator('.job-tailor').count(), 0);
-log('local CV save survives reload without Job Match');
+assert((await page.locator('.cv-sheet').innerText()).includes(realSummaryChoice), 'Personal Summary must survive reload and appear in CV preview');
+log('local CV save survives reload with Personal Summary and without Job Match');
 
 // Verify integration with the real controlled Experience field and CV preview.
 // Verify integration with the real controlled Experience field and CV preview.
