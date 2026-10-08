@@ -76,3 +76,11 @@ jobs:
           name: profile-sidebar-visual-qa
           path: /tmp/sirati-qa-pdfs/profile-sidebar-*.png
           if-no-files-found: ignore
+
+      - name: Upload Gold Sidebar visual QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gold-sidebar-visual-qa
+          path: /tmp/sirati-qa-pdfs/gold-sidebar-*.png
+          if-no-files-found: ignore
