@@ -28,7 +28,9 @@ preview = re.search(
     builder_text,
 )
 if not preview:
-    raise RuntimeError("Cannot locate Builder preview wrapper; refuse floating fallback")
+    idx = builder_text.find("wizard-preview-wrap")
+    sample = builder_text[max(0, idx - 160):idx + 280] if idx >= 0 else "NO PREVIEW CLASS IN BUILDER"
+    raise RuntimeError("Cannot locate Builder preview wrapper: " + repr(sample))
 if quality_mount in builder_text:
     raise RuntimeError("Unexpected duplicate CV Quality mount in Builder")
 if quality_import not in builder_text:
