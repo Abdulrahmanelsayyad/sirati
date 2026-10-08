@@ -35,6 +35,42 @@ for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'He
 }
 log('all six template names');
 
+// True finished-resume previews use the same CvPreview renderer as the Builder,
+// never six generic line-pattern illustrations or customer account data.
+const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'];
+assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 6);
+const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button => {
+  const stage = button.querySelector('.template-real-preview__stage');
+  const sheet = stage?.querySelector('.cv-sheet');
+  return {
+    id: stage?.getAttribute('data-demo-template'),
+    actualClass: sheet?.classList.contains('template-' + stage?.getAttribute('data-demo-template')),
+    name: sheet?.querySelector('h1')?.textContent?.trim(),
+    sections: sheet?.querySelectorAll('section').length,
+    features: button.querySelectorAll('.template-feature-tag').length,
+    demoLabel: button.querySelector('.template-real-preview__demo')?.textContent?.trim(),
+    watermark: button.querySelectorAll('.cv-watermark').length
+  };
+}));
+assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 6, 'each of six miniature previews needs a unique template ID');
+assert(templateIds.every(id => actualMiniatures.some(item => item.id === id && item.actualClass)), 'mini CV must use the matching real CV template styling');
+for (const thumbnail of actualMiniatures) {
+  assert.equal(thumbnail.name, 'Ahmed Hassan', 'sample-only demo name must render on every CV');
+  assert(thumbnail.sections >= 4, thumbnail.id + ' preview must show a completed CV, not placeholder skeleton');
+  assert.equal(thumbnail.features, 2, thumbnail.id + ' must explain two real differentiators');
+  assert.equal(thumbnail.demoLabel, 'SAMPLE CV', thumbnail.id + ' must identify placeholder data');
+  assert.equal(thumbnail.watermark, 0, 'avoid watermark obscuring miniature');
+}
+log('all six template cards render genuine sample CvPreview with distinct feature tags');
+
+await page.getByRole('button', { name: 'العربية' }).click();
+assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet[dir="rtl"]').count(), 6, 'all six mini CVs must support Arabic RTL');
+assert.equal(await page.locator('.template-real-preview__demo').filter({ hasText: 'نموذج توضيحي' }).count(), 6);
+assert.equal(await page.locator('.template-feature-tag').filter({ hasText: 'عناوين بترولي' }).count(), 1);
+await page.getByRole('button', { name: 'English' }).click();
+log('template demo CV and feature tags localize to Arabic RTL and back to English');
+
+
 const carousel = page.locator('.template-carousel-track');
 assert.equal(await carousel.count(), 1, 'horizontal template carousel missing');
 const desktopMetrics = await carousel.evaluate(el => ({
@@ -43,7 +79,8 @@ const desktopMetrics = await carousel.evaluate(el => ({
   preview: Math.round(el.querySelector('.template-choice-preview').getBoundingClientRect().height),
 }));
 assert(desktopMetrics.scroll > desktopMetrics.client + 100, 'desktop templates must scroll horizontally');
-assert(desktopMetrics.card <= 205 && desktopMetrics.preview <= 120, 'desktop cards must be compact');
+assert(desktopMetrics.card <= 235 && desktopMetrics.preview <= 230, 'desktop cards must stay compact');
+assert(desktopMetrics.card >= 205 && desktopMetrics.preview >= 175, 'miniature completed CV is too small to inspect');
 const nextTemplates = page.getByRole('button', { name: 'Next templates' });
 const previousTemplates = page.getByRole('button', { name: 'Previous templates' });
 assert(await previousTemplates.isDisabled(), 'previous arrow should start disabled');
@@ -60,7 +97,7 @@ const mobileMetrics = await carousel.evaluate(el => ({
   page: document.documentElement.scrollWidth,
 }));
 assert(mobileMetrics.scroll > mobileMetrics.client + 100, 'mobile templates must scroll horizontally');
-assert(mobileMetrics.card <= 160, 'mobile template card too wide');
+assert(mobileMetrics.card <= 195, 'mobile template card too wide');
 assert(mobileMetrics.page <= 392, 'mobile template carousel causes page overflow');
 await page.setViewportSize({ width: 1440, height: 1000 });
 log('mobile horizontal template strip stays inside viewport');
