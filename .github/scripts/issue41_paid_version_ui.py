@@ -76,7 +76,7 @@ builder = replace_between(
           .from('cv_documents')
           .update({ title: documentTitle(data), data, template, language })
           .eq('id', documentId);
-        setCloudStatus(error ? \`Cloud save failed: \${error.message}\` : 'Saved to account');
+        setCloudStatus(error ? `Cloud save failed: ${error.message}` : 'Saved to account');
       });
     }, 1200);
     autosaveTimerRef.current = timer;
@@ -196,7 +196,7 @@ builder = replace_once(
         .update({ title: documentTitle(data), data, template, language })
         .eq('id', id);
       if (error) {
-        setCloudStatus(\`Cloud save failed: \${error.message}\`);
+        setCloudStatus(`Cloud save failed: ${error.message}`);
         return null;
       }""",
     """      const { data: saved, error } = await queueCloudSave(async () =>
@@ -208,7 +208,7 @@ builder = replace_once(
           .single()
       );
       if (error || !saved) {
-        setCloudStatus(\`Cloud save failed: \${error?.message || 'Document not found'}\`);
+        setCloudStatus(`Cloud save failed: ${error?.message || 'Document not found'}`);
         return null;
       }""",
     "awaited existing CV update",
@@ -224,7 +224,7 @@ builder = replace_once(
 
 builder = replace_once(
     builder,
-    """<div className={\`notice review-notice \${pdfOrderStatus === 'approved' ? 'success-notice' : ''}\`}>""",
+    """<div className={`notice review-notice ${pdfOrderStatus === 'approved' ? 'success-notice' : ''}`}>""",
     """<div className="notice review-notice">""",
     "payment status banner",
 )
@@ -328,7 +328,7 @@ documents = replace_between(
     const warning = [
       'تأكيد الحذف النهائي',
       '',
-      \`السيرة الذاتية: \${doc.title}\`,
+      `السيرة الذاتية: ${doc.title}`,
       '',
       'حذف هذه السيرة سيحذف أيضًا طلبات الـPDF وكل النسخ المدفوعة المحفوظة معها.',
       'لن تستطيع تحميل النسخ المدفوعة مرة أخرى من Sirati بعد الحذف.',
