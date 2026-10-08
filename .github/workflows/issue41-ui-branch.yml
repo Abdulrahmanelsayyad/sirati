@@ -1,0 +1,54 @@
+# Issue #41: source-compatibility and build QA ONLY on the experimental branch.
+# No migrations, Supabase calls, deploy, environment secrets or browser E2E reruns.
+name: Issue 41 Builder freeze-flow checks
+
+on:
+  push:
+    branches:
+      - feat/issue-41-synthetic-server-pdf-poc
+    paths:
+      - .github/workflows/issue41-ui-branch.yml
+      - .github/scripts/issue41_paid_version_ui.py
+      - .github/scripts/prepare_pages.py
+      - qa/issue41_builder_guard_check.py
+
+permissions:
+  contents: read
+
+jobs:
+  builder-issue41:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@v6
+      - name: Reconstruct exact source ZIP from tracked chunks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import base64
+          parts = [Path(f"source.part{i}").read_text().strip() for i in (1,2,3)]
+          parts.extend(Path(f"source.part4{x}").read_text().strip() for x in ("a","b","c"))
+          parts.extend(Path(f"source.part{i}").read_text().strip() for i in (5,6,7))
+          archive_path = Path("/tmp/sirati-issue41-source.zip")
+          archive_path.write_bytes(base64.b64decode("".join(parts)))
+          Path("site-src").mkdir(exist_ok=True)
+          with ZipFile(archive_path) as archive:
+              archive.extractall("site-src")
+          PY
+      - name: Prepare exact production-style source, issue41 patch last
+        run: python3 .github/scripts/prepare_pages.py site-src/sirati-cv-source
+      - name: Verify issue41 checkout safety guards on generated code
+        run: python3 qa/issue41_builder_guard_check.py site-src/sirati-cv-source
+      - name: Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Compile Next.js static project (without deployment)
+        working-directory: site-src/sirati-cv-source
+        env:
+          NEXT_PUBLIC_BASE_PATH: /sirati
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
