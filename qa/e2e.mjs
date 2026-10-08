@@ -52,7 +52,7 @@ const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button =
     watermark: button.querySelectorAll('.cv-watermark').length
   };
 }));
-assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 6, 'each of six miniature previews needs a unique template ID');
+assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 7, 'each of seven miniature previews needs a unique template ID');
 assert(templateIds.every(id => actualMiniatures.some(item => item.id === id && item.actualClass)), 'mini CV must use the matching real CV template styling');
 for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.name, 'Ahmed Hassan', 'sample-only demo name must render on every CV');
@@ -75,7 +75,7 @@ log('Profile Sidebar thumbnail shows actual portrait slot, skill rail and main b
 
 await page.getByRole('button', { name: 'العربية' }).click();
 assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet[dir="rtl"]').count(), 7, 'all seven mini CVs must support Arabic RTL');
-assert.equal(await page.locator('.template-real-preview__demo').filter({ hasText: 'نموذج توضيحي' }).count(), 6);
+assert.equal(await page.locator('.template-real-preview__demo').filter({ hasText: 'نموذج توضيحي' }).count(), 7);
 assert.equal(await page.locator('.template-feature-tag').filter({ hasText: 'عناوين بترولي' }).count(), 1);
 await page.getByRole('button', { name: 'English' }).click();
 log('template demo CV and feature tags localize to Arabic RTL and back to English');
