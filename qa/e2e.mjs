@@ -91,7 +91,7 @@ assert.equal(await onboardingTemplateSelect.inputValue(), 'compact-ats');
 assert((await page.locator('.cv-sheet').getAttribute('class')).includes('template-compact-ats'));
 log('Compact ATS selection survives template onboarding');
 
-const anchoredQuality = page.locator('.wizard-preview-wrap > .cv-readiness');
+const anchoredQuality = page.locator('.wizard-preview-wrap .preview-stage > .cv-readiness');
 assert.equal(await anchoredQuality.count(), 1, 'CV Quality must be mounted in the CV preview panel');
 assert.equal(await page.locator('body > .cv-readiness').count(), 0, 'old floating CV Quality must be absent');
 const anchoredMetrics = await anchoredQuality.evaluate((el) => {
