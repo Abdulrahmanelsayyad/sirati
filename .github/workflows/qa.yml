@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Verify PDF order security SQL (static only)
+        run: python3 qa/pdf_order_policy_static_check.py
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
