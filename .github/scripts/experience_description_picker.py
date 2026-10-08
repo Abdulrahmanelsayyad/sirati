@@ -28,7 +28,6 @@ type Suggestion = {
 };
 
 const SPECIALTY_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
-  { id: 'supervisor', pattern: /supervisor|charge nurse|head nurse|team leader|nursing lead|مشرف|رئيس تمريض|مسؤول تمريض/i },
   { id: 'emergency', pattern: /emergency|\ber\b|ed nurse|trauma|طوارئ|استقبال/i },
   { id: 'icu', pattern: /\bicu\b|critical care|intensive care|عناية مركزة|رعاية حرجة/i },
   { id: 'or', pattern: /operating room|theatre|perioperative|surgical nurse|\bor\b|عمليات|جراحة/i },
@@ -36,6 +35,8 @@ const SPECIALTY_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
   { id: 'dialysis', pattern: /dialysis|hemodialysis|renal|غسيل كلوي|غسيل الكلى/i },
   { id: 'pediatric', pattern: /pediatric|paediatric|children|child|أطفال|اطفال/i },
   { id: 'medsurg', pattern: /medical.?surgical|med.?surg|ward nurse|inpatient|باطنة|جراحة عامة|أقسام|عنابر/i },
+  // Leadership is a fallback specialty: preserve ER/ICU/OR when a clinical supervisor names their unit.
+  { id: 'supervisor', pattern: /supervisor|charge nurse|head nurse|team leader|nursing lead|مشرف|رئيس تمريض|مسؤول تمريض/i },
 ];
 
 const LEVEL_PATTERNS: Array<{ id: NursingLevel; pattern: RegExp }> = [
@@ -275,6 +276,8 @@ export default function ExperienceDescriptionPicker() {
   const [side, setSide] = useState<Side>('left');
   const [version, setVersion] = useState(0);
   const targetRef = useRef<HTMLTextAreaElement | null>(null);
+  const manualSpecialtyRoleRef = useRef<string | null>(null);
+  const manualLevelRoleRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -285,6 +288,8 @@ export default function ExperienceDescriptionPicker() {
     const savedSpecialty = sessionStorage.getItem('sirati.experiencePicker.specialty');
     const savedLevel = sessionStorage.getItem('sirati.experiencePicker.level') as NursingLevel | null;
     const savedAutoOpen = sessionStorage.getItem('sirati.experiencePicker.autoOpen');
+    manualSpecialtyRoleRef.current = sessionStorage.getItem('sirati.experiencePicker.specialtyRole');
+    manualLevelRoleRef.current = sessionStorage.getItem('sirati.experiencePicker.levelRole');
 
     if (savedSpecialty && nursingSpecialties.some((item) => item.id === savedSpecialty)) setSpecialtyId(savedSpecialty);
     if (savedLevel && nursingLevels.some((item) => item.id === savedLevel)) setLevel(savedLevel);
@@ -298,16 +303,24 @@ export default function ExperienceDescriptionPicker() {
       const role = nearbyRole(target);
       setDetectedRole(role);
 
-      const specialtyGuess = inferSpecialty(role);
-      if (specialtyGuess) {
-        setSpecialtyId(specialtyGuess);
-        setAutoDetected(true);
+      // Preserve deliberate selections while the user is editing the same role.
+      // Changing the role enables detection again so another job gets relevant suggestions.
+      const specialtyOverride = manualSpecialtyRoleRef.current === role;
+      const levelOverride = manualLevelRoleRef.current === role;
+      if (!specialtyOverride) {
+        manualSpecialtyRoleRef.current = null;
+        sessionStorage.removeItem('sirati.experiencePicker.specialtyRole');
+        const specialtyGuess = inferSpecialty(role);
+        if (specialtyGuess) setSpecialtyId(specialtyGuess);
+        setAutoDetected(Boolean(specialtyGuess));
       } else {
         setAutoDetected(false);
       }
-
-      const levelGuess = inferLevel(role);
-      setLevel(levelGuess);
+      if (!levelOverride) {
+        manualLevelRoleRef.current = null;
+        sessionStorage.removeItem('sirati.experiencePicker.levelRole');
+        setLevel(inferLevel(role));
+      }
 
       const rect = target.getBoundingClientRect();
       setSide(rect.left + rect.width / 2 < window.innerWidth / 2 ? 'right' : 'left');
@@ -467,6 +480,8 @@ export default function ExperienceDescriptionPicker() {
   };
 
   const setSpecialtyManually = (value: string) => {
+    manualSpecialtyRoleRef.current = detectedRole;
+    sessionStorage.setItem('sirati.experiencePicker.specialtyRole', detectedRole);
     setSpecialtyId(value);
     setAutoDetected(false);
     setSelected([]);
@@ -474,6 +489,8 @@ export default function ExperienceDescriptionPicker() {
   };
 
   const setLevelManually = (value: NursingLevel) => {
+    manualLevelRoleRef.current = detectedRole;
+    sessionStorage.setItem('sirati.experiencePicker.levelRole', detectedRole);
     setLevel(value);
     setSelected([]);
     sessionStorage.setItem('sirati.experiencePicker.level', value);
