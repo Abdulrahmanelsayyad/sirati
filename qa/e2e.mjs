@@ -52,7 +52,7 @@ const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button =
     watermark: button.querySelectorAll('.cv-watermark').length
   };
 }));
-assert.deepEqual(actualMiniatures.map(item => item.id), ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].filter(id => actualMiniatures.some(item => item.id === id)).length === 6 ? actualMiniatures.map(item => item.id) : templateIds, 'real thumbnails need six recognized template IDs');
+assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 6, 'each of six miniature previews needs a unique template ID');
 assert(templateIds.every(id => actualMiniatures.some(item => item.id === id && item.actualClass)), 'mini CV must use the matching real CV template styling');
 for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.name, 'Ahmed Hassan', 'sample-only demo name must render on every CV');
