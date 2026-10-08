@@ -24,11 +24,11 @@ builder_text = builder.read_text(encoding="utf-8")
 # The generated Builder owns the preview; keep quality in the same panel, before
 # the printable CV sheet. It must not mount in the print-only .cv-sheet.
 preview = re.search(
-    r'<(?:div|aside|section)\b[^>]*className=["\']preview-wrap wizard-preview-wrap["\'][^>]*>',
+    r'<div className="preview-stage">',
     builder_text,
 )
 if not preview:
-    raise RuntimeError("Cannot locate Builder preview wrapper; refuse floating fallback")
+    raise RuntimeError("Cannot locate live preview stage; refuse floating fallback")
 if quality_mount in builder_text:
     raise RuntimeError("Unexpected duplicate CV Quality mount in Builder")
 if quality_import not in builder_text:
@@ -37,7 +37,7 @@ if quality_import not in builder_text:
         raise RuntimeError("Cannot locate Builder import section")
     builder_text = builder_text[:first_import.start()] + quality_import + builder_text[first_import.start():]
     preview = re.search(
-        r'<(?:div|aside|section)\b[^>]*className=["\']preview-wrap wizard-preview-wrap["\'][^>]*>',
+        r'<div className="preview-stage">',
         builder_text,
     )
 assert preview
@@ -69,7 +69,7 @@ quality.write_text(quality_text, encoding="utf-8")
 css_path.write_text(css_path.read_text(encoding="utf-8") + r'''
 
 /* CV Quality lives inside the preview column; never float above Builder inputs. */
-.wizard-preview-wrap > .cv-readiness {
+.wizard-preview-wrap .preview-stage > .cv-readiness {
   position: relative;
   inset: auto;
   z-index: auto;
@@ -104,7 +104,7 @@ css_path.write_text(css_path.read_text(encoding="utf-8") + r'''
   box-shadow: none;
 }
 @media (max-width: 760px) {
-  .wizard-preview-wrap > .cv-readiness {
+  .wizard-preview-wrap .preview-stage > .cv-readiness {
     top: auto;
     right: auto;
     left: auto;
