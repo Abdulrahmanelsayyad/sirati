@@ -96,7 +96,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('support_section.py
 subprocess.run([sys.executable, str(Path(__file__).with_name('guided_builder.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('cv_readiness_check.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('multi_cv_duplicate.py')), str(root)], check=True)
-subprocess.run([sys.executable, str(Path(__file__).with_name('target_job_tailoring.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('pdf_order_clarity.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('home_polish.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('sirati_studio.py')), str(root)], check=True)
@@ -115,3 +114,46 @@ builder_text = builder_text.replace("await supabase.auth", "await supabase!.auth
 builder_text = builder_text.replace("await supabase\n        .from", "await supabase!\n        .from")
 builder_text = builder_text.replace("await supabase\n      .from", "await supabase!\n      .from")
 builder_path.write_text(builder_text, encoding="utf-8")
+
+# Job Match Center has been retired. Remove any inherited generated artifact,
+# and clear only its legacy browser-local storage after the new site loads.
+# CV drafts, account data, and the independent Experience helper are untouched.
+(root / "components" / "TargetJobTailor.tsx").unlink(missing_ok=True)
+cleanup_path = root / "components" / "LegacyJobMatchCleanup.tsx"
+cleanup_path.parent.mkdir(parents=True, exist_ok=True)
+cleanup_path.write_text("""'use client';
+
+import { useEffect } from 'react';
+
+const LEGACY_PREFIX = 'sirati.jobTailor.v2.';
+
+export default function LegacyJobMatchCleanup() {
+  useEffect(() => {
+    // Storage may be disabled; the rest of the Builder must continue working.
+    for (const storage of [window.localStorage, window.sessionStorage]) {
+      try {
+        for (let index = storage.length - 1; index >= 0; index--) {
+          const key = storage.key(index);
+          if (key?.startsWith(LEGACY_PREFIX)) storage.removeItem(key);
+        }
+      } catch {
+        // Storage is unavailable in this browser context.
+      }
+    }
+  }, []);
+  return null;
+}
+""", encoding="utf-8")
+
+layout_path = root / "app" / "layout.tsx"
+layout_text = layout_path.read_text(encoding="utf-8")
+layout_text = layout_text.replace("import TargetJobTailor from '@/components/TargetJobTailor';\n", "")
+layout_text = layout_text.replace("        <TargetJobTailor />\n", "")
+cleanup_import = "import LegacyJobMatchCleanup from '@/components/LegacyJobMatchCleanup';\n"
+if cleanup_import not in layout_text:
+    layout_text = cleanup_import + layout_text
+if "<LegacyJobMatchCleanup />" not in layout_text:
+    if "</body>" not in layout_text:
+        raise RuntimeError("Could not install legacy Job Match storage cleanup")
+    layout_text = layout_text.replace("</body>", "        <LegacyJobMatchCleanup />\n      </body>", 1)
+layout_path.write_text(layout_text, encoding="utf-8")
