@@ -705,7 +705,8 @@ await field('LinkedIn / professional link').blur();
 await page.waitForTimeout(650);
 assert((await currentStep()).includes('Section 1 of 9'), 'invalid email must block auto-advance');
 await field('Email').fill('qa@example.com');
-await field('LinkedIn / professional link').focus();
+// This is a new, intentional edit of the terminal field, not a mere focus/blur.
+await field('LinkedIn / professional link').fill('https://example.com/profile-updated');
 await field('LinkedIn / professional link').blur();
 await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 2 of 9'));
 log('Auto advance: personal info only after valid completion; invalid email stays on current step');
