@@ -691,7 +691,7 @@ log('Gold Sidebar narrow mobile render preserves portrait alignment and page wid
 // and never submit anything from the review/payment section.
 await page.goto(base + '/builder/?template=modern&language=en', {waitUntil:'networkidle'});
 await page.locator('.cv-substep').first().click();
-const currentStep = () => page.locator('.wizard-progress-meta').first().innerText();
+const currentStep = () => page.locator('.wizard-progress-meta > span').first().textContent();
 const field = (label) => page.locator('.wizard-section-card .field')
   .filter({has:page.locator('label', {hasText:label})}).locator('input,textarea').first();
 await field('Full name').fill('Auto Advance QA');
@@ -703,15 +703,7 @@ await field('City & country').fill('Cairo, Egypt');
 await field('LinkedIn / professional link').focus();
 await field('LinkedIn / professional link').blur();
 await page.waitForTimeout(650);
-const autoNegativeState = await page.evaluate(() => ({
-  progress:document.querySelector('.wizard-progress-meta')?.textContent,
-  headline:document.querySelector('.wizard-panel-top h2')?.textContent,
-  email:document.querySelector('.wizard-section-card input[type="email"]')?.value,
-  emailValid:document.querySelector('.wizard-section-card input[type="email"]')?.checkValidity(),
-  fields:[...document.querySelectorAll('.wizard-section-card .field label')].map(x=>x.textContent?.trim())
-}));
-console.log('AUTO-ADVANCE NEGATIVE CASE:', JSON.stringify(autoNegativeState));
-assert((await currentStep()).includes('Section 1 of 9'), 'invalid email must block auto-advance: '+JSON.stringify(autoNegativeState));
+assert((await currentStep())?.includes('Section 1 of 9'), 'invalid email must block auto-advance');
 await field('Email').fill('qa@example.com');
 // This is a new, intentional edit of the terminal field, not a mere focus/blur.
 await field('LinkedIn / professional link').fill('https://example.com/profile-updated');
