@@ -8,6 +8,21 @@ Owner-approved commercial rules:
 - **Deleting the original CV also deletes its attached order(s) and frozen paid version(s)**, but the UI must clearly warn the customer and get their confirmation first.
 - Deletion can stop *future in-app downloads*, not erase PDF copies already saved on the user's devices.
 
+## Experimental-branch UI compatibility status — NOT DEPLOYED
+
+The experimental branch now contains `.github/scripts/issue41_paid_version_ui.py`, invoked last by `.github/scripts/prepare_pages.py`. It patches the **reconstructed** source, rather than editing or silently replacing the packaged `source.part*` archive.
+
+Implemented **on branch only**:
+- Serialize account autosave with the explicit existing/new CV save and await successful `cv_documents` persistence before inserting a pending payment order; block order creation after save failures, edit-during-save, and rapid duplicate submission.
+- Display multiple payment orders separately by ID; remove the unsafe notion that one old approved order unlocks arbitrary future edits. The editable preview remains watermarked; **no official server-issued paid PDF is available yet**.
+- Display a clear Arabic deletion warning (including loss of paid copies and repeated downloads) and ask for confirmation before deleting the parent CV; block duplicate destructive clicks.
+
+GitHub CI [`Issue 41 Builder freeze-flow checks`](https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/37856043828) successfully generated the patched Next.js source, passed all purpose-built **static** regression checks, and completed `npm run build` on commit `fed819a5974d7e145ce4e95fead8ad0c63657ed6`. An earlier run first found a TypeScript timer-type error; it was fixed before the PASS. Prior six mocked auth unit tests were reused, not rerun.
+
+**Crucial limitation:** These checks are source-structure and TypeScript/build tests, **not a browser/Supabase integration test**. Cross-tab concurrent edits, unexpected network failures, old approved orders, saving after an aborted request, Arabic deletion mobile prompt, and the future production renderer must be verified on isolated Staging with synthetic users **only after separate owner consent**. Until then these code changes must not be deployed. This branch does not write to Production, Staging, or the payment database, and it does not apply the SQL draft.
+
+---
+
 ## The SQL file
 
 `supabase/migrations/20261009100000_freeze_pdf_order_snapshot.sql`
