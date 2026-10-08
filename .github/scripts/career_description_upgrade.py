@@ -168,10 +168,10 @@ replace("  }, [specialty, level, language]);",
         "  }, [specialty, career, nursingRole, level, language]);")
 replace("  if (!enabled || !targetRef.current) return null;",
         "  if (!enabled || !targetRef.current || !detectedRole.trim() || !slot) return null;")
-replace("        title: 'Experience Description Pro',",
-        "        title: 'اقتراحات للوصف الوظيفي',")
-replace("        title: 'Experience Description Pro',",
-        "        title: 'Job description suggestions',")
+replace("        trigger: 'اقتراحات Description',\n        title: 'Experience Description Pro',",
+        "        trigger: 'اقتراحات Description',\n        title: 'اقتراحات للوصف الوظيفي',")
+replace("        trigger: 'Description suggestions',\n        title: 'Experience Description Pro',",
+        "        trigger: 'Description suggestions',\n        title: 'Job description suggestions',")
 replace("        trigger: 'اقتراحات Description',", "        trigger: 'اختيار وصف جاهز لهذه الوظيفة',")
 replace("        trigger: 'Description suggestions',", "        trigger: 'Choose job description examples',")
 replace("    return (\n      <button\n        type=\"button\"\n        className={'experience-picker-trigger experience-picker-trigger--' + side}",
