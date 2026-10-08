@@ -26,14 +26,14 @@ async function optionValues(locator) {
 
 await page.goto(base + '/templates/', { waitUntil: 'networkidle' });
 const cards = page.locator('.template-choice');
-assert.equal(await cards.count(), 4);
-log('four template cards');
+assert.equal(await cards.count(), 6);
+log('six template cards');
 
 const names = await cards.locator('strong').allTextContents();
-for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact']) {
+for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive ATS']) {
   assert(names.includes(name), 'missing template ' + name);
 }
-log('all four template names');
+log('all six template names');
 
 await cards.filter({ hasText: 'Compact ATS' }).click();
 await page.getByRole('button', { name: 'Continue to CV details →' }).click();
@@ -50,7 +50,7 @@ let onboardingTemplateSelect = null;
 const onboardingSelects = page.locator('select');
 for (let i = 0; i < await onboardingSelects.count(); i++) {
   const values = await optionValues(onboardingSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
     onboardingTemplateSelect = onboardingSelects.nth(i);
     break;
   }
@@ -227,7 +227,7 @@ let templateSelect = null;
 const selects = page.locator('select');
 for (let i = 0; i < await selects.count(); i++) {
   const values = await optionValues(selects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
     templateSelect = selects.nth(i);
     break;
   }
@@ -238,7 +238,9 @@ const expectedClasses = {
   modern: 'template-modern',
   classic: 'template-classic',
   compact: 'template-compact',
-  'compact-ats': 'template-compact-ats'
+  'compact-ats': 'template-compact-ats',
+  'healthcare-pro': 'template-healthcare-pro',
+  'executive-ats': 'template-executive-ats'
 };
 
 for (const [value, expectedClass] of Object.entries(expectedClasses)) {
@@ -248,7 +250,7 @@ for (const [value, expectedClass] of Object.entries(expectedClasses)) {
   assert(className.includes(expectedClass), value + ' did not render expected class');
   assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 }
-log('switching all four templates retains CV data');
+log('switching all six templates retains CV data');
 
 let languageSelect = null;
 for (let i = 0; i < await selects.count(); i++) {
@@ -262,6 +264,13 @@ assert(languageSelect, 'language selector not found');
 await languageSelect.selectOption('ar');
 await page.waitForTimeout(100);
 assert.equal(await page.locator('.cv-sheet').getAttribute('dir'), 'rtl');
+for (const value of ['healthcare-pro', 'executive-ats']) {
+  await templateSelect.selectOption(value);
+  const sheet = page.locator('.cv-sheet');
+  assert((await sheet.getAttribute('class')).includes('template-' + value), value + ' RTL design missing');
+  assert.equal(await sheet.getAttribute('dir'), 'rtl', value + ' must be RTL in Arabic');
+  assert((await sheet.innerText()).includes('QA Sirati Nurse'), value + ' lost CV content on Arabic toggle');
+}
 assert((await page.locator('details.smart-nursing-library').innerText()).includes('مكتبة Sirati الذكية للتمريض'));
 await languageSelect.selectOption('en');
 log('Arabic RTL and Smart Library localization');
@@ -309,14 +318,14 @@ let mobileTemplateSelect = null;
 const mobileSelects = page.locator('select');
 for (let i = 0; i < await mobileSelects.count(); i++) {
   const values = await optionValues(mobileSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
     mobileTemplateSelect = mobileSelects.nth(i);
     break;
   }
 }
 assert(mobileTemplateSelect, 'mobile template selector not found');
 
-for (const value of ['modern', 'classic', 'compact', 'compact-ats']) {
+for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats']) {
   await mobileTemplateSelect.selectOption(value);
   await page.waitForTimeout(80);
   overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -350,7 +359,7 @@ const readinessRect = await mobileReadiness.evaluate((el) => {
 });
 assert(readinessRect.left >= -2 && readinessRect.right <= 392, 'mobile CV readiness exceeds viewport: ' + JSON.stringify(readinessRect));
 assert.equal(await page.locator('.job-tailor').count(), 0, 'removed Job Match must not return on mobile');
-log('mobile overflow check for all four templates, readiness and removed Job Match');
+log('mobile overflow check for all six templates, readiness and removed Job Match');
 
 await mobileTemplateSelect.selectOption('compact-ats');
 const mobileLibrary = page.locator('details.smart-nursing-library');
@@ -370,7 +379,7 @@ let printTemplateSelect = null;
 const printSelects = page.locator('select');
 for (let i = 0; i < await printSelects.count(); i++) {
   const values = await optionValues(printSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
     printTemplateSelect = printSelects.nth(i);
     break;
   }
@@ -378,7 +387,7 @@ for (let i = 0; i < await printSelects.count(); i++) {
 assert(printTemplateSelect);
 
 fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
-for (const value of ['modern', 'classic', 'compact', 'compact-ats']) {
+for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats']) {
   await printTemplateSelect.selectOption(value);
   await page.waitForTimeout(70);
   const path = '/tmp/sirati-qa-pdfs/' + value + '.pdf';
@@ -386,7 +395,7 @@ for (const value of ['modern', 'classic', 'compact', 'compact-ats']) {
   const size = fs.statSync(path).size;
   assert(size > 5000, value + ' PDF too small: ' + size);
 }
-log('print/PDF smoke test for all four templates');
+log('print/PDF smoke test for all six templates');
 
 await browser.close();
 console.log('E2E QA COMPLETE');
