@@ -425,15 +425,24 @@ export default function TargetJobTailor() {
       );
     };
 
+    // Let React finish handling the edited field before scanning controlled inputs.
+    // A capture-phase state update can restore the previous value before onChange.
+    let scanFrame = 0;
+    const scheduleScan = () => {
+      window.cancelAnimationFrame(scanFrame);
+      scanFrame = window.requestAnimationFrame(scan);
+    };
+
     scan();
     const timer = window.setInterval(scan, 900);
-    document.addEventListener('input', scan, true);
-    document.addEventListener('change', scan, true);
+    document.addEventListener('input', scheduleScan, true);
+    document.addEventListener('change', scheduleScan, true);
 
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener('input', scan, true);
-      document.removeEventListener('change', scan, true);
+      window.cancelAnimationFrame(scanFrame);
+      document.removeEventListener('input', scheduleScan, true);
+      document.removeEventListener('change', scheduleScan, true);
     };
   }, []);
 
