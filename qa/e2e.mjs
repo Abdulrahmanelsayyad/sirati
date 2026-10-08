@@ -26,19 +26,19 @@ async function optionValues(locator) {
 
 await page.goto(base + '/templates/', { waitUntil: 'networkidle' });
 const cards = page.locator('.template-choice');
-assert.equal(await cards.count(), 7);
-log('seven template cards');
+assert.equal(await cards.count(), 8);
+log('eight template cards');
 
 const names = await cards.locator('strong').allTextContents();
-for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive ATS', 'Profile Sidebar']) {
+for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive ATS', 'Profile Sidebar', 'Gold Sidebar']) {
   assert(names.includes(name), 'missing template ' + name);
 }
-log('all seven template names');
+log('all eight template names');
 
 // True finished-resume previews use the same CvPreview renderer as the Builder,
 // never six generic line-pattern illustrations or customer account data.
-const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'];
-assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 7);
+const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar'];
+assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 8);
 const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button => {
   const stage = button.querySelector('.template-real-preview__stage');
   const sheet = stage?.querySelector('.cv-sheet');
@@ -52,7 +52,7 @@ const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button =
     watermark: button.querySelectorAll('.cv-watermark').length
   };
 }));
-assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 7, 'each of seven miniature previews needs a unique template ID');
+assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 8, 'each of eight miniature previews needs a unique template ID');
 assert(templateIds.every(id => actualMiniatures.some(item => item.id === id && item.actualClass)), 'mini CV must use the matching real CV template styling');
 for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.name, 'Ahmed Hassan', 'sample-only demo name must render on every CV');
@@ -61,7 +61,7 @@ for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.demoLabel, 'SAMPLE CV', thumbnail.id + ' must identify placeholder data');
   assert.equal(thumbnail.watermark, 0, 'avoid watermark obscuring miniature');
 }
-log('all seven template cards render genuine sample CvPreview with distinct feature tags');
+log('all eight template cards render genuine sample CvPreview with distinct feature tags');
 
 const sidebarCard = page.locator('.template-choice').filter({ hasText: 'Profile Sidebar' });
 assert.equal(await sidebarCard.locator('.profile-sidebar-layout > .profile-sidebar-rail').count(), 1, 'new template must have a genuine sidebar');
@@ -71,6 +71,28 @@ assert.equal(await sidebarCard.locator('.profile-sidebar-rail .profile-sidebar-s
 assert.equal(await sidebarCard.locator('.profile-sidebar-main .profile-sidebar-section').count() > 2, true, 'main must include summary, experience and education');
 assert((await sidebarCard.innerText()).includes('Photo + sidebar'), 'card must describe true visual difference');
 log('Profile Sidebar thumbnail shows actual portrait slot, skill rail and main body');
+
+const goldCard = page.locator('.template-choice').filter({hasText:'Gold Sidebar'});
+assert.equal(await goldCard.count(), 1, 'Gold Sidebar must appear once in the catalog');
+assert.equal(await goldCard.locator('.cv-sheet.template-gold-sidebar').count(), 1, 'Gold miniature must use actual CvPreview');
+assert.equal(await goldCard.locator('.gold-sidebar-layout > .gold-sidebar-rail').count(), 1);
+assert.equal(await goldCard.locator('.gold-sidebar-layout > .gold-sidebar-main').count(), 1);
+assert.equal(await goldCard.locator('.gold-sidebar-portrait-placeholder').count(), 1, 'demo portrait should use an honest no-photo illustration');
+assert((await goldCard.locator('.gold-sidebar-rail').innerText()).includes('EDUCATION'), 'side rail should contain actual education');
+assert((await goldCard.locator('.gold-sidebar-main').innerText()).includes('WORK EXPERIENCE'), 'main panel should contain actual experience');
+assert((await goldCard.locator('.gold-sidebar-main').innerText()).includes('SKILLS'), 'skills should be in main panel per reference');
+assert.equal(await goldCard.locator('.gold-sidebar-timeline .gold-sidebar-entry').count(), 2);
+const goldVisual = await goldCard.locator('.gold-sidebar-rail').evaluate(rail => ({
+  background:getComputedStyle(rail).backgroundColor,
+  accent:getComputedStyle(rail,'::before').backgroundColor,
+  clip:getComputedStyle(rail,'::before').clipPath,
+  width:rail.getBoundingClientRect().width
+}));
+assert.equal(goldVisual.accent, 'rgb(247, 185, 20)', 'diagonal rail must have actual gold accent');
+assert(goldVisual.clip.includes('polygon'), 'gold diagonal shape is missing');
+assert(goldVisual.width > 0, 'the charcoal rail is not being laid out');
+log('Gold Sidebar sample miniature has actual charcoal/gold diagonal rail, portrait, side education and main timeline');
+
 
 const polishedMini = await sidebarCard.locator('.profile-sidebar-portrait-placeholder').evaluate(el => {
   const rect = el.getBoundingClientRect();
@@ -85,8 +107,8 @@ log('Profile Sidebar template card shows integrated circular photo framing');
 
 
 await page.getByRole('button', { name: 'العربية' }).click();
-assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet[dir="rtl"]').count(), 7, 'all seven mini CVs must support Arabic RTL');
-assert.equal(await page.locator('.template-real-preview__demo').filter({ hasText: 'نموذج توضيحي' }).count(), 7);
+assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet[dir="rtl"]').count(), 8, 'all eight mini CVs must support Arabic RTL');
+assert.equal(await page.locator('.template-real-preview__demo').filter({ hasText: 'نموذج توضيحي' }).count(), 8);
 assert.equal(await page.locator('.template-feature-tag').filter({ hasText: 'عناوين بترولي' }).count(), 1);
 await page.getByRole('button', { name: 'English' }).click();
 log('template demo CV and feature tags localize to Arabic RTL and back to English');
@@ -124,6 +146,9 @@ await page.setViewportSize({ width: 1440, height: 1000 });
 log('mobile horizontal template strip stays inside viewport');
 await sidebarCard.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-card-desktop.png'});
 log('captured Profile Sidebar sample card for independent visual review');
+await goldCard.screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-card-desktop.png'});
+log('captured Gold Sidebar complete sample card screenshot');
+
 
 
 await cards.filter({ hasText: 'Compact ATS' }).click();
@@ -141,7 +166,7 @@ let onboardingTemplateSelect = null;
 const onboardingSelects = page.locator('select');
 for (let i = 0; i < await onboardingSelects.count(); i++) {
   const values = await optionValues(onboardingSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar'].every((value) => values.includes(value))) {
     onboardingTemplateSelect = onboardingSelects.nth(i);
     break;
   }
@@ -342,7 +367,7 @@ let templateSelect = null;
 const selects = page.locator('select');
 for (let i = 0; i < await selects.count(); i++) {
   const values = await optionValues(selects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar'].every((value) => values.includes(value))) {
     templateSelect = selects.nth(i);
     break;
   }
@@ -356,7 +381,8 @@ const expectedClasses = {
   'compact-ats': 'template-compact-ats',
   'healthcare-pro': 'template-healthcare-pro',
   'executive-ats': 'template-executive-ats',
-  'profile-sidebar': 'template-profile-sidebar'
+  'profile-sidebar': 'template-profile-sidebar',
+  'gold-sidebar': 'template-gold-sidebar'
 };
 
 for (const [value, expectedClass] of Object.entries(expectedClasses)) {
@@ -366,7 +392,7 @@ for (const [value, expectedClass] of Object.entries(expectedClasses)) {
   assert(className.includes(expectedClass), value + ' did not render expected class');
   assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 }
-log('switching all seven templates retains CV data');
+log('switching all eight templates retains CV data');
 
 let languageSelect = null;
 for (let i = 0; i < await selects.count(); i++) {
@@ -380,7 +406,7 @@ assert(languageSelect, 'language selector not found');
 await languageSelect.selectOption('ar');
 await page.waitForTimeout(100);
 assert.equal(await page.locator('.cv-sheet').getAttribute('dir'), 'rtl');
-for (const value of ['healthcare-pro', 'executive-ats', 'profile-sidebar']) {
+for (const value of ['healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar']) {
   await templateSelect.selectOption(value);
   const sheet = page.locator('.cv-sheet');
   assert((await sheet.getAttribute('class')).includes('template-' + value), value + ' RTL design missing');
@@ -434,14 +460,14 @@ let mobileTemplateSelect = null;
 const mobileSelects = page.locator('select');
 for (let i = 0; i < await mobileSelects.count(); i++) {
   const values = await optionValues(mobileSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar'].every((value) => values.includes(value))) {
     mobileTemplateSelect = mobileSelects.nth(i);
     break;
   }
 }
 assert(mobileTemplateSelect, 'mobile template selector not found');
 
-for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar']) {
+for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar']) {
   await mobileTemplateSelect.selectOption(value);
   await page.waitForTimeout(80);
   overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -476,7 +502,7 @@ const readinessRect = await mobileReadiness.evaluate((el) => {
 assert(readinessRect.left >= -2 && readinessRect.right <= 392, 'mobile CV readiness exceeds viewport: ' + JSON.stringify(readinessRect));
 assert.equal(await mobileReadiness.evaluate((el) => getComputedStyle(el).position), 'relative', 'mobile quality must not float over form');
 assert.equal(await page.locator('.job-tailor').count(), 0, 'removed Job Match must not return on mobile');
-log('mobile overflow check for all seven templates, readiness and removed Job Match');
+log('mobile overflow check for all eight templates, readiness and removed Job Match');
 
 await mobileTemplateSelect.selectOption('compact-ats');
 const mobileLibrary = page.locator('details.smart-nursing-library');
@@ -496,7 +522,7 @@ let printTemplateSelect = null;
 const printSelects = page.locator('select');
 for (let i = 0; i < await printSelects.count(); i++) {
   const values = await optionValues(printSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar'].every((value) => values.includes(value))) {
     printTemplateSelect = printSelects.nth(i);
     break;
   }
@@ -504,7 +530,7 @@ for (let i = 0; i < await printSelects.count(); i++) {
 assert(printTemplateSelect);
 
 fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
-for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar']) {
+for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar']) {
   await printTemplateSelect.selectOption(value);
   await page.waitForTimeout(70);
   const path = '/tmp/sirati-qa-pdfs/' + value + '.pdf';
@@ -512,7 +538,7 @@ for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-
   const size = fs.statSync(path).size;
   assert(size > 5000, value + ' PDF too small: ' + size);
 }
-log('print/PDF smoke test for all seven templates');
+log('print/PDF smoke test for all eight templates');
 
 // Exercise the existing photo upload end-to-end on the seventh template.
 await page.setViewportSize({ width: 1440, height: 1000 });
@@ -586,6 +612,44 @@ await sidebarAfterReload.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-m
 log('Profile Sidebar mobile circular portrait stays inside rail without horizontal overflow');
 
 
+// Gold Sidebar must reuse the same account-local photo & existing CV data without
+// creating another data field or losing any content on template switching.
+await page.setViewportSize({width:1440, height:1000});
+let goldTemplateSelect = null;
+for(const control of await page.locator('select').all()){
+  const values = await optionValues(control);
+  if(values.includes('gold-sidebar') && values.includes('profile-sidebar')){goldTemplateSelect = control;break;}
+}
+assert(goldTemplateSelect, 'the eighth template must be present in Builder selector');
+await goldTemplateSelect.selectOption('gold-sidebar');
+const goldPaper = page.locator('.wizard-preview-wrap .cv-sheet.template-gold-sidebar');
+assert.equal(await goldPaper.count(),1,'Gold Sidebar must render when selected');
+assert.equal(await goldPaper.locator('.gold-sidebar-rail .gold-sidebar-portrait').count(),1,'existing uploaded picture should be displayed on Gold Sidebar');
+const goldPhotoStyle=await goldPaper.locator('img.gold-sidebar-portrait').evaluate(img=>{
+  const p=img.getBoundingClientRect();
+  const r=img.closest('.gold-sidebar-rail').getBoundingClientRect();
+  return {width:p.width,height:p.height,fit:getComputedStyle(img).objectFit,
+    rounded:getComputedStyle(img).borderRadius,inside:p.left>=r.left&&p.right<=r.right}
+});
+assert(goldPhotoStyle.width>0 && goldPhotoStyle.height>0 && goldPhotoStyle.inside,'photo should fit inside the Gold rail');
+assert.equal(goldPhotoStyle.fit,'cover','portrait should crop rather than stretch');
+assert(goldPhotoStyle.rounded.includes('px'),'Gold photo should use a distinctive portrait frame');
+await goldPaper.screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-uploaded-desktop.png'});
+await page.reload({waitUntil:'networkidle'});
+assert.equal(await page.locator('.cv-sheet.template-gold-sidebar img.gold-sidebar-portrait').count(),1,'Gold Sidebar and its photo should survive draft reload');
+log('Gold Sidebar shares existing uploaded photo and remains selected after reload');
+
+await page.setViewportSize({width:390,height:844});
+const goldMobile = await page.locator('.cv-sheet.template-gold-sidebar').evaluate(sheet=>{
+  const r=sheet.querySelector('.gold-sidebar-portrait-wrap').getBoundingClientRect();
+  const rail=sheet.querySelector('.gold-sidebar-rail').getBoundingClientRect();
+  return {inside:r.left>=rail.left-1&&r.right<=rail.right+1,
+    overflow:document.documentElement.scrollWidth-window.innerWidth};
+});
+assert(goldMobile.inside,'Gold Sidebar photo must stay within mobile rail');
+assert(goldMobile.overflow<=2,'Gold Sidebar must not overflow narrow screen');
+await page.locator('.cv-sheet.template-gold-sidebar').screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-mobile.png'});
+log('Gold Sidebar narrow mobile render preserves portrait alignment and page width');
 await browser.close();
 console.log('E2E QA COMPLETE');
 
