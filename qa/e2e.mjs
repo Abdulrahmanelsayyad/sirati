@@ -122,10 +122,7 @@ await jobTailorTrigger.click();
 const jobTailorPanel = page.locator('.job-tailor__panel');
 assert.equal(await jobTailorPanel.count(), 1, 'target job tailoring panel missing');
 await jobTailorPanel.locator('input').fill('ICU Nurse');
-console.log('DEBUG JOB ROLE AFTER FILL', await page.evaluate(() => ({
-  input: document.querySelector('.job-tailor__panel input')?.value || '',
-  draft: sessionStorage.getItem('sirati.jobTailor.v2.draft')
-})));
+assert.equal(await jobTailorPanel.locator('input').inputValue(), 'ICU Nurse', 'Job Match role must survive its input event');
 await jobTailorPanel.locator('textarea').fill(
   "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
 );
@@ -208,15 +205,9 @@ await page.waitForTimeout(800);
 const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
 assert(readinessScoreAfterName >= 10, 'CV Quality Center did not recognize completed name');
 log('CV Quality Center score reacts to Builder input');
-const savedTargetDebug = await page.evaluate(() => ({
-  url: location.href,
-  sessionKeys: Object.keys(sessionStorage).map((key) => [key, sessionStorage.getItem(key)]),
-  localKeys: Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)]),
-  roleValue: document.querySelector('.job-tailor__panel input')?.value || '',
-  descriptionLength: document.querySelector('.job-tailor__panel textarea')?.value.length || 0
-}));
-const savedTargetBeforeReload = await page.evaluate(() => sessionStorage.getItem('sirati.jobTailor.v2.draft'));
-assert(savedTargetBeforeReload && savedTargetBeforeReload.includes('ICU Nurse'), 'Job Match draft was not persisted before reload: ' + JSON.stringify(savedTargetDebug));
+const savedTargetBeforeReload = await page.evaluate(() => JSON.parse(sessionStorage.getItem('sirati.jobTailor.v2.draft') || 'null'));
+assert.equal(savedTargetBeforeReload?.targetRole, 'ICU Nurse', 'Job Match role was not persisted before reload');
+assert(savedTargetBeforeReload?.jobDescription.includes('ventilator care'), 'Job Match description was not persisted before reload');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 await page.locator('.job-tailor__trigger').click();
