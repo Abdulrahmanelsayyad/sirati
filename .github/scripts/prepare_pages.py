@@ -104,6 +104,8 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('account_storage_is
 subprocess.run([sys.executable, str(Path(__file__).with_name('add_specialty_templates.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_carousel.py')), str(root)], check=True)
 
+subprocess.run([sys.executable, str(Path(__file__).with_name("cv_quality_preview_anchor.py")), str(root)], check=True)
+
 print("Prepared Sirati for GitHub Pages.")
 
 
