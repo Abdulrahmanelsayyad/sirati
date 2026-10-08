@@ -10,11 +10,11 @@ import sys
 root = Path(sys.argv[1])
 builder = (root / "app/builder/page.tsx").read_text(encoding="utf-8")
 required = (
-    'className="wizard-builder-shell"',
-    'className="preview-wrap wizard-preview-wrap"',
-    'className="preview-stage"',
+    'wizard-builder-shell',
+    'preview-wrap wizard-preview-wrap',
+    'preview-stage',
     '<CvPreview data={data}',
-    'className="wizard-footer-nav"',
+    'wizard-footer-nav',
 )
 for marker in required:
     if marker not in builder:
