@@ -101,6 +101,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('home_polish.py')),
 subprocess.run([sys.executable, str(Path(__file__).with_name('sirati_studio.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('mobile_builder_fix.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('account_storage_isolation.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name('add_specialty_templates.py')), str(root)], check=True)
 
 print("Prepared Sirati for GitHub Pages.")
 
