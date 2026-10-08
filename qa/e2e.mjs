@@ -263,7 +263,7 @@ await realPicker.waitFor();
 assert.equal(await realPicker.locator('.experience-picker__selectors select').first().inputValue(), 'icu');
 const realOption = realPicker.locator('.experience-picker__options article').first();
 const realSuggestion = (await realOption.locator('label span').innerText()).trim();
-await realOption.getByRole('button', { name: 'Add', exact: true }).click();
+await realOption.getByRole('button', { name: '+ Add', exact: true }).click();
 assert((await realExperience.inputValue()).includes(realSuggestion), 'suggestion must reach the real controlled field');
 await page.waitForFunction((text) => document.querySelector('.cv-sheet')?.textContent.includes(text), realSuggestion);
 assert((await realExperience.inputValue()).includes('Manual responsibility retained during QA.'));
