@@ -34,7 +34,7 @@ builder = replace_once(
     builder,
     "  const cloudReadyRef = useRef(false);",
     """  const cloudReadyRef = useRef(false);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveTimerRef = useRef<number | null>(null);
   const cloudSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const paymentSubmittingRef = useRef(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
