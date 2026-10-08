@@ -91,6 +91,29 @@ assert.equal(await onboardingTemplateSelect.inputValue(), 'compact-ats');
 assert((await page.locator('.cv-sheet').getAttribute('class')).includes('template-compact-ats'));
 log('Compact ATS selection survives template onboarding');
 
+const anchoredQuality = page.locator('.wizard-preview-wrap .preview-stage > .cv-readiness');
+assert.equal(await anchoredQuality.count(), 1, 'CV Quality must be mounted in the CV preview panel');
+assert.equal(await page.locator('body > .cv-readiness').count(), 0, 'old floating CV Quality must be absent');
+const anchoredMetrics = await anchoredQuality.evaluate((el) => {
+  const wrap = el.parentElement;
+  const sheet = wrap?.querySelector('.cv-sheet');
+  const bounds = el.getBoundingClientRect();
+  const parentBounds = wrap?.getBoundingClientRect();
+  return {
+    position: getComputedStyle(el).position,
+    insidePreview: Boolean(sheet && (el.compareDocumentPosition(sheet) & Node.DOCUMENT_POSITION_FOLLOWING)),
+    width: Math.round(bounds.width),
+    parentWidth: Math.round(parentBounds?.width || 0)
+  };
+});
+assert.notEqual(anchoredMetrics.position, 'fixed', 'CV Quality must not float over form fields');
+assert(anchoredMetrics.insidePreview, 'CV Quality must appear before the actual printable CV');
+assert(anchoredMetrics.width <= anchoredMetrics.parentWidth + 2, 'quality card exceeds CV preview width');
+const inlineProgress = anchoredQuality.getByRole('progressbar', { name: 'CV quality completion' });
+assert.equal(await inlineProgress.count(), 1, 'always-visible quality progress bar missing');
+assert.equal(await inlineProgress.getAttribute('aria-valuemax'), '100');
+log('CV Quality percentage and progress bar anchored to preview, not floating');
+
 const readinessTrigger = page.locator('.cv-readiness__trigger');
 assert.equal(await readinessTrigger.count(), 1, 'CV readiness trigger missing');
 await readinessTrigger.click();
@@ -229,6 +252,7 @@ await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').f
 await page.waitForTimeout(800);
 const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
 assert(readinessScoreAfterName >= 10, 'CV Quality Center did not recognize completed name');
+assert.equal(await inlineProgress.getAttribute('aria-valuenow'), String(readinessScoreAfterName), 'anchored progress must match quality score');
 log('CV Quality Center score reacts to Builder input');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
@@ -389,6 +413,7 @@ const readinessRect = await mobileReadiness.evaluate((el) => {
   return { left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width) };
 });
 assert(readinessRect.left >= -2 && readinessRect.right <= 392, 'mobile CV readiness exceeds viewport: ' + JSON.stringify(readinessRect));
+assert.equal(await mobileReadiness.evaluate((el) => getComputedStyle(el).position), 'relative', 'mobile quality must not float over form');
 assert.equal(await page.locator('.job-tailor').count(), 0, 'removed Job Match must not return on mobile');
 log('mobile overflow check for all six templates, readiness and removed Job Match');
 
