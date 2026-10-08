@@ -129,7 +129,8 @@ export default function FlowAutoScroll() {
         case 0:
           return field === 'LinkedIn / professional link' ||
             (field === 'City & country' && !formValues(card, 'LinkedIn / professional link')[0]?.value);
-        case 1: return true; // The profile section has one editorial textarea.
+        case 1: return field === 'Professional summary' || field === 'Professional profile' || 
+          Boolean(card.querySelector('textarea')?.closest('.field')?.querySelector('label')?.textContent?.trim() === field);
         case 2: return field === 'Achievements / responsibilities';
         case 3: return field === 'Details (optional)' || field === 'Period / graduation year';
         case 4: return field === 'Date / status';
@@ -141,6 +142,18 @@ export default function FlowAutoScroll() {
       }
     }
 
+    // A focus/blur without an edit must never cause the user to lose a step.
+    const startingValues = new WeakMap<HTMLElement, string>();
+    const onFocusField = (event: FocusEvent) => {
+      const target = event.target;
+      if ((target instanceof HTMLInputElement ||
+           target instanceof HTMLTextAreaElement ||
+           target instanceof HTMLSelectElement) &&
+          target.closest('.wizard-section-card')) {
+        startingValues.set(target, target.value);
+      }
+    };
+
     const onFinishedField = (event: FocusEvent) => {
       if (!/\/builder\/?$/.test(window.location.pathname)) return;
       const target = event.target;
@@ -149,6 +162,8 @@ export default function FlowAutoScroll() {
             target instanceof HTMLSelectElement)) return;
       if (target instanceof HTMLInputElement &&
           ['hidden', 'file', 'checkbox', 'radio'].includes(target.type)) return;
+      if (startingValues.get(target) === undefined ||
+          startingValues.get(target) === target.value) return;
       const card = target.closest<HTMLElement>('.wizard-section-card');
       const panel = card?.closest<HTMLElement>('.wizard-panel');
       if (!card || !panel) return;
@@ -172,9 +187,11 @@ export default function FlowAutoScroll() {
     };
 
     document.addEventListener('click', onClick);
+    document.addEventListener('focusin', onFocusField);
     document.addEventListener('focusout', onFinishedField);
     return () => {
       document.removeEventListener('click', onClick);
+      document.removeEventListener('focusin', onFocusField);
       document.removeEventListener('focusout', onFinishedField);
     };
   }, []);
