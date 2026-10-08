@@ -686,6 +686,54 @@ assert(goldMobile.inside,'Gold Sidebar photo must stay within mobile rail');
 assert(goldMobile.overflow<=2,'Gold Sidebar must not overflow narrow screen');
 await page.locator('.cv-sheet.template-gold-sidebar').screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-mobile.png'});
 log('Gold Sidebar narrow mobile render preserves portrait alignment and page width');
+
+// Auto-advance must be safe: do not skip incomplete forms or mutate a saved CV,
+// and never submit anything from the review/payment section.
+await page.goto(base + '/builder/?template=modern&language=en', {waitUntil:'networkidle'});
+await page.locator('.cv-substep').first().click();
+const currentStep = () => page.locator('.wizard-progress-meta').first().innerText();
+const field = (label) => page.locator('.wizard-section-card .field')
+  .filter({has:page.locator('label', {hasText:label})}).locator('input,textarea').first();
+await field('Full name').fill('Auto Advance QA');
+await field('Professional title').fill('Registered Nurse');
+await field('Email').fill('not-an-email');
+await field('Phone').fill('');
+await field('LinkedIn / professional link').fill('https://example.com/profile');
+await field('City & country').fill('Cairo, Egypt');
+await field('LinkedIn / professional link').focus();
+await field('LinkedIn / professional link').blur();
+await page.waitForTimeout(650);
+assert((await currentStep()).includes('Section 1 of 9'), 'invalid email must block auto-advance');
+await field('Email').fill('qa@example.com');
+await field('LinkedIn / professional link').focus();
+await field('LinkedIn / professional link').blur();
+await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 2 of 9'));
+log('Auto advance: personal info only after valid completion; invalid email stays on current step');
+
+const profileEditor = page.locator('.wizard-section-card textarea').first();
+await profileEditor.fill('');
+await profileEditor.blur();
+await page.waitForTimeout(650);
+assert((await currentStep()).includes('Section 2 of 9'), 'empty profile must never auto-advance');
+await profileEditor.fill('Emergency nursing professional with hands-on triage experience and patient safety practice.');
+await profileEditor.blur();
+await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 3 of 9'));
+log('Auto advance: valid professional profile reaches Experience without pressing Continue');
+await page.getByRole('button', {name:'← Back'}).click();
+assert((await currentStep()).includes('Section 2 of 9'), 'manual Back must stay functional after auto advance');
+log('manual Back navigation remains functional');
+
+await page.locator('.cv-substep').last().click();
+assert((await currentStep()).includes('Section 9 of 9'), 'review section accessible manually');
+const paymentInput = page.locator('.manual-payment-card input').first();
+if (await paymentInput.count()) {
+  await paymentInput.fill('QA_TEST_ONLY');
+  await paymentInput.blur();
+  await page.waitForTimeout(650);
+}
+assert((await currentStep()).includes('Section 9 of 9'), 'payment/review must never auto-progress');
+log('Review/payment remain explicitly controlled without automatic submission');
+
 await browser.close();
 console.log('E2E QA COMPLETE');
 
