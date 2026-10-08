@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/staging-pdf-preview.yml"
       - "qa/staging_bundle_guard.py"
+      - "qa/staging_preview_smoke.mjs"
       - "qa/e2e.mjs"
       - ".github/scripts/**"
       - "source.part*"
@@ -77,11 +78,11 @@ jobs:
           cat /tmp/sirati-staging-http.log
           exit 1
 
-      - name: Run existing UI and PDF rendering smoke checks
+      - name: Run staging login / preview bootstrap smoke
         working-directory: site-src/sirati-cv-source
         run: |
-          cp "$GITHUB_WORKSPACE/qa/e2e.mjs" ./qa-e2e.mjs
-          node ./qa-e2e.mjs
+          cp "$GITHUB_WORKSPACE/qa/staging_preview_smoke.mjs" ./qa-staging.mjs
+          node ./qa-staging.mjs
 
       - name: Upload NOT-DEPLOYED staging site artifact
         if: success()
