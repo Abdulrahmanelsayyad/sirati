@@ -7,7 +7,7 @@ component_path.parent.mkdir(parents=True, exist_ok=True)
 
 component_path.write_text(r''' 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type Language = 'en' | 'ar';
 type Category = 'skills' | 'experience' | 'certifications' | 'education' | 'languages';
@@ -399,7 +399,7 @@ export default function TargetJobTailor() {
   const [jobDescription, setJobDescription] = useState('');
   const [cvText, setCvText] = useState('');
   const [storageScope, setStorageScope] = useState<{ key: string; persistent: boolean }>({ key: '', persistent: false });
-  const [storageReady, setStorageReady] = useState(false);
+  const draftRef = useRef({ targetRole: '', jobDescription: '' });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -409,14 +409,10 @@ export default function TargetJobTailor() {
 
     const initialScope = currentStorageScope();
     setStorageScope(initialScope);
-    const saved = readSavedTarget(initialScope);
-    if (saved) {
-      setTargetRole(saved.targetRole);
-      setJobDescription(saved.jobDescription);
-    }
-    // Do not persist until the initial storage read has finished.
-    // Otherwise the first empty render can erase a valid saved Job Match draft.
-    setStorageReady(true);
+    const saved = readSavedTarget(initialScope) || { targetRole: '', jobDescription: '' };
+    draftRef.current = saved;
+    setTargetRole(saved.targetRole);
+    setJobDescription(saved.jobDescription);
 
     const scan = () => {
       setLanguage(detectLanguage());
@@ -609,8 +605,10 @@ export default function TargetJobTailor() {
                   value={targetRole}
                   onChange={(event) => {
                     const nextRole = event.target.value;
+                    const nextDraft = { ...draftRef.current, targetRole: nextRole };
+                    draftRef.current = nextDraft;
                     setTargetRole(nextRole);
-                    writeSavedTarget(currentStorageScope(), nextRole, jobDescription);
+                    writeSavedTarget(currentStorageScope(), nextDraft.targetRole, nextDraft.jobDescription);
                   }}
                   placeholder={copy.rolePlaceholder}
                   autoComplete="off"
@@ -623,8 +621,10 @@ export default function TargetJobTailor() {
                   value={jobDescription}
                   onChange={(event) => {
                     const nextDescription = event.target.value;
+                    const nextDraft = { ...draftRef.current, jobDescription: nextDescription };
+                    draftRef.current = nextDraft;
                     setJobDescription(nextDescription);
-                    writeSavedTarget(currentStorageScope(), targetRole, nextDescription);
+                    writeSavedTarget(currentStorageScope(), nextDraft.targetRole, nextDraft.jobDescription);
                   }}
                   placeholder={copy.jdPlaceholder}
                   rows={7}
@@ -638,6 +638,7 @@ export default function TargetJobTailor() {
                     type="button"
                     className="job-tailor__clear"
                     onClick={() => {
+                      draftRef.current = { targetRole: '', jobDescription: '' };
                       setTargetRole('');
                       setJobDescription('');
                       writeSavedTarget(currentStorageScope(), '', '');
