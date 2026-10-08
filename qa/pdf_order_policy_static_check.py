@@ -23,9 +23,9 @@ def require(condition: bool, message: str) -> None:
 
 
 policy = re.search(
-    r'create\\s+policy\\s+"Customer PDF orders require pending status and fixed price"'
-    r'\\s+on\\s+public\\.pdf_orders\\s+as\\s+restrictive\\s+for\\s+insert'
-    r'\\s+to\\s+authenticated\\s+with\\s+check\\s*\\((.*?)\\)\\s*;',
+    r'create\s+policy\s+"Customer PDF orders require pending status and fixed price"'
+    r'\s+on\s+public\.pdf_orders\s+as\s+restrictive\s+for\s+insert'
+    r'\s+to\s+authenticated\s+with\s+check\s*\((.*?)\)\s*;',
     migration, re.IGNORECASE | re.DOTALL,
 )
 require(policy is not None, "restrictive customer INSERT policy exists")
@@ -37,16 +37,16 @@ require(
     "existing document ownership policy remains",
 )
 require(
-    re.search(r"revoke\\s+update\\s*,\\s*delete\\s+on\\s+table\\s+public\\.pdf_orders"
-              r"\\s+from\\s+anon\\s*,\\s*authenticated", migration, re.I) is not None,
+    re.search(r"revoke\s+update\s*,\s*delete\s+on\s+table\s+public\.pdf_orders"
+              r"\s+from\s+anon\s*,\s*authenticated", migration, re.I) is not None,
     "customers cannot update or delete PDF orders",
 )
 
-opens = re.findall(r"(?mi)^\\s*do\\s+(\\$[A-Za-z0-9_]*\\$)\\s*$", qa)
-closes = re.findall(r"(?mi)^\\s*end\\s+(\\$[A-Za-z0-9_]*\\$)\\s*;", qa)
+opens = re.findall(r"(?mi)^\s*do\s+(\$[A-Za-z0-9_]*\$)\s*$", qa)
+closes = re.findall(r"(?mi)^\s*end\s+(\$[A-Za-z0-9_]*\$)\s*;", qa)
 require(bool(opens) and opens == closes,
         "SQL test DO blocks have matching dollar quotes (not single $)")
-require(re.search(r"(?mi)^\\s*(?:do|end)\\s+\\$(?!\\$)", qa) is None,
+require(re.search(r"(?mi)^\s*(?:do|end)\s+\$(?!\$)", qa) is None,
         "SQL test has no malformed single-dollar block delimiter")
 require("begin;" in qa.lower() and qa.lower().rstrip().endswith("rollback;"),
         "SQL test rolls back all synthetic records")
