@@ -190,7 +190,7 @@ where schemaname = 'public'
   and permissive = 'RESTRICTIVE'
   and cmd = 'INSERT';
 
-do $
+do $$
 begin
   begin
     insert into public.pdf_orders
@@ -251,7 +251,7 @@ begin
     insert into qa_results values
       ('pdf_order_self_rejection_blocked', true, 'RLS denied rejected INSERT');
   end;
-end $;
+end $$;
 
 insert into public.cv_versions (document_id,user_id,data,template,language)
 select
