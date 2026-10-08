@@ -703,7 +703,15 @@ await field('City & country').fill('Cairo, Egypt');
 await field('LinkedIn / professional link').focus();
 await field('LinkedIn / professional link').blur();
 await page.waitForTimeout(650);
-assert((await currentStep()).includes('Section 1 of 9'), 'invalid email must block auto-advance');
+const autoNegativeState = await page.evaluate(() => ({
+  progress:document.querySelector('.wizard-progress-meta')?.textContent,
+  headline:document.querySelector('.wizard-panel-top h2')?.textContent,
+  email:document.querySelector('.wizard-section-card input[type="email"]')?.value,
+  emailValid:document.querySelector('.wizard-section-card input[type="email"]')?.checkValidity(),
+  fields:[...document.querySelectorAll('.wizard-section-card .field label')].map(x=>x.textContent?.trim())
+}));
+console.log('AUTO-ADVANCE NEGATIVE CASE:', JSON.stringify(autoNegativeState));
+assert((await currentStep()).includes('Section 1 of 9'), 'invalid email must block auto-advance: '+JSON.stringify(autoNegativeState));
 await field('Email').fill('qa@example.com');
 // This is a new, intentional edit of the terminal field, not a mere focus/blur.
 await field('LinkedIn / professional link').fill('https://example.com/profile-updated');
