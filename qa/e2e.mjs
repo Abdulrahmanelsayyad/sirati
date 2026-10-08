@@ -330,7 +330,7 @@ await page.evaluate(() => {
   document.body.appendChild(field);
 });
 await page.locator('#qa-accountant-description').focus();
-await page.locator('#qa-accountant-description-field + .sirati-description-assistant-slot .experience-picker-trigger').click();
+await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 const accountantPicker = page.locator('.experience-picker');
 assert((await accountantPicker.innerText()).includes('Prepared and reconciled financial records'), 'accounting examples were not detected');
 assert.equal(await accountantPicker.locator('.experience-picker__selectors select').count(), 0, 'nursing-only selectors must not appear for accountants');
@@ -340,7 +340,7 @@ assert((await page.locator('#qa-accountant-description').inputValue()).includes(
 await page.locator('.experience-picker__heading button').click();
 await page.locator('#qa-accountant-role').fill('Unlisted specialty role');
 await page.locator('#qa-accountant-description').focus();
-await page.locator('#qa-accountant-description-field + .sirati-description-assistant-slot .experience-picker-trigger').click();
+await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert((await page.locator('.experience-picker').innerText()).includes('Organized assigned tasks'), 'unknown job titles need safe fallback examples');
 await page.evaluate(() => document.getElementById('qa-accountant-description-field')?.remove());
 log('role-specific accountant suggestions, generic fallback and hidden standalone nursing UI');
@@ -546,7 +546,7 @@ await page.evaluate(() => {
   document.body.appendChild(field);
 });
 await page.locator('#qa-mobile-career-field textarea').focus();
-await page.locator('#qa-mobile-career-field + .sirati-description-assistant-slot .experience-picker-trigger').click();
+await page.locator('#qa-mobile-career-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 const mobileCareerPanel = page.locator('.experience-picker');
 const mobileCareerRect = await mobileCareerPanel.evaluate(el => el.getBoundingClientRect());
 assert(mobileCareerRect.left >= -2 && mobileCareerRect.right <= 392, 'contextual mobile panel overflows');
