@@ -543,6 +543,18 @@ log('print/PDF smoke test for all eight templates');
 // Exercise the existing photo upload end-to-end on the seventh template.
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(base + '/builder/?template=profile-sidebar&language=en', { waitUntil: 'networkidle' });
+// A saved local draft can be the currently active selection in the Builder,
+// even if a direct URL has a template query. Select explicitly for this test.
+let profileTemplateSelect = null;
+for (const control of await page.locator('select').all()) {
+  const values = await optionValues(control);
+  if (values.includes('profile-sidebar') && values.includes('gold-sidebar')) {
+    profileTemplateSelect = control;
+    break;
+  }
+}
+assert(profileTemplateSelect, 'Profile Sidebar must be selectable from the Builder');
+await profileTemplateSelect.selectOption('profile-sidebar');
 const sidebarPaper = page.locator('.wizard-preview-wrap .cv-sheet.template-profile-sidebar');
 assert.equal(await sidebarPaper.count(), 1, 'Profile Sidebar should be selected from builder URL');
 assert.equal(await sidebarPaper.locator('.profile-sidebar-layout > .profile-sidebar-rail').count(), 1);
