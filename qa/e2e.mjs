@@ -1,64 +1,13 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import { stripTypeScriptTypes } from 'node:module';
-import vm from 'node:vm';
-// Exercise the generated engine itself before browser QA.
-const component = fs.readFileSync('components/TargetJobTailor.tsx', 'utf8');
-const engine = component.slice(component.indexOf('type Language ='), component.indexOf('function currentStorageScope()'));
-const { extractRequirements, matchRequirement } = vm.runInNewContext(
-  stripTypeScriptTypes(engine) + '\n;({extractRequirements, matchRequirement})'
-);
-const requirement = (jd, label) => {
-  const item = extractRequirements('', jd).find((item) => item.term.includes(label));
-  assert(item, `Missing requirement ${label}: ${jd}`);
-  return item;
-};
-const evidenceCases = [
-  ['DHA license required.', 'DHA', 'No DHA license.', false],
-  ['DHA license required.', 'DHA', 'DHA eligibility', false],
-  ['DHA license required.', 'DHA', 'Active DHA license', true],
-  ['ACLS required.', 'ACLS', 'ACLS planned, not certified.', false],
-  ['ACLS required.', 'ACLS', 'ACLS expired', false],
-  ['ACLS required.', 'ACLS', 'ACLS', true],
-  ['RN license required.', 'RN License', 'Registered Nurse', false],
-  ['RN license required.', 'RN License', 'Active RN license', true],
-  ['ACLS required.', 'ACLS', 'شهادة ACLS قيد الدراسة', false],
-  ['Fluent English required.', 'English', 'English beginner', false],
-  ['Fluent English required.', 'English', 'English fluent', true],
-  ['Fluent English required.', 'English', 'English beginner, Arabic fluent', false],
-  ['English language required.', 'English', 'English B2', true],
-  ['Minimum 2 years of ICU experience required.', 'Minimum', '5 years experience in accounting. ICU training planned.', false],
-  ['Minimum 2 years of ICU experience required.', 'Minimum', '3 years of ICU experience', true],
-  ['Minimum 2 years experience required.', 'Minimum', 'خبرة 5 سنوات', true],
-  ['Minimum 2 years experience required.', 'Minimum', '1 year experience', false],
-  ['Minimum 2 years experience required.', 'Minimum', 'Employment 2022–2026', false],
-];
-for (const [jd, label, cv, expected] of evidenceCases) {
-  assert.equal(matchRequirement(cv, requirement(jd, label)), expected, `${jd} / ${cv}`);
-}
-for (const [jd, expected] of [
-  ['BLS required, ACLS preferred.', 'preferred'],
-  ['BLS required and ACLS preferred.', 'preferred'],
-  ['ACLS preferred. ACLS required.', 'required'],
-  ['Required:\nBLS\nACLS', 'required'],
-  ['Required:\nBLS\nPreferred:\nACLS', 'preferred'],
-]) assert.equal(requirement(jd, 'ACLS').priority, expected, jd);
-for (const [jd, expected] of [
-  ['Required: 2-5 years experience.', 2],
-  ['Required: 2–5 years experience.', 2],
-  ['مطلوب خبرة لا تقل عن ٣ سنوات في العناية المركزة.', 3],
-]) assert.equal(requirement(jd, 'Minimum').minimumYears, expected, jd);
-const years = extractRequirements('', 'Minimum 2 years experience required. 5 years experience preferred.');
-assert(years.some((item) => item.minimumYears === 2 && item.priority === 'required'));
-assert(years.some((item) => item.minimumYears === 5 && item.priority === 'preferred'));
-assert.equal(extractRequirements('', 'DHA license required. DHA licence mandatory.').filter((item) => item.term.includes('DHA')).length, 1);
-const fallbacks = extractRequirements('', 'Required: time management, attention to detail.');
-assert.equal(fallbacks.length, 2);
-assert(matchRequirement('Attention to detail', requirement('Required: attention to detail.', 'attention to detail')));
-assert(!fallbacks.some((item) => item.term.includes('management attention')));
-console.log('PASS: Job Match engine factuality, priority, experience, Arabic and deduplication regressions');
-// End standalone engine checks.
+// Removal is a security and UX regression gate: don't ship the old feature.
+assert.equal(fs.existsSync('components/TargetJobTailor.tsx'), false, 'retired Job Match component must not ship');
+assert(fs.existsSync('components/ExperienceDescriptionPicker.tsx'), 'Experience Description Pro must be preserved');
+assert(!fs.readFileSync('app/layout.tsx', 'utf8').includes('TargetJobTailor'), 'Job Match must not mount in layout');
+assert(!fs.readFileSync('app/globals.css', 'utf8').includes('.job-tailor'), 'retired Job Match styles must not ship');
+console.log('PASS: retired Job Match absent from source, layout and CSS; Experience Pro preserved');
+
 const { chromium } = await import('playwright');
 
 
@@ -193,58 +142,23 @@ await page.locator('.experience-picker__heading button').click();
 await page.evaluate(() => document.getElementById('qa-experience-description-field')?.remove());
 log('Experience Description Pro auto-detects role/level, filters suggestions, supports multi-select and manual writing');
 
-const jobTailorTrigger = page.locator('.job-tailor__trigger');
-assert.equal(await jobTailorTrigger.count(), 1, 'target job tailoring trigger missing');
-await jobTailorTrigger.click();
-const jobTailorPanel = page.locator('.job-tailor__panel');
-assert.equal(await jobTailorPanel.count(), 1, 'target job tailoring panel missing');
-const cvBeforeJobAnalysis = await page.locator('.cv-sheet').innerText();
-await jobTailorPanel.locator('input').fill('ICU Nurse');
-assert.equal(await jobTailorPanel.locator('input').inputValue(), 'ICU Nurse', 'Job Match role must survive its input event');
-await jobTailorPanel.locator('textarea').fill(
-  "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
-);
-await page.waitForTimeout(100);
-assert.equal(await page.locator('.experience-picker').count(), 0, 'Job Match job description must not trigger Experience Description Picker');
-await page.waitForTimeout(900);
-const tailorText = (await jobTailorPanel.innerText()).replace(/\s+/g, ' ');
-for (const phrase of ['Overall coverage', 'Must-have coverage', 'Match breakdown', 'Requirements analysis']) {
-  assert(tailorText.includes(phrase), 'target job V2 missing: ' + phrase);
-}
-assert(tailorText.includes('not an ATS score or a hiring guarantee'), 'target job ATS disclaimer missing');
-assert((await jobTailorPanel.locator('.job-tailor__breakdown article').count()) >= 4, 'target job category breakdown too small');
+assert.equal(await page.locator('.job-tailor, .job-tailor__trigger, .job-tailor__panel').count(), 0, 'Job Match Center must not render');
 
-const requirementLabels = await jobTailorPanel.locator('.job-tailor__requirements strong').allTextContents();
-for (const expected of [
-  'Minimum 2 years experience (Critical Care / ICU)',
-  'Dubai Health Authority (DHA) License',
-  'Basic Life Support (BLS)',
-  'Advanced Cardiovascular Life Support (ACLS)',
-  'Trauma Nursing Core Course (TNCC)',
-  'Communication Skills',
-  'Computer Skills',
-  'English Language'
-]) {
-  assert(requirementLabels.includes(expected), 'Job Match V2.1 missing structured requirement: ' + expected);
-}
-for (const noise of ['basic', 'patient', 'nursing', 'emergency', 'department', 'license']) {
-  assert(!requirementLabels.some((label) => label.toLowerCase() === noise), 'generic noise leaked into requirements: ' + noise);
-}
-assert(requirementLabels.filter((label) => label.toLowerCase().includes('dha')).length === 1, 'DHA requirement duplicated');
-const tailorCoverageBefore = Number((await jobTailorPanel.locator('.job-tailor__score').first().locator('strong').innerText()).replace('%', ''));
-assert.equal(await page.locator('.cv-sheet').innerText(), cvBeforeJobAnalysis, 'Job analysis must not insert CV facts');
+// Previously saved Job Match data must be cleared without touching other Sirati data.
 await page.evaluate(() => {
-  const input = document.createElement('input');
-  input.id = 'qa-unrelated-input';
-  input.value = 'DHA license ACLS BLS English language';
-  document.body.appendChild(input);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
+  localStorage.setItem('sirati.jobTailor.v2.doc.qa-legacy', '{"targetRole":"QA legacy marker"}');
+  sessionStorage.setItem('sirati.jobTailor.v2.draft', '{"jobDescription":"QA legacy marker"}');
+  localStorage.setItem('sirati.qa.unrelated-keep', 'keep');
 });
-await page.waitForTimeout(1000);
-assert.equal(Number((await jobTailorPanel.locator('.job-tailor__score strong').first().innerText()).replace('%', '')), tailorCoverageBefore, 'Unrelated input must not count as CV evidence');
-await page.evaluate(() => document.getElementById('qa-unrelated-input').remove());
-log('Job Match V2.1 extracts structured requirements without generic-word noise or fabricated CV evidence');
-await jobTailorPanel.locator('.job-tailor__close').click();
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForFunction(() =>
+  !localStorage.getItem('sirati.jobTailor.v2.doc.qa-legacy') &&
+  !sessionStorage.getItem('sirati.jobTailor.v2.draft')
+);
+assert.equal(await page.evaluate(() => localStorage.getItem('sirati.qa.unrelated-keep')), 'keep', 'cleanup must not clear unrelated data');
+await page.evaluate(() => localStorage.removeItem('sirati.qa.unrelated-keep'));
+assert.equal(await page.locator('.job-tailor').count(), 0, 'Job Match must remain removed after reload');
+log('Job Match Center removed; legacy storage cleaned without touching CV data');
 
 const library = page.locator('details.smart-nursing-library');
 assert.equal(await library.count(), 1);
@@ -264,15 +178,6 @@ await addButton.click();
 await page.locator('.smart-library-success').waitFor();
 assert((await page.locator('.smart-library-success').innerText()).includes('Selected items were added'));
 log('curated content insertion with explicit confirmation');
-
-await page.waitForTimeout(1200);
-await jobTailorTrigger.click();
-const tailorCoverageAfter = Number((await page.locator('.job-tailor__score').first().locator('strong').innerText()).replace('%', ''));
-assert(tailorCoverageAfter > tailorCoverageBefore, 'target job coverage did not react to relevant CV content');
-assert((await page.locator('.job-tailor__safety').innerText()).includes('Only add a skill'), 'target job factuality warning missing');
-assert((await page.locator('.job-tailor__priority-list').count()) <= 1, 'unexpected duplicate must-have list');
-log('Job Match V2.1 coverage reacts to confirmed CV content');
-await page.locator('.job-tailor__close').click();
 
 const continueButton = page.getByRole('button', { name: /Continue/ }).last();
 await continueButton.click();
@@ -294,54 +199,12 @@ await page.waitForTimeout(800);
 const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
 assert(readinessScoreAfterName >= 10, 'CV Quality Center did not recognize completed name');
 log('CV Quality Center score reacts to Builder input');
-const savedTargetBeforeReload = await page.evaluate(() => JSON.parse(sessionStorage.getItem('sirati.jobTailor.v2.draft') || 'null'));
-assert.equal(savedTargetBeforeReload?.targetRole, 'ICU Nurse', 'Job Match role was not persisted before reload');
-assert(savedTargetBeforeReload?.jobDescription.includes('ventilator care'), 'Job Match description was not persisted before reload');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
-await page.locator('.job-tailor__trigger').click();
-assert.equal(await page.locator('.job-tailor__panel input').inputValue(), 'ICU Nurse');
-assert((await page.locator('.job-tailor__panel textarea').inputValue()).includes('ventilator care'));
-assert((await page.locator('.job-tailor__input-meta').innerText()).includes('Kept in this tab'));
-await page.locator('.job-tailor__close').click();
-log('local CV save and target-job draft survive reload');
+assert.equal(await page.locator('.job-tailor').count(), 0);
+log('local CV save survives reload without Job Match');
 
-// Exercise the explicit first-save notification without a real account/database.
-// The source patch requires that notification immediately after Builder sets ?doc=.
-const originalBuilderUrl = page.url();
-await page.evaluate(() => {
-  const url = new URL(location.href);
-  url.searchParams.set('doc', 'qa-first-save');
-  history.replaceState({}, '', url);
-  window.dispatchEvent(new Event('sirati:document-saved'));
-});
-const firstSavedTarget = await page.evaluate(() => JSON.parse(localStorage.getItem('sirati.jobTailor.v2.doc.qa-first-save') || 'null'));
-assert.equal(firstSavedTarget?.targetRole, 'ICU Nurse', 'first account save must immediately transfer the Job Match role');
-assert(firstSavedTarget?.jobDescription.includes('ventilator care'), 'first account save must transfer the description');
-await page.reload({ waitUntil: 'networkidle' });
-await page.locator('.job-tailor__trigger').click();
-assert.equal(await page.locator('.job-tailor__panel input').inputValue(), 'ICU Nurse');
-assert((await page.locator('.job-tailor__panel textarea').inputValue()).includes('ventilator care'));
-await page.evaluate(() => {
-  localStorage.setItem('sirati.jobTailor.v2.doc.qa-existing', JSON.stringify({ version: 2, targetRole: 'Existing target', jobDescription: 'Existing description' }));
-  const url = new URL(location.href);
-  url.searchParams.set('doc', 'qa-existing');
-  history.replaceState({}, '', url);
-  window.dispatchEvent(new Event('sirati:document-saved'));
-});
-await page.waitForFunction(() => document.querySelector('.job-tailor__panel input')?.value === 'Existing target');
-assert.equal(await page.locator('.job-tailor__panel textarea').inputValue(), 'Existing description', 'document switching must not overwrite another target');
-await page.evaluate(() => {
-  const url = new URL(location.href);
-  url.searchParams.set('doc', 'qa-empty');
-  history.replaceState({}, '', url);
-  window.dispatchEvent(new Event('sirati:document-saved'));
-});
-await page.waitForFunction(() => document.querySelector('.job-tailor__panel input')?.value === '');
-assert.equal(await page.locator('.job-tailor__panel textarea').inputValue(), '', 'another document must not inherit the previous target');
-await page.goto(originalBuilderUrl, { waitUntil: 'networkidle' });
-log('first-save target transfer, reload recovery and document scope isolation');
-
+// Verify integration with the real controlled Experience field and CV preview.
 // Verify integration with the real controlled Experience field and CV preview.
 for (let step = 0; step < 2; step++) await page.getByRole('button', { name: /Continue/ }).last().click();
 const realExperience = page.locator('.field').filter({ hasText: 'Achievements / responsibilities' }).locator('textarea').first();
@@ -486,19 +349,8 @@ const readinessRect = await mobileReadiness.evaluate((el) => {
   return { left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width) };
 });
 assert(readinessRect.left >= -2 && readinessRect.right <= 392, 'mobile CV readiness exceeds viewport: ' + JSON.stringify(readinessRect));
-const mobileTailor = page.locator('.job-tailor');
-assert.equal(await mobileTailor.count(), 1, 'mobile target job tailoring missing');
-const tailorRect = await mobileTailor.evaluate((el) => {
-  const rect = el.getBoundingClientRect();
-  return { left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width) };
-});
-assert(tailorRect.left >= -2 && tailorRect.right <= 392, 'mobile target job tailoring trigger exceeds viewport: ' + JSON.stringify(tailorRect));
-await page.locator('.job-tailor__trigger').click();
-const mobileTailorPanelWidth = await page.locator('.job-tailor__panel').evaluate((el) => Math.round(el.getBoundingClientRect().width));
-assert(mobileTailorPanelWidth <= 390, 'mobile Job Match panel exceeds viewport: ' + mobileTailorPanelWidth);
-assert((await page.locator('.job-tailor__score-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns)).split(' ').length === 1, 'mobile Job Match score cards are not stacked');
-await page.locator('.job-tailor__close').click();
-log('mobile overflow check for all four templates, readiness and Job Match Center');
+assert.equal(await page.locator('.job-tailor').count(), 0, 'removed Job Match must not return on mobile');
+log('mobile overflow check for all four templates, readiness and removed Job Match');
 
 await mobileTemplateSelect.selectOption('compact-ats');
 const mobileLibrary = page.locator('details.smart-nursing-library');
