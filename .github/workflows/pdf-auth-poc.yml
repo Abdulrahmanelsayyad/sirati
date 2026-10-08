@@ -1,0 +1,35 @@
+# Issue #41: isolated, synthetic-only PDF authorization tests.
+# ONLY the dedicated experimental branch; no deploy, database, env/secrets, payments.
+name: Issue 41 PDF auth prototype (branch only)
+
+on:
+  push:
+    branches:
+      - feat/issue-41-synthetic-server-pdf-poc
+    paths:
+      - .github/workflows/pdf-auth-poc.yml
+      - netlify/functions/pdf-auth-prototype.mjs
+      - netlify/functions/pdf-prototype.mjs
+      - qa/pdf_auth_prototype.test.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  pdf-auth-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@v6
+      - name: Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Syntax check prototype only
+        run: |
+          node --check netlify/functions/pdf-prototype.mjs
+          node --check netlify/functions/pdf-auth-prototype.mjs
+          node --check qa/pdf_auth_prototype.test.mjs
+      - name: Run six new authorization tests (mocked upstream only)
+        run: node --test qa/pdf_auth_prototype.test.mjs
