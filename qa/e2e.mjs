@@ -135,24 +135,63 @@ await page.evaluate(() => {
   const field = document.createElement('div');
   field.className = 'field';
   field.id = 'qa-experience-description-field';
-  field.innerHTML = '<label>Description</label><textarea id="qa-experience-description"></textarea>';
+  field.innerHTML = '<label>Job title<input id="qa-experience-role" value="Senior ICU Nurse"></label><label>Description<textarea id="qa-experience-description"></textarea></label>';
   document.body.appendChild(field);
 });
 const qaExperienceDescription = page.locator('#qa-experience-description');
 await qaExperienceDescription.focus();
 const experiencePicker = page.locator('.experience-picker');
 assert.equal(await experiencePicker.count(), 1, 'experience description picker did not open on Description focus');
-assert((await experiencePicker.innerText()).includes('Experience description options'), 'experience picker title missing');
-const firstExperienceOption = experiencePicker.locator('.experience-picker__options article').first();
-const firstExperienceText = (await firstExperienceOption.locator('p').innerText()).trim();
-await firstExperienceOption.getByRole('button', { name: /Add/ }).click();
+assert((await experiencePicker.innerText()).includes('Experience Description Pro'), 'Experience Pro title missing');
+assert((await experiencePicker.innerText()).includes('Senior ICU Nurse'), 'active role context missing');
+assert((await experiencePicker.innerText()).includes('Auto-detected from role'), 'role auto-detection indicator missing');
+assert.equal(await experiencePicker.locator('.experience-picker__selectors select').nth(0).inputValue(), 'icu', 'ICU specialty was not auto-detected');
+assert.equal(await experiencePicker.locator('.experience-picker__selectors select').nth(1).inputValue(), 'senior', 'Senior level was not auto-detected');
+assert.equal(await experiencePicker.locator('.experience-picker__categories button').count(), 6, 'Experience Pro category filters missing');
+await experiencePicker.getByRole('button', { name: 'Select recommended' }).click();
+const selectedExperienceOptions = experiencePicker.locator('.experience-picker__options input:checked');
+assert((await selectedExperienceOptions.count()) >= 2, 'recommended multi-select did not select enough experience options');
+const selectedTexts = await experiencePicker.locator('.experience-picker__options article.is-selected label span').allTextContents();
+const addSelectedExperience = experiencePicker.getByRole('button', { name: 'Add selected' });
+assert(await addSelectedExperience.isEnabled(), 'Add selected should be enabled');
+await addSelectedExperience.click();
 await page.waitForTimeout(100);
-assert((await qaExperienceDescription.inputValue()).includes(firstExperienceText), 'selected experience description was not inserted');
+const insertedExperience = await qaExperienceDescription.inputValue();
+assert(selectedTexts.some((value) => insertedExperience.includes(value.trim())), 'selected experience descriptions were not inserted');
+
+await experiencePicker.locator('.experience-picker__search input').fill('monitor');
+assert((await experiencePicker.locator('.experience-picker__options article').count()) >= 1, 'experience suggestion search returned no matching options');
+await experiencePicker.locator('.experience-picker__search input').fill('');
+
 await qaExperienceDescription.fill((await qaExperienceDescription.inputValue()) + '\nManual custom responsibility');
 assert((await qaExperienceDescription.inputValue()).includes('Manual custom responsibility'), 'manual experience description editing was blocked');
+
 await experiencePicker.locator('.experience-picker__heading button').click();
+const experienceTrigger = page.locator('.experience-picker-trigger');
+assert.equal(await experienceTrigger.count(), 1, 'Experience Pro reopen trigger missing after close');
+await experienceTrigger.click();
+assert.equal(await page.locator('.experience-picker').count(), 1, 'Experience Pro did not reopen from trigger');
+await page.locator('.experience-picker__heading button').click();
+
+// Manual specialty/level edits must survive refocus for the same job.
+const qaExperienceRole = page.locator('#qa-experience-role');
+await qaExperienceDescription.focus();
+await page.locator('.experience-picker__selectors select').nth(0).selectOption('emergency');
+await page.locator('.experience-picker__selectors select').nth(1).selectOption('beginner');
+await qaExperienceRole.focus();
+await qaExperienceDescription.focus();
+assert.equal(await page.locator('.experience-picker__selectors select').nth(0).inputValue(), 'emergency', 'manual specialty should survive refocus');
+assert.equal(await page.locator('.experience-picker__selectors select').nth(1).inputValue(), 'beginner', 'manual level should survive refocus');
+
+// A new job title should re-enable clinical specialty and leadership-level detection.
+await qaExperienceRole.fill('ER Supervisor');
+await qaExperienceDescription.focus();
+assert.equal(await page.locator('.experience-picker__selectors select').nth(0).inputValue(), 'emergency', 'ER Supervisor should retain ER as the specialty');
+assert.equal(await page.locator('.experience-picker__selectors select').nth(1).inputValue(), 'supervisor', 'ER Supervisor should be detected at supervisor level');
+await page.locator('.experience-picker__heading button').click();
+
 await page.evaluate(() => document.getElementById('qa-experience-description-field')?.remove());
-log('Experience Description Picker supports curated choices plus manual writing');
+log('Experience Description Pro auto-detects role/level, filters suggestions, supports multi-select and manual writing');
 
 const jobTailorTrigger = page.locator('.job-tailor__trigger');
 assert.equal(await jobTailorTrigger.count(), 1, 'target job tailoring trigger missing');
@@ -161,6 +200,7 @@ const jobTailorPanel = page.locator('.job-tailor__panel');
 assert.equal(await jobTailorPanel.count(), 1, 'target job tailoring panel missing');
 const cvBeforeJobAnalysis = await page.locator('.cv-sheet').innerText();
 await jobTailorPanel.locator('input').fill('ICU Nurse');
+assert.equal(await jobTailorPanel.locator('input').inputValue(), 'ICU Nurse', 'Job Match role must survive its input event');
 await jobTailorPanel.locator('textarea').fill(
   "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
 );
@@ -254,6 +294,9 @@ await page.waitForTimeout(800);
 const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
 assert(readinessScoreAfterName >= 10, 'CV Quality Center did not recognize completed name');
 log('CV Quality Center score reacts to Builder input');
+const savedTargetBeforeReload = await page.evaluate(() => JSON.parse(sessionStorage.getItem('sirati.jobTailor.v2.draft') || 'null'));
+assert.equal(savedTargetBeforeReload?.targetRole, 'ICU Nurse', 'Job Match role was not persisted before reload');
+assert(savedTargetBeforeReload?.jobDescription.includes('ventilator care'), 'Job Match description was not persisted before reload');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 await page.locator('.job-tailor__trigger').click();
@@ -262,6 +305,60 @@ assert((await page.locator('.job-tailor__panel textarea').inputValue()).includes
 assert((await page.locator('.job-tailor__input-meta').innerText()).includes('Kept in this tab'));
 await page.locator('.job-tailor__close').click();
 log('local CV save and target-job draft survive reload');
+
+// Exercise the explicit first-save notification without a real account/database.
+// The source patch requires that notification immediately after Builder sets ?doc=.
+const originalBuilderUrl = page.url();
+await page.evaluate(() => {
+  const url = new URL(location.href);
+  url.searchParams.set('doc', 'qa-first-save');
+  history.replaceState({}, '', url);
+  window.dispatchEvent(new Event('sirati:document-saved'));
+});
+const firstSavedTarget = await page.evaluate(() => JSON.parse(localStorage.getItem('sirati.jobTailor.v2.doc.qa-first-save') || 'null'));
+assert.equal(firstSavedTarget?.targetRole, 'ICU Nurse', 'first account save must immediately transfer the Job Match role');
+assert(firstSavedTarget?.jobDescription.includes('ventilator care'), 'first account save must transfer the description');
+await page.reload({ waitUntil: 'networkidle' });
+await page.locator('.job-tailor__trigger').click();
+assert.equal(await page.locator('.job-tailor__panel input').inputValue(), 'ICU Nurse');
+assert((await page.locator('.job-tailor__panel textarea').inputValue()).includes('ventilator care'));
+await page.evaluate(() => {
+  localStorage.setItem('sirati.jobTailor.v2.doc.qa-existing', JSON.stringify({ version: 2, targetRole: 'Existing target', jobDescription: 'Existing description' }));
+  const url = new URL(location.href);
+  url.searchParams.set('doc', 'qa-existing');
+  history.replaceState({}, '', url);
+  window.dispatchEvent(new Event('sirati:document-saved'));
+});
+await page.waitForFunction(() => document.querySelector('.job-tailor__panel input')?.value === 'Existing target');
+assert.equal(await page.locator('.job-tailor__panel textarea').inputValue(), 'Existing description', 'document switching must not overwrite another target');
+await page.evaluate(() => {
+  const url = new URL(location.href);
+  url.searchParams.set('doc', 'qa-empty');
+  history.replaceState({}, '', url);
+  window.dispatchEvent(new Event('sirati:document-saved'));
+});
+await page.waitForFunction(() => document.querySelector('.job-tailor__panel input')?.value === '');
+assert.equal(await page.locator('.job-tailor__panel textarea').inputValue(), '', 'another document must not inherit the previous target');
+await page.goto(originalBuilderUrl, { waitUntil: 'networkidle' });
+log('first-save target transfer, reload recovery and document scope isolation');
+
+// Verify integration with the real controlled Experience field and CV preview.
+for (let step = 0; step < 2; step++) await page.getByRole('button', { name: /Continue/ }).last().click();
+const realExperience = page.locator('.field').filter({ hasText: 'Achievements / responsibilities' }).locator('textarea').first();
+await page.locator('.field').filter({ hasText: /^Role$/ }).locator('input').first().fill('Senior ICU Nurse');
+await realExperience.fill('Manual responsibility retained during QA.');
+const realPicker = page.locator('.experience-picker');
+await realPicker.waitFor();
+assert.equal(await realPicker.locator('.experience-picker__selectors select').first().inputValue(), 'icu');
+const realOption = realPicker.locator('.experience-picker__options article').first();
+const realSuggestion = (await realOption.locator('label span').innerText()).trim();
+await realOption.getByRole('button', { name: '+ Add', exact: true }).click();
+assert((await realExperience.inputValue()).includes(realSuggestion), 'suggestion must reach the real controlled field');
+await page.waitForFunction((text) => document.querySelector('.cv-sheet')?.textContent.includes(text), realSuggestion);
+assert((await realExperience.inputValue()).includes('Manual responsibility retained during QA.'));
+await page.reload({ waitUntil: 'networkidle' });
+assert((await page.locator('.cv-sheet').innerText()).includes(realSuggestion), 'inserted experience must survive reload in preview');
+log('real Experience insertion updates React state, preview and saved CV');
 
 let templateSelect = null;
 const selects = page.locator('select');
@@ -441,3 +538,4 @@ log('print/PDF smoke test for all four templates');
 
 await browser.close();
 console.log('E2E QA COMPLETE');
+

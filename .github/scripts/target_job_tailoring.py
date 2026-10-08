@@ -7,7 +7,7 @@ component_path.parent.mkdir(parents=True, exist_ok=True)
 
 component_path.write_text(r''' 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type Language = 'en' | 'ar';
 type Category = 'skills' | 'experience' | 'certifications' | 'education' | 'languages';
@@ -417,6 +417,7 @@ export default function TargetJobTailor() {
   const [jobDescription, setJobDescription] = useState('');
   const [cvText, setCvText] = useState('');
   const [storageScope, setStorageScope] = useState<{ key: string; persistent: boolean }>({ key: '', persistent: false });
+  const draftRef = useRef({ targetRole: '', jobDescription: '' });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -425,40 +426,57 @@ export default function TargetJobTailor() {
     if (!onBuilder) return;
 
     const initialScope = currentStorageScope();
+    let activeScope = initialScope;
     setStorageScope(initialScope);
-    const saved = readSavedTarget(initialScope);
-    if (saved) {
-      setTargetRole(saved.targetRole);
-      setJobDescription(saved.jobDescription);
-    }
+    const saved = readSavedTarget(initialScope) || { targetRole: '', jobDescription: '' };
+    draftRef.current = saved;
+    setTargetRole(saved.targetRole);
+    setJobDescription(saved.jobDescription);
 
+    const syncScope = (newDocumentSaved = false) => {
+      const nextScope = currentStorageScope();
+      if (activeScope.key === nextScope.key && activeScope.persistent === nextScope.persistent) return;
+      const destination = readSavedTarget(nextScope);
+      // Only an explicit first-save event may transfer a tab draft to a new CV.
+      // Switching between existing documents must load their own target instead.
+      const transfer = newDocumentSaved && !activeScope.persistent && nextScope.persistent && !destination;
+      const nextDraft = destination || (transfer ? draftRef.current : { targetRole: '', jobDescription: '' });
+      if (transfer) writeSavedTarget(nextScope, nextDraft.targetRole, nextDraft.jobDescription);
+      activeScope = nextScope;
+      draftRef.current = nextDraft;
+      setStorageScope(nextScope);
+      setTargetRole(nextDraft.targetRole);
+      setJobDescription(nextDraft.jobDescription);
+    };
+    const onDocumentSaved = () => syncScope(true);
     const scan = () => {
+      syncScope();
       setLanguage(detectLanguage());
       setCvText(collectCvText());
-      const nextScope = currentStorageScope();
-      setStorageScope((previous) =>
-        previous.key === nextScope.key && previous.persistent === nextScope.persistent
-          ? previous
-          : nextScope
-      );
+    };
+
+    // Let React finish handling the edited field before scanning controlled inputs.
+    // A capture-phase state update can restore the previous value before onChange.
+    let scanFrame = 0;
+    const scheduleScan = () => {
+      window.cancelAnimationFrame(scanFrame);
+      scanFrame = window.requestAnimationFrame(scan);
     };
 
     scan();
     const timer = window.setInterval(scan, 900);
-    document.addEventListener('input', scan, true);
-    document.addEventListener('change', scan, true);
+    document.addEventListener('input', scheduleScan, true);
+    document.addEventListener('change', scheduleScan, true);
+    window.addEventListener('sirati:document-saved', onDocumentSaved);
 
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener('input', scan, true);
-      document.removeEventListener('change', scan, true);
+      window.cancelAnimationFrame(scanFrame);
+      document.removeEventListener('input', scheduleScan, true);
+      document.removeEventListener('change', scheduleScan, true);
+      window.removeEventListener('sirati:document-saved', onDocumentSaved);
     };
   }, []);
-
-  useEffect(() => {
-    if (!enabled || !storageScope.key) return;
-    writeSavedTarget(storageScope, targetRole, jobDescription);
-  }, [enabled, storageScope, targetRole, jobDescription]);
 
   useEffect(() => {
     if (!open) return;
@@ -626,7 +644,13 @@ export default function TargetJobTailor() {
                 <input
                   type="text"
                   value={targetRole}
-                  onChange={(event) => setTargetRole(event.target.value)}
+                  onChange={(event) => {
+                    const nextRole = event.target.value;
+                    const nextDraft = { ...draftRef.current, targetRole: nextRole };
+                    draftRef.current = nextDraft;
+                    setTargetRole(nextRole);
+                    writeSavedTarget(currentStorageScope(), nextDraft.targetRole, nextDraft.jobDescription);
+                  }}
                   placeholder={copy.rolePlaceholder}
                   autoComplete="off"
                 />
@@ -636,7 +660,13 @@ export default function TargetJobTailor() {
                 <span>{copy.jd}</span>
                 <textarea
                   value={jobDescription}
-                  onChange={(event) => setJobDescription(event.target.value)}
+                  onChange={(event) => {
+                    const nextDescription = event.target.value;
+                    const nextDraft = { ...draftRef.current, jobDescription: nextDescription };
+                    draftRef.current = nextDraft;
+                    setJobDescription(nextDescription);
+                    writeSavedTarget(currentStorageScope(), nextDraft.targetRole, nextDraft.jobDescription);
+                  }}
                   placeholder={copy.jdPlaceholder}
                   rows={7}
                 />
@@ -649,8 +679,10 @@ export default function TargetJobTailor() {
                     type="button"
                     className="job-tailor__clear"
                     onClick={() => {
+                      draftRef.current = { targetRole: '', jobDescription: '' };
                       setTargetRole('');
                       setJobDescription('');
+                      writeSavedTarget(currentStorageScope(), '', '');
                     }}
                   >
                     {copy.clear}
@@ -1223,3 +1255,16 @@ if marker not in css:
     css_path.write_text(css, encoding="utf-8")
 
 print("Applied target job tailoring V2.")
+
+# Notify synchronously after the first account save changes the document URL.
+# This closes the gap before the next scan or an immediate reload.
+builder_path = root / "app" / "builder" / "page.tsx"
+builder_text = builder_path.read_text(encoding="utf-8")
+save_anchor = "window.history.replaceState({}, '', withBasePath(`/builder?doc=${id}`));"
+save_event = "window.dispatchEvent(new Event('sirati:document-saved'));"
+if save_event not in builder_text:
+    if builder_text.count(save_anchor) != 1:
+        raise RuntimeError("Expected one first-save URL transition in Builder")
+    builder_text = builder_text.replace(save_anchor, save_anchor + "\n      " + save_event)
+    builder_path.write_text(builder_text, encoding="utf-8")
+
