@@ -141,12 +141,12 @@ replace("      targetRef.current = target;\n      const role = nearbyRole(target
         """      const isNewTarget = targetRef.current !== target;
       targetRef.current = target;
       const role = nearbyRole(target);
-      const field = target.closest('.field') || target;
-      let anchor = field.nextElementSibling as HTMLElement | null;
-      if (!anchor?.classList.contains('sirati-description-assistant-slot')) {
+      const field = target.closest('.field') || target.parentElement || target;
+      let anchor = field.querySelector<HTMLElement>(':scope > .sirati-description-assistant-slot');
+      if (!anchor) {
         anchor = document.createElement('div');
         anchor.className = 'sirati-description-assistant-slot';
-        field.insertAdjacentElement('afterend', anchor);
+        field.appendChild(anchor);
       }
       setSlot(anchor);
       if (isNewTarget) setOpen(false);""")
