@@ -80,7 +80,6 @@ const polishedMini = await sidebarCard.locator('.profile-sidebar-portrait-placeh
 assert(Math.abs(polishedMini.width - polishedMini.height) <= 1, 'sidebar miniature portrait must be square for circular crop');
 assert.equal(polishedMini.borderRadius, '50%', 'portrait in mini-CV must be circular');
 fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
-await sidebarCard.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-card-desktop.png'});
 log('Profile Sidebar template card shows integrated circular photo framing');
 
 
@@ -123,6 +122,8 @@ assert(mobileMetrics.card <= 195, 'mobile template card too wide');
 assert(mobileMetrics.page <= 392, 'mobile template carousel causes page overflow');
 await page.setViewportSize({ width: 1440, height: 1000 });
 log('mobile horizontal template strip stays inside viewport');
+await sidebarCard.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-card-desktop.png'});
+log('captured Profile Sidebar sample card for independent visual review');
 
 
 await cards.filter({ hasText: 'Compact ATS' }).click();
