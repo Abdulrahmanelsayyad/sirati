@@ -217,6 +217,60 @@ assert((await page.locator('.job-tailor__input-meta').innerText()).includes('Kep
 await page.locator('.job-tailor__close').click();
 log('local CV save and target-job draft survive reload');
 
+// Exercise the explicit first-save notification without a real account/database.
+// The source patch requires that notification immediately after Builder sets ?doc=.
+const originalBuilderUrl = page.url();
+await page.evaluate(() => {
+  const url = new URL(location.href);
+  url.searchParams.set('doc', 'qa-first-save');
+  history.replaceState({}, '', url);
+  window.dispatchEvent(new Event('sirati:document-saved'));
+});
+const firstSavedTarget = await page.evaluate(() => JSON.parse(localStorage.getItem('sirati.jobTailor.v2.doc.qa-first-save') || 'null'));
+assert.equal(firstSavedTarget?.targetRole, 'ICU Nurse', 'first account save must immediately transfer the Job Match role');
+assert(firstSavedTarget?.jobDescription.includes('ventilator care'), 'first account save must transfer the description');
+await page.reload({ waitUntil: 'networkidle' });
+await page.locator('.job-tailor__trigger').click();
+assert.equal(await page.locator('.job-tailor__panel input').inputValue(), 'ICU Nurse');
+assert((await page.locator('.job-tailor__panel textarea').inputValue()).includes('ventilator care'));
+await page.evaluate(() => {
+  localStorage.setItem('sirati.jobTailor.v2.doc.qa-existing', JSON.stringify({ version: 2, targetRole: 'Existing target', jobDescription: 'Existing description' }));
+  const url = new URL(location.href);
+  url.searchParams.set('doc', 'qa-existing');
+  history.replaceState({}, '', url);
+  window.dispatchEvent(new Event('sirati:document-saved'));
+});
+await page.waitForFunction(() => document.querySelector('.job-tailor__panel input')?.value === 'Existing target');
+assert.equal(await page.locator('.job-tailor__panel textarea').inputValue(), 'Existing description', 'document switching must not overwrite another target');
+await page.evaluate(() => {
+  const url = new URL(location.href);
+  url.searchParams.set('doc', 'qa-empty');
+  history.replaceState({}, '', url);
+  window.dispatchEvent(new Event('sirati:document-saved'));
+});
+await page.waitForFunction(() => document.querySelector('.job-tailor__panel input')?.value === '');
+assert.equal(await page.locator('.job-tailor__panel textarea').inputValue(), '', 'another document must not inherit the previous target');
+await page.goto(originalBuilderUrl, { waitUntil: 'networkidle' });
+log('first-save target transfer, reload recovery and document scope isolation');
+
+// Verify integration with the real controlled Experience field and CV preview.
+for (let step = 0; step < 2; step++) await page.getByRole('button', { name: /Continue/ }).last().click();
+const realExperience = page.locator('.field').filter({ hasText: 'Achievements / responsibilities' }).locator('textarea').first();
+await page.locator('.field').filter({ hasText: /^Role$/ }).locator('input').first().fill('Senior ICU Nurse');
+await realExperience.fill('Manual responsibility retained during QA.');
+const realPicker = page.locator('.experience-picker');
+await realPicker.waitFor();
+assert.equal(await realPicker.locator('.experience-picker__selectors select').first().inputValue(), 'icu');
+const realOption = realPicker.locator('.experience-picker__options article').first();
+const realSuggestion = (await realOption.locator('label span').innerText()).trim();
+await realOption.getByRole('button', { name: 'Add', exact: true }).click();
+assert((await realExperience.inputValue()).includes(realSuggestion), 'suggestion must reach the real controlled field');
+await page.waitForFunction((text) => document.querySelector('.cv-sheet')?.textContent.includes(text), realSuggestion);
+assert((await realExperience.inputValue()).includes('Manual responsibility retained during QA.'));
+await page.reload({ waitUntil: 'networkidle' });
+assert((await page.locator('.cv-sheet').innerText()).includes(realSuggestion), 'inserted experience must survive reload in preview');
+log('real Experience insertion updates React state, preview and saved CV');
+
 let templateSelect = null;
 const selects = page.locator('select');
 for (let i = 0; i < await selects.count(); i++) {
@@ -395,3 +449,4 @@ log('print/PDF smoke test for all four templates');
 
 await browser.close();
 console.log('E2E QA COMPLETE');
+

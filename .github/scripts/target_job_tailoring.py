@@ -408,21 +408,33 @@ export default function TargetJobTailor() {
     if (!onBuilder) return;
 
     const initialScope = currentStorageScope();
+    let activeScope = initialScope;
     setStorageScope(initialScope);
     const saved = readSavedTarget(initialScope) || { targetRole: '', jobDescription: '' };
     draftRef.current = saved;
     setTargetRole(saved.targetRole);
     setJobDescription(saved.jobDescription);
 
+    const syncScope = (newDocumentSaved = false) => {
+      const nextScope = currentStorageScope();
+      if (activeScope.key === nextScope.key && activeScope.persistent === nextScope.persistent) return;
+      const destination = readSavedTarget(nextScope);
+      // Only an explicit first-save event may transfer a tab draft to a new CV.
+      // Switching between existing documents must load their own target instead.
+      const transfer = newDocumentSaved && !activeScope.persistent && nextScope.persistent && !destination;
+      const nextDraft = destination || (transfer ? draftRef.current : { targetRole: '', jobDescription: '' });
+      if (transfer) writeSavedTarget(nextScope, nextDraft.targetRole, nextDraft.jobDescription);
+      activeScope = nextScope;
+      draftRef.current = nextDraft;
+      setStorageScope(nextScope);
+      setTargetRole(nextDraft.targetRole);
+      setJobDescription(nextDraft.jobDescription);
+    };
+    const onDocumentSaved = () => syncScope(true);
     const scan = () => {
+      syncScope();
       setLanguage(detectLanguage());
       setCvText(collectCvText());
-      const nextScope = currentStorageScope();
-      setStorageScope((previous) =>
-        previous.key === nextScope.key && previous.persistent === nextScope.persistent
-          ? previous
-          : nextScope
-      );
     };
 
     // Let React finish handling the edited field before scanning controlled inputs.
@@ -437,12 +449,14 @@ export default function TargetJobTailor() {
     const timer = window.setInterval(scan, 900);
     document.addEventListener('input', scheduleScan, true);
     document.addEventListener('change', scheduleScan, true);
+    window.addEventListener('sirati:document-saved', onDocumentSaved);
 
     return () => {
       window.clearInterval(timer);
       window.cancelAnimationFrame(scanFrame);
       document.removeEventListener('input', scheduleScan, true);
       document.removeEventListener('change', scheduleScan, true);
+      window.removeEventListener('sirati:document-saved', onDocumentSaved);
     };
   }, []);
 
@@ -1223,3 +1237,16 @@ if marker not in css:
     css_path.write_text(css, encoding="utf-8")
 
 print("Applied target job tailoring V2.")
+
+# Notify synchronously after the first account save changes the document URL.
+# This closes the gap before the next scan or an immediate reload.
+builder_path = root / "app" / "builder" / "page.tsx"
+builder_text = builder_path.read_text(encoding="utf-8")
+save_anchor = "window.history.replaceState({}, '', withBasePath(`/builder?doc=${id}`));"
+save_event = "window.dispatchEvent(new Event('sirati:document-saved'));"
+if save_event not in builder_text:
+    if builder_text.count(save_anchor) != 1:
+        raise RuntimeError("Expected one first-save URL transition in Builder")
+    builder_text = builder_text.replace(save_anchor, save_anchor + "\n      " + save_event)
+    builder_path.write_text(builder_text, encoding="utf-8")
+
