@@ -122,6 +122,10 @@ await jobTailorTrigger.click();
 const jobTailorPanel = page.locator('.job-tailor__panel');
 assert.equal(await jobTailorPanel.count(), 1, 'target job tailoring panel missing');
 await jobTailorPanel.locator('input').fill('ICU Nurse');
+console.log('DEBUG JOB ROLE AFTER FILL', await page.evaluate(() => ({
+  input: document.querySelector('.job-tailor__panel input')?.value || '',
+  draft: sessionStorage.getItem('sirati.jobTailor.v2.draft')
+})));
 await jobTailorPanel.locator('textarea').fill(
   "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
 );
