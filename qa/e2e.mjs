@@ -26,19 +26,19 @@ async function optionValues(locator) {
 
 await page.goto(base + '/templates/', { waitUntil: 'networkidle' });
 const cards = page.locator('.template-choice');
-assert.equal(await cards.count(), 6);
-log('six template cards');
+assert.equal(await cards.count(), 7);
+log('seven template cards');
 
 const names = await cards.locator('strong').allTextContents();
-for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive ATS']) {
+for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive ATS', 'Profile Sidebar']) {
   assert(names.includes(name), 'missing template ' + name);
 }
-log('all six template names');
+log('all seven template names');
 
 // True finished-resume previews use the same CvPreview renderer as the Builder,
 // never six generic line-pattern illustrations or customer account data.
-const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'];
-assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 6);
+const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'];
+assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 7);
 const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button => {
   const stage = button.querySelector('.template-real-preview__stage');
   const sheet = stage?.querySelector('.cv-sheet');
@@ -52,7 +52,7 @@ const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button =
     watermark: button.querySelectorAll('.cv-watermark').length
   };
 }));
-assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 6, 'each of six miniature previews needs a unique template ID');
+assert.equal(new Set(actualMiniatures.map(item => item.id)).size, 7, 'each of seven miniature previews needs a unique template ID');
 assert(templateIds.every(id => actualMiniatures.some(item => item.id === id && item.actualClass)), 'mini CV must use the matching real CV template styling');
 for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.name, 'Ahmed Hassan', 'sample-only demo name must render on every CV');
@@ -61,11 +61,21 @@ for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.demoLabel, 'SAMPLE CV', thumbnail.id + ' must identify placeholder data');
   assert.equal(thumbnail.watermark, 0, 'avoid watermark obscuring miniature');
 }
-log('all six template cards render genuine sample CvPreview with distinct feature tags');
+log('all seven template cards render genuine sample CvPreview with distinct feature tags');
+
+const sidebarCard = page.locator('.template-choice').filter({ hasText: 'Profile Sidebar' });
+assert.equal(await sidebarCard.locator('.profile-sidebar-layout > .profile-sidebar-rail').count(), 1, 'new template must have a genuine sidebar');
+assert.equal(await sidebarCard.locator('.profile-sidebar-layout > .profile-sidebar-main').count(), 1, 'new template must have a genuine main content column');
+assert.equal(await sidebarCard.locator('.profile-sidebar-portrait-placeholder').count(), 1, 'demo requires honest portrait placeholder');
+assert.equal(await sidebarCard.locator('.profile-sidebar-rail .profile-sidebar-skills li').count() > 0, true, 'skills must be in sidebar');
+assert.equal(await sidebarCard.locator('.profile-sidebar-main .profile-sidebar-section').count() > 2, true, 'main must include summary, experience and education');
+assert((await sidebarCard.innerText()).includes('Photo + sidebar'), 'card must describe true visual difference');
+log('Profile Sidebar thumbnail shows actual portrait slot, skill rail and main body');
+
 
 await page.getByRole('button', { name: 'العربية' }).click();
-assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet[dir="rtl"]').count(), 6, 'all six mini CVs must support Arabic RTL');
-assert.equal(await page.locator('.template-real-preview__demo').filter({ hasText: 'نموذج توضيحي' }).count(), 6);
+assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet[dir="rtl"]').count(), 7, 'all seven mini CVs must support Arabic RTL');
+assert.equal(await page.locator('.template-real-preview__demo').filter({ hasText: 'نموذج توضيحي' }).count(), 7);
 assert.equal(await page.locator('.template-feature-tag').filter({ hasText: 'عناوين بترولي' }).count(), 1);
 await page.getByRole('button', { name: 'English' }).click();
 log('template demo CV and feature tags localize to Arabic RTL and back to English');
@@ -118,7 +128,7 @@ let onboardingTemplateSelect = null;
 const onboardingSelects = page.locator('select');
 for (let i = 0; i < await onboardingSelects.count(); i++) {
   const values = await optionValues(onboardingSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
     onboardingTemplateSelect = onboardingSelects.nth(i);
     break;
   }
@@ -319,7 +329,7 @@ let templateSelect = null;
 const selects = page.locator('select');
 for (let i = 0; i < await selects.count(); i++) {
   const values = await optionValues(selects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
     templateSelect = selects.nth(i);
     break;
   }
@@ -332,7 +342,8 @@ const expectedClasses = {
   compact: 'template-compact',
   'compact-ats': 'template-compact-ats',
   'healthcare-pro': 'template-healthcare-pro',
-  'executive-ats': 'template-executive-ats'
+  'executive-ats': 'template-executive-ats',
+  'profile-sidebar': 'template-profile-sidebar'
 };
 
 for (const [value, expectedClass] of Object.entries(expectedClasses)) {
@@ -342,7 +353,7 @@ for (const [value, expectedClass] of Object.entries(expectedClasses)) {
   assert(className.includes(expectedClass), value + ' did not render expected class');
   assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 }
-log('switching all six templates retains CV data');
+log('switching all seven templates retains CV data');
 
 let languageSelect = null;
 for (let i = 0; i < await selects.count(); i++) {
@@ -356,7 +367,7 @@ assert(languageSelect, 'language selector not found');
 await languageSelect.selectOption('ar');
 await page.waitForTimeout(100);
 assert.equal(await page.locator('.cv-sheet').getAttribute('dir'), 'rtl');
-for (const value of ['healthcare-pro', 'executive-ats']) {
+for (const value of ['healthcare-pro', 'executive-ats', 'profile-sidebar']) {
   await templateSelect.selectOption(value);
   const sheet = page.locator('.cv-sheet');
   assert((await sheet.getAttribute('class')).includes('template-' + value), value + ' RTL design missing');
@@ -410,14 +421,14 @@ let mobileTemplateSelect = null;
 const mobileSelects = page.locator('select');
 for (let i = 0; i < await mobileSelects.count(); i++) {
   const values = await optionValues(mobileSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
     mobileTemplateSelect = mobileSelects.nth(i);
     break;
   }
 }
 assert(mobileTemplateSelect, 'mobile template selector not found');
 
-for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats']) {
+for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar']) {
   await mobileTemplateSelect.selectOption(value);
   await page.waitForTimeout(80);
   overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -452,7 +463,7 @@ const readinessRect = await mobileReadiness.evaluate((el) => {
 assert(readinessRect.left >= -2 && readinessRect.right <= 392, 'mobile CV readiness exceeds viewport: ' + JSON.stringify(readinessRect));
 assert.equal(await mobileReadiness.evaluate((el) => getComputedStyle(el).position), 'relative', 'mobile quality must not float over form');
 assert.equal(await page.locator('.job-tailor').count(), 0, 'removed Job Match must not return on mobile');
-log('mobile overflow check for all six templates, readiness and removed Job Match');
+log('mobile overflow check for all seven templates, readiness and removed Job Match');
 
 await mobileTemplateSelect.selectOption('compact-ats');
 const mobileLibrary = page.locator('details.smart-nursing-library');
@@ -472,7 +483,7 @@ let printTemplateSelect = null;
 const printSelects = page.locator('select');
 for (let i = 0; i < await printSelects.count(); i++) {
   const values = await optionValues(printSelects.nth(i));
-  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats'].every((value) => values.includes(value))) {
+  if (['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar'].every((value) => values.includes(value))) {
     printTemplateSelect = printSelects.nth(i);
     break;
   }
@@ -480,7 +491,7 @@ for (let i = 0; i < await printSelects.count(); i++) {
 assert(printTemplateSelect);
 
 fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
-for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats']) {
+for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar']) {
   await printTemplateSelect.selectOption(value);
   await page.waitForTimeout(70);
   const path = '/tmp/sirati-qa-pdfs/' + value + '.pdf';
@@ -488,7 +499,33 @@ for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-
   const size = fs.statSync(path).size;
   assert(size > 5000, value + ' PDF too small: ' + size);
 }
-log('print/PDF smoke test for all six templates');
+log('print/PDF smoke test for all seven templates');
+
+// Exercise the existing photo upload end-to-end on the seventh template.
+await page.setViewportSize({ width: 1440, height: 1000 });
+await page.goto(base + '/builder/?template=profile-sidebar&language=en', { waitUntil: 'networkidle' });
+const sidebarPaper = page.locator('.wizard-preview-wrap .cv-sheet.template-profile-sidebar');
+assert.equal(await sidebarPaper.count(), 1, 'Profile Sidebar should be selected from builder URL');
+assert.equal(await sidebarPaper.locator('.profile-sidebar-layout > .profile-sidebar-rail').count(), 1);
+assert.equal(await sidebarPaper.locator('.profile-sidebar-portrait-placeholder').count(), 1);
+const photoInput = page.locator('.photo-upload-row input[type="file"]').first();
+assert.equal(await photoInput.count(), 1, 'existing professional photo uploader must be available');
+await photoInput.setInputFiles({
+  name: 'qa-placeholder.png',
+  mimeType: 'image/png',
+  buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQ1sAAAAASUVORK5CYII=', 'base64')
+});
+await sidebarPaper.locator('img.profile-sidebar-portrait').waitFor({ timeout: 8000 });
+assert.equal(await sidebarPaper.locator('.profile-sidebar-portrait-placeholder').count(), 0);
+const uploadedImage = await sidebarPaper.locator('img.profile-sidebar-portrait').getAttribute('src');
+assert(uploadedImage?.startsWith('data:image/jpeg;base64,'), 'uploaded portrait must be compressed with existing local image flow');
+assert.equal(await sidebarPaper.locator('.profile-sidebar-layout > .profile-sidebar-main').count(), 1);
+log('Profile Sidebar uses existing photo upload and renders uploaded portrait');
+
+await page.reload({ waitUntil: 'networkidle' });
+const sidebarAfterReload = page.locator('.wizard-preview-wrap .cv-sheet.template-profile-sidebar');
+assert.equal(await sidebarAfterReload.locator('img.profile-sidebar-portrait').count(), 1, 'photo must survive existing draft restore');
+log('Profile Sidebar photo and selected template survive reload');
 
 await browser.close();
 console.log('E2E QA COMPLETE');
