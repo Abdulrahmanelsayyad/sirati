@@ -241,9 +241,13 @@ await page.evaluate(() => {
 });
 const qaExperienceDescription = page.locator('#qa-experience-description');
 await qaExperienceDescription.focus();
+const contextualTrigger = page.locator('.sirati-description-assistant-slot .experience-picker-trigger');
+assert.equal(await contextualTrigger.count(), 1, 'contextual description action missing next to Description');
+assert.equal(await page.locator('.experience-picker').count(), 0, 'suggestions must remain closed until the user requests them');
+await contextualTrigger.click();
 const experiencePicker = page.locator('.experience-picker');
-assert.equal(await experiencePicker.count(), 1, 'experience description picker did not open on Description focus');
-assert((await experiencePicker.innerText()).includes('Experience Description Pro'), 'Experience Pro title missing');
+assert.equal(await experiencePicker.count(), 1, 'description suggestions did not open on user click');
+assert((await experiencePicker.innerText()).includes('Job description suggestions'), 'job-description title missing');
 assert((await experiencePicker.innerText()).includes('Senior ICU Nurse'), 'active role context missing');
 assert((await experiencePicker.innerText()).includes('Auto-detected from role'), 'role auto-detection indicator missing');
 assert.equal(await experiencePicker.locator('.experience-picker__selectors select').nth(0).inputValue(), 'icu', 'ICU specialty was not auto-detected');
@@ -277,16 +281,19 @@ await page.locator('.experience-picker__heading button').click();
 // Manual specialty/level edits must survive refocus for the same job.
 const qaExperienceRole = page.locator('#qa-experience-role');
 await qaExperienceDescription.focus();
+await contextualTrigger.click();
 await page.locator('.experience-picker__selectors select').nth(0).selectOption('emergency');
 await page.locator('.experience-picker__selectors select').nth(1).selectOption('beginner');
 await qaExperienceRole.focus();
 await qaExperienceDescription.focus();
+await contextualTrigger.click();
 assert.equal(await page.locator('.experience-picker__selectors select').nth(0).inputValue(), 'emergency', 'manual specialty should survive refocus');
 assert.equal(await page.locator('.experience-picker__selectors select').nth(1).inputValue(), 'beginner', 'manual level should survive refocus');
 
 // A new job title should re-enable clinical specialty and leadership-level detection.
 await qaExperienceRole.fill('ER Supervisor');
 await qaExperienceDescription.focus();
+await contextualTrigger.click();
 assert.equal(await page.locator('.experience-picker__selectors select').nth(0).inputValue(), 'emergency', 'ER Supervisor should retain ER as the specialty');
 assert.equal(await page.locator('.experience-picker__selectors select').nth(1).inputValue(), 'supervisor', 'ER Supervisor should be detected at supervisor level');
 await page.locator('.experience-picker__heading button').click();
@@ -312,24 +319,31 @@ await page.evaluate(() => localStorage.removeItem('sirati.qa.unrelated-keep'));
 assert.equal(await page.locator('.job-tailor').count(), 0, 'Job Match must remain removed after reload');
 log('Job Match Center removed; legacy storage cleaned without touching CV data');
 
-const library = page.locator('details.smart-nursing-library');
-assert.equal(await library.count(), 1);
-await library.locator('summary').click();
-assert(await library.getAttribute('open') !== null);
-assert.equal(await library.locator('select').nth(0).locator('option').count(), 8);
-assert.equal(await library.locator('select').nth(1).locator('option').count(), 4);
-assert.equal(await library.locator('select').nth(2).locator('option').count(), 3);
-log('Smart Nursing selectors 8 specialties / 4 levels / 3 markets');
+assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'standalone nursing section must be hidden');
 
-await library.locator('select').nth(0).selectOption('icu');
-await library.getByRole('button', { name: 'Select essentials' }).click();
-await library.locator('.smart-library-confirm input').check();
-const addButton = library.getByRole('button', { name: 'Add selected items to my CV' });
-assert(await addButton.isEnabled());
-await addButton.click();
-await page.locator('.smart-library-success').waitFor();
-assert((await page.locator('.smart-library-success').innerText()).includes('Selected items were added'));
-log('curated content insertion with explicit confirmation');
+// Other professions should get role-specific examples, not the nursing library.
+await page.evaluate(() => {
+  const field = document.createElement('div');
+  field.className = 'field';
+  field.id = 'qa-accountant-description-field';
+  field.innerHTML = '<label>Job title<input id="qa-accountant-role" value="Accountant"></label><label>Description<textarea id="qa-accountant-description"></textarea></label>';
+  document.body.appendChild(field);
+});
+await page.locator('#qa-accountant-description').focus();
+await page.locator('#qa-accountant-description-field + .sirati-description-assistant-slot .experience-picker-trigger').click();
+const accountantPicker = page.locator('.experience-picker');
+assert((await accountantPicker.innerText()).includes('Prepared and reconciled financial records'), 'accounting examples were not detected');
+assert.equal(await accountantPicker.locator('.experience-picker__selectors select').count(), 0, 'nursing-only selectors must not appear for accountants');
+const accountingBullet = (await accountantPicker.locator('.experience-picker__options article label span').first().innerText()).trim();
+await accountantPicker.locator('.experience-picker__options article').first().getByRole('button', { name: '+ Add' }).click();
+assert((await page.locator('#qa-accountant-description').inputValue()).includes(accountingBullet), 'accounting example was not inserted');
+await page.locator('.experience-picker__heading button').click();
+await page.locator('#qa-accountant-role').fill('Unlisted specialty role');
+await page.locator('#qa-accountant-description').focus();
+await page.locator('#qa-accountant-description-field + .sirati-description-assistant-slot .experience-picker-trigger').click();
+assert((await page.locator('.experience-picker').innerText()).includes('Organized assigned tasks'), 'unknown job titles need safe fallback examples');
+await page.evaluate(() => document.getElementById('qa-accountant-description-field')?.remove());
+log('role-specific accountant suggestions, generic fallback and hidden standalone nursing UI');
 
 // An explicit Continue changes the Builder step and reveals its beginning.
 await page.evaluate(() => {
@@ -345,16 +359,8 @@ await continueButton.click();
 await page.waitForFunction(() => window.__siratiStepScrolls > 0);
 log('Builder next step is scrolled into view after Continue');
 await page.waitForTimeout(100);
-let foundSummary = false;
-for (let i = 0; i < await page.locator('textarea').count(); i++) {
-  const value = await page.locator('textarea').nth(i).inputValue();
-  if (value.toLowerCase().includes('critically ill') || value.toLowerCase().includes('critical')) {
-    foundSummary = true;
-    break;
-  }
-}
-assert(foundSummary);
-log('inserted summary remains editable');
+assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'nursing widget must not return after step navigation');
+log('guided builder continues without standalone Nursing library');
 
 await page.getByRole('button', { name: '← Back' }).click();
 await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
@@ -374,6 +380,8 @@ for (let step = 0; step < 2; step++) await page.getByRole('button', { name: /Con
 const realExperience = page.locator('.field').filter({ hasText: 'Achievements / responsibilities' }).locator('textarea').first();
 await page.locator('.field').filter({ hasText: /^Role$/ }).locator('input').first().fill('Senior ICU Nurse');
 await realExperience.fill('Manual responsibility retained during QA.');
+const realTrigger = page.locator('.sirati-description-assistant-slot .experience-picker-trigger').last();
+await realTrigger.click();
 const realPicker = page.locator('.experience-picker');
 await realPicker.waitFor();
 assert.equal(await realPicker.locator('.experience-picker__selectors select').first().inputValue(), 'icu');
@@ -437,7 +445,7 @@ for (const value of ['healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold
   assert.equal(await sheet.getAttribute('dir'), 'rtl', value + ' must be RTL in Arabic');
   assert((await sheet.innerText()).includes('QA Sirati Nurse'), value + ' lost CV content on Arabic toggle');
 }
-assert((await page.locator('details.smart-nursing-library').innerText()).includes('مكتبة Sirati الذكية للتمريض'));
+assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'Arabic Builder must not show Nursing-only library');
 await languageSelect.selectOption('en');
 log('Arabic RTL and Smart Library localization');
 
@@ -529,14 +537,22 @@ assert.equal(await page.locator('.job-tailor').count(), 0, 'removed Job Match mu
 log('mobile overflow check for all eight templates, readiness and removed Job Match');
 
 await mobileTemplateSelect.selectOption('compact-ats');
-const mobileLibrary = page.locator('details.smart-nursing-library');
-if ((await mobileLibrary.getAttribute('open')) === null) await mobileLibrary.locator('summary').click();
-const gridColumns = await mobileLibrary.locator('.smart-nursing-selectors').evaluate((el) => getComputedStyle(el).gridTemplateColumns);
-assert(!gridColumns.trim().includes(' '), 'mobile selectors not stacked: ' + gridColumns);
-const actionWidth = await mobileLibrary.locator('.smart-library-submit-row .btn').evaluate((el) => Math.round(el.getBoundingClientRect().width));
-const rowWidth = await mobileLibrary.locator('.smart-library-submit-row').evaluate((el) => Math.round(el.getBoundingClientRect().width));
-assert(actionWidth >= rowWidth - 4, 'mobile action width ' + actionWidth + '/' + rowWidth);
-log('mobile responsive Smart Library');
+assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'mobile Builder must hide standalone Nursing widget');
+await page.evaluate(() => {
+  const field = document.createElement('div');
+  field.id = 'qa-mobile-career-field';
+  field.className = 'field';
+  field.innerHTML = '<label>Job title<input value="Sales Representative"></label><label>Description<textarea></textarea></label>';
+  document.body.appendChild(field);
+});
+await page.locator('#qa-mobile-career-field textarea').focus();
+await page.locator('#qa-mobile-career-field + .sirati-description-assistant-slot .experience-picker-trigger').click();
+const mobileCareerPanel = page.locator('.experience-picker');
+const mobileCareerRect = await mobileCareerPanel.evaluate(el => el.getBoundingClientRect());
+assert(mobileCareerRect.left >= -2 && mobileCareerRect.right <= 392, 'contextual mobile panel overflows');
+assert((await mobileCareerPanel.innerText()).includes('Identified customer requirements'), 'sales suggestions should load on mobile');
+await page.evaluate(() => document.getElementById('qa-mobile-career-field')?.remove());
+log('mobile role-specific descriptions stay inline and within viewport');
 
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
