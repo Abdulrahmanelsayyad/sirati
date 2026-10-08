@@ -169,3 +169,6 @@ layout_path.write_text(layout_text, encoding="utf-8")
 
 # Apply contextual descriptions after the existing Builder/Experience generators.
 subprocess.run([sys.executable, str(Path(__file__).with_name("career_description_upgrade.py")), str(root)], check=True)
+
+# Add opt-in role-based Personal Summary templates after the description helper.
+subprocess.run([sys.executable, str(Path(__file__).with_name("personal_summary_picker.py")), str(root)], check=True)
