@@ -24,13 +24,11 @@ builder_text = builder.read_text(encoding="utf-8")
 # The generated Builder owns the preview; keep quality in the same panel, before
 # the printable CV sheet. It must not mount in the print-only .cv-sheet.
 preview = re.search(
-    r'<(?:div|aside|section)\b[^>]*className=["\']wizard-preview-wrap["\'][^>]*>',
+    r'<(?:div|aside|section)\b[^>]*className=["\']preview-wrap wizard-preview-wrap["\'][^>]*>',
     builder_text,
 )
 if not preview:
-    idx = builder_text.find("wizard-preview-wrap")
-    sample = builder_text[max(0, idx - 160):idx + 280] if idx >= 0 else "NO PREVIEW CLASS IN BUILDER"
-    raise RuntimeError("Cannot locate Builder preview wrapper: " + repr(sample))
+    raise RuntimeError("Cannot locate Builder preview wrapper; refuse floating fallback")
 if quality_mount in builder_text:
     raise RuntimeError("Unexpected duplicate CV Quality mount in Builder")
 if quality_import not in builder_text:
@@ -39,7 +37,7 @@ if quality_import not in builder_text:
         raise RuntimeError("Cannot locate Builder import section")
     builder_text = builder_text[:first_import.start()] + quality_import + builder_text[first_import.start():]
     preview = re.search(
-        r'<(?:div|aside|section)\b[^>]*className=["\']wizard-preview-wrap["\'][^>]*>',
+        r'<(?:div|aside|section)\b[^>]*className=["\']preview-wrap wizard-preview-wrap["\'][^>]*>',
         builder_text,
     )
 assert preview
