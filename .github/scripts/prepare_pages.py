@@ -106,6 +106,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_c
 subprocess.run([sys.executable, str(Path(__file__).with_name("real_template_previews.py")), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name("profile_sidebar_template.py")), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name("profile_sidebar_polish.py")), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name("gold_sidebar_template.py")), str(root)], check=True)
 
 subprocess.run([sys.executable, str(Path(__file__).with_name("cv_quality_preview_anchor.py")), str(root)], check=True)
 
