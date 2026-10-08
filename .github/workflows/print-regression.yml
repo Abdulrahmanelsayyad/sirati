@@ -1,0 +1,52 @@
+name: P1 Android PDF print QA (isolated staging)
+on:
+  pull_request:
+    branches: ["qa/staging-pdf-preview-37"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  print-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_BASE_PATH: ""
+      NEXT_PUBLIC_SUPABASE_URL: https://ykfxcxhozqqsvhtdyxho.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_WJRNf7gnhrggw8r-XB85gw_MmRvwkVt
+    steps:
+      - name: Checkout exact PR HEAD
+        uses: actions/checkout@v6
+      - name: Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Build staging with CV-only print fix
+        run: bash qa/render_staging_build.sh
+      - name: Setup isolated Playwright Chromium
+        working-directory: site-src/sirati-cv-source
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve export locally
+        run: |
+          python3 -m http.server 4173 --directory site-src/sirati-cv-source/out >/tmp/sirati-print-server.log 2>&1 &
+          for n in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/sirati-print-server.log
+          exit 1
+      - name: Check A4 page count and no UI in print (mobile + desktop)
+        working-directory: site-src/sirati-cv-source
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/print_regression.mjs" ./qa-print-regression.mjs
+          node ./qa-print-regression.mjs
+      - name: Upload failure diagnostic log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirati-print-regression-debug
+          path: /tmp/sirati-print-server.log
+          if-no-files-found: ignore
