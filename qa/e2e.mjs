@@ -151,7 +151,20 @@ log('captured Gold Sidebar complete sample card screenshot');
 
 
 
+// Template choice should bring the next action into view, not submit for the user.
+await page.setViewportSize({ width: 390, height: 844 });
 await cards.filter({ hasText: 'Compact ATS' }).click();
+await page.waitForFunction(() => {
+  const button = [...document.querySelectorAll('button')].find(
+    el => el.textContent?.includes('Continue to CV details')
+  );
+  if (!button) return false;
+  const rect = button.getBoundingClientRect();
+  return rect.top >= -1 && rect.bottom <= window.innerHeight + 1;
+});
+assert(page.url().includes('/templates'), 'template choice must not skip confirmation');
+log('mobile template choice automatically scrolls to visible Continue CTA');
+await page.setViewportSize({ width: 1440, height: 1000 });
 await page.getByRole('button', { name: 'Continue to CV details →' }).click();
 await page.waitForLoadState('networkidle');
 assert(page.url().includes('/builder'));
@@ -318,8 +331,19 @@ await page.locator('.smart-library-success').waitFor();
 assert((await page.locator('.smart-library-success').innerText()).includes('Selected items were added'));
 log('curated content insertion with explicit confirmation');
 
+// An explicit Continue changes the Builder step and reveals its beginning.
+await page.evaluate(() => {
+  const original = Element.prototype.scrollIntoView;
+  window.__siratiStepScrolls = 0;
+  Element.prototype.scrollIntoView = function (...args) {
+    if (this.classList.contains('wizard-panel')) window.__siratiStepScrolls++;
+    return original.apply(this, args);
+  };
+});
 const continueButton = page.getByRole('button', { name: /Continue/ }).last();
 await continueButton.click();
+await page.waitForFunction(() => window.__siratiStepScrolls > 0);
+log('Builder next step is scrolled into view after Continue');
 await page.waitForTimeout(100);
 let foundSummary = false;
 for (let i = 0; i < await page.locator('textarea').count(); i++) {
