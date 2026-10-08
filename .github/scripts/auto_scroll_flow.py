@@ -112,3 +112,11 @@ if "<FlowAutoScroll />" not in layout:
     layout = layout.replace("</body>", "        <FlowAutoScroll />\n      </body>", 1)
 layout_path.write_text(layout, encoding="utf-8")
 print("Installed non-submitting auto-scroll for template selection and guided Builder navigation.")
+
+# TEMP: inspect generated Builder navigation (remove before merge).
+builder_lines = (root / "app" / "builder" / "page.tsx").read_text(encoding="utf-8").splitlines()
+needles = ("wizard-panel", "setStep(", "setCurrentStep(", "Continue", "← Back", "step ===", "const [step", "steps =", "totalSteps", "activeStep", "stepIndex")
+indices = sorted(set(j for i, line in enumerate(builder_lines) if any(token in line for token in needles) for j in range(max(0,i-2),min(len(builder_lines),i+3))))
+print("SIRATI_BUILDER_DIAG_START")
+for i in indices[:175]: print(f"BUILDER_LINE {i+1}: {builder_lines[i][:180]}")
+print("SIRATI_BUILDER_DIAG_END")
