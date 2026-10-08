@@ -42,3 +42,14 @@ This file records autonomous maintenance changes made to Sirati.
 - Supports English and Arabic, updates while the user edits, and includes a clear disclaimer that the percentage is not a guaranteed ATS score.
 - Added E2E coverage for visibility, score response, disclaimer and mobile containment.
 - PR #8 passed build and Sirati E2E QA, deployed successfully to GitHub Pages, and was manually verified on the live site.
+
+
+## 2026-10-08 — Job Match factuality regressions (review branch; not deployed)
+
+- P1-TAILOR-01 remains IN PROGRESS; this change is not a production completion claim.
+- Match only rendered CV evidence; reject negated, planned, pending, expired and eligibility-only credential statements. Require explicit licensing wording for license requirements and language-specific fluency evidence.
+- Resolve repeated requirement priority, heading inheritance and mixed required/preferred clauses; preserve separate required/preferred experience thresholds and recognized specialty scope.
+- Parse lower bounds of year ranges and Arabic digits; preserve fallback phrase boundaries.
+- Added generated-engine regression checks to the existing E2E entry point, plus browser assertions for no CV mutation and exclusion of unrelated inputs.
+- Local production build and TypeScript checks passed; account draft regression (6 cases) and duplicate-CV invariants passed. Full desktop/mobile, Arabic, persistence, four-template and PDF smoke E2E passed, including the final no-mutation and unrelated-input assertions.
+- Limitations: deterministic evidence matching is conservative, not credential verification or complete natural-language interpretation. Date-derived tenure and unrecognized specialty/qualification wording still require manual review. No merge, deployment, paid API or protected-setting change.

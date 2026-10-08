@@ -20,6 +20,9 @@ type Requirement = {
   weight: number;
   variants: string[];
   matched: boolean;
+  sources?: string[];
+  minimumYears?: number;
+  experienceScope?: string[];
 };
 
 type SynonymGroup = {
@@ -122,6 +125,9 @@ const CATEGORY_MARKERS: Record<Category, string[]> = {
 function normalize(value: string) {
   return value
     .toLowerCase()
+    .replace(/[–—]/g, '-')
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
     .replace(/[\u064B-\u065F\u0670]/g, '')
     .replace(/[إأآ]/g, 'ا')
     .replace(/ى/g, 'ي')
@@ -134,10 +140,7 @@ function normalize(value: string) {
 function containsNormalized(haystack: string, needle: string) {
   const cleanNeedle = normalize(needle);
   if (!cleanNeedle) return false;
-  if (cleanNeedle.length <= 3 && !cleanNeedle.includes(' ')) {
-    return (` ${haystack} `).includes(` ${cleanNeedle} `);
-  }
-  return haystack.includes(cleanNeedle);
+  return (` ${haystack} `).includes(` ${cleanNeedle} `);
 }
 
 function detectLanguage(): Language {
@@ -148,13 +151,8 @@ function detectLanguage(): Language {
 }
 
 function collectCvText() {
-  const preview = document.querySelector<HTMLElement>('.cv-sheet')?.innerText || '';
-  const controls = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'))
-    .filter((item) => !item.closest('.job-tailor'))
-    .map((item) => item.value)
-    .filter(Boolean)
-    .join(' ');
-  return normalize(preview + ' ' + controls);
+  // Only rendered CV content is evidence; unrelated form inputs are not CV facts.
+  return document.querySelector<HTMLElement>('.cv-sheet')?.innerText || '';
 }
 
 function getPriority(text: string): Priority {
@@ -183,28 +181,40 @@ function requirementWeight(priority: Priority, known: boolean) {
   return priorityWeight + (known ? 2 : 0);
 }
 
-function extractMinimumExperience(segments: string[]) {
-  const found: Array<{ years: number; priority: Priority; source: string }> = [];
-  const patterns = [
-    /(\d{1,2})\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:relevant\s+|clinical\s+|professional\s+)?experience/i,
-    /(?:minimum|min\.?|at least)\s*(\d{1,2})\s*\+?\s*(?:years?|yrs?)/i,
-    /(?:خبرة|خبره)\s*(?:لا تقل عن\s*)?(\d{1,2})\s*(?:سنوات|سنين|سنة|سنه)/i,
-    /(?:حد ادنى|حد أدنى)\s*(\d{1,2})\s*(?:سنوات|سنين|سنة|سنه)/i,
-  ];
-
-  for (const segment of segments) {
-    for (const pattern of patterns) {
-      const match = segment.match(pattern);
-      if (!match) continue;
-      const years = Number(match[1]);
-      if (!Number.isFinite(years) || years < 1 || years > 30) continue;
-      found.push({ years, priority: getPriority(segment), source: segment });
-      break;
+function requirementSegments(description: string) {
+  let heading: Priority = 'general';
+  return description.split(/\n|[.!?;•]+/).flatMap((line) => {
+    const text = line.trim();
+    if (!text) return [];
+    if (/^[^:：]{1,45}[:：]$/.test(text)) {
+      heading = getPriority(text);
+      return [];
     }
-  }
+    const inherited = getPriority(text) === 'general' ? heading : getPriority(text);
+    return text.split(/[,،]|\band\b(?=[^,.;\n]*(?:required|preferred))| و (?=[^،.\n]*(?:مطلوب|يفضل))/i)
+      .map((clause) => getPriority(clause) === 'general' && inherited !== 'general'
+        ? `${clause} ${inherited}` : clause).filter((clause) => clause.trim());
+  });
+}
 
-  if (!found.length) return null;
-  return found.sort((a, b) => b.years - a.years)[0];
+function extractMinimumExperience(segments: string[]) {
+  const found: Array<{ years: number; priority: Priority; source: string; scope: string[] }> = [];
+  const patterns = [
+    /(?:^|\s)(\d{1,2})(?:\s*[-–]\s*\d{1,2})?\s*\+?\s*(?:years?|yrs?)\b/i,
+    /(?:خبره\s*(?:لا تقل عن\s*)?|حد ادني\s*)(\d{1,2})(?:\s*[-–]\s*\d{1,2})?\s*(?:سنوات|سنين|سنه)/i,
+  ];
+  for (const source of segments) {
+    const clean = normalize(source);
+    if (!/experience|خبره|حد ادني/.test(clean)) continue;
+    const match = patterns.map((pattern) => clean.match(pattern)).find(Boolean);
+    if (!match) continue;
+    const years = Number(match[1]);
+    if (years < 1 || years > 30) continue;
+    const scope = SYNONYM_GROUPS.filter((group) => group.category === 'experience' &&
+      group.variants.some((variant) => containsNormalized(clean, variant))).map((group) => group.label);
+    found.push({ years, priority: getPriority(source), source, scope });
+  }
+  return found;
 }
 
 function conceptFallbacks(segments: string[]) {
@@ -213,7 +223,7 @@ function conceptFallbacks(segments: string[]) {
   for (const segment of segments) {
     const priority = getPriority(segment);
     const category = getCategory(segment);
-    const clean = normalize(segment)
+    const clean = segment.toLowerCase()
       .replace(/\b(required|preferred|essential|mandatory|minimum|responsible for|requirements?|qualifications?)\b/g, ' ')
       .replace(/\b(مطلوب|يفضل|اساسي|أساسي|ضروري|المتطلبات|المؤهلات|المسؤوليات|المهام)\b/g, ' ')
       .replace(/\s+/g, ' ')
@@ -221,7 +231,7 @@ function conceptFallbacks(segments: string[]) {
 
     const chunks = clean
       .split(/,|\band\b|\bor\b|\bwith\b|\bplus\b|،| و | أو /)
-      .map((chunk) => chunk.trim())
+      .map((chunk) => normalize(chunk))
       .filter(Boolean);
 
     for (const chunk of chunks) {
@@ -231,7 +241,7 @@ function conceptFallbacks(segments: string[]) {
         !/^\d+$/.test(word)
       );
       if (words.length < 2 || words.length > 5) continue;
-      const term = words.join(' ');
+      const term = chunk;
       if (term.length < 7) continue;
       if (SYNONYM_GROUPS.some((group) =>
         group.variants.some((variant) => containsNormalized(term, variant) || containsNormalized(normalize(variant), term))
@@ -258,19 +268,18 @@ function conceptFallbacks(segments: string[]) {
 }
 
 function extractRequirements(title: string, description: string) {
-  const cleanDescription = normalize(description);
   const found = new Map<string, Omit<Requirement, 'matched'>>();
-  const segments = description
-    .split(/\n|[.!?;•]+/)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
+  const segments = requirementSegments(description);
 
   const add = (
     term: string,
     category: Category,
     priority: Priority,
     variants: string[],
-    weight: number
+    weight: number,
+    sources: string[] = [],
+    minimumYears?: number,
+    experienceScope?: string[]
   ) => {
     const key = normalize(term);
     if (!key || key.length < 2 || STOPWORDS.has(key)) return;
@@ -280,6 +289,7 @@ function extractRequirements(title: string, description: string) {
         term,
         category,
         priority,
+        sources, minimumYears, experienceScope,
         variants: Array.from(new Set(variants.map((variant) => normalize(variant)).filter(Boolean))),
         weight,
       });
@@ -287,24 +297,19 @@ function extractRequirements(title: string, description: string) {
   };
 
   for (const group of SYNONYM_GROUPS) {
-    const sourceSegment = segments.find((segment) =>
+    const sources = segments.filter((segment) =>
       group.variants.some((variant) => containsNormalized(normalize(segment), variant))
     );
-    if (!sourceSegment) continue;
-    const priority = getPriority(sourceSegment);
-    add(group.label, group.category, priority, group.variants, requirementWeight(priority, true));
+    if (!sources.length) continue;
+    const priority = sources.map(getPriority).sort((a, b) => requirementWeight(b, true) - requirementWeight(a, true))[0];
+    add(group.label, group.category, priority, group.variants, requirementWeight(priority, true), sources);
   }
 
-  const minimumExperience = extractMinimumExperience(segments);
-  if (minimumExperience) {
-    const y = minimumExperience.years;
-    add(
-      `Minimum ${y} years experience`,
-      'experience',
-      minimumExperience.priority === 'general' ? 'required' : minimumExperience.priority,
-      [`${y} years experience`, `${y}+ years experience`, `${y} yrs experience`, `${y}+ yrs`],
-      requirementWeight(minimumExperience.priority === 'general' ? 'required' : minimumExperience.priority, true) + 1
-    );
+  for (const minimum of extractMinimumExperience(segments)) {
+    const priority = minimum.priority === 'general' ? 'required' : minimum.priority;
+    const suffix = minimum.scope.length ? ` (${minimum.scope.join(', ')})` : '';
+    add(`Minimum ${minimum.years} years experience${suffix}`, 'experience', priority, [],
+      requirementWeight(priority, true) + 1, [minimum.source], minimum.years, minimum.scope);
   }
 
   for (const fallback of conceptFallbacks(segments)) {
@@ -326,15 +331,28 @@ function extractRequirements(title: string, description: string) {
 }
 
 function matchRequirement(cvText: string, requirement: Omit<Requirement, 'matched'>) {
-  const yearsMatch = requirement.term.match(/^Minimum (\d{1,2}) years experience$/i);
-  if (yearsMatch) {
-    const requiredYears = Number(yearsMatch[1]);
-    const explicitYears = Array.from(cvText.matchAll(/(\d{1,2})\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?experience/gi))
-      .map((match) => Number(match[1]))
-      .filter((value) => Number.isFinite(value));
-    if (explicitYears.some((value) => value >= requiredYears)) return true;
+  const statements = cvText.split(/[\n.!?;•]+/).map(normalize).filter(Boolean);
+  const uncertain = /\b(no|not|without|planned|pending|expired|pursuing|studying|aspiring|unlicensed)\b|(?:^|\s)(?:لا|ليس|بدون|لم|غير|منتهي|قيد|اخطط)(?:\s|$)/;
+  const evidence = statements.filter((text) => !uncertain.test(text));
+  if (requirement.minimumYears !== undefined) {
+    return extractMinimumExperience(evidence).some((item) => item.years >= requirement.minimumYears! &&
+      (requirement.experienceScope || []).every((scope) => item.scope.includes(scope)));
   }
-  return requirement.variants.some((variant) => containsNormalized(cvText, variant));
+  return evidence.some((text) => {
+    if (!requirement.variants.some((variant) => containsNormalized(text, variant))) return false;
+    if (requirement.category === 'certifications' &&
+        /\beligib(?:le|ility)\b|اهليه|\bstudent\b|طالب/.test(text)) return false;
+    if (requirement.term === 'Registered Nurse / RN License' &&
+        (requirement.sources || []).some((source) => /licen|ترخيص/.test(normalize(source))) &&
+        !/licen|ترخيص/.test(text)) return false;
+    if (requirement.category === 'languages') {
+      const needsFluency = (requirement.sources || []).some((source) => /fluent|fluency|بطلاقه/.test(normalize(source)));
+      const language = requirement.term === 'English Language' ? '(?:english|الانجليزيه)' : '(?:arabic|العربيه)';
+      const fluentEvidence = new RegExp(`(?:fluent|native|c1|c2) (?:in )?${language}|${language} (?:fluent|native|c1|c2|بطلاقه)`);
+      if (needsFluency && !fluentEvidence.test(text)) return false;
+    }
+    return true;
+  });
 }
 
 function coverageFor(items: Requirement[]) {

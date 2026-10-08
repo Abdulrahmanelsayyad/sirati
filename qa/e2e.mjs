@@ -1,6 +1,66 @@
-import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+
+import { stripTypeScriptTypes } from 'node:module';
+import vm from 'node:vm';
+// Exercise the generated engine itself before browser QA.
+const component = fs.readFileSync('components/TargetJobTailor.tsx', 'utf8');
+const engine = component.slice(component.indexOf('type Language ='), component.indexOf('function currentStorageScope()'));
+const { extractRequirements, matchRequirement } = vm.runInNewContext(
+  stripTypeScriptTypes(engine) + '\n;({extractRequirements, matchRequirement})'
+);
+const requirement = (jd, label) => {
+  const item = extractRequirements('', jd).find((item) => item.term.includes(label));
+  assert(item, `Missing requirement ${label}: ${jd}`);
+  return item;
+};
+const evidenceCases = [
+  ['DHA license required.', 'DHA', 'No DHA license.', false],
+  ['DHA license required.', 'DHA', 'DHA eligibility', false],
+  ['DHA license required.', 'DHA', 'Active DHA license', true],
+  ['ACLS required.', 'ACLS', 'ACLS planned, not certified.', false],
+  ['ACLS required.', 'ACLS', 'ACLS expired', false],
+  ['ACLS required.', 'ACLS', 'ACLS', true],
+  ['RN license required.', 'RN License', 'Registered Nurse', false],
+  ['RN license required.', 'RN License', 'Active RN license', true],
+  ['ACLS required.', 'ACLS', 'شهادة ACLS قيد الدراسة', false],
+  ['Fluent English required.', 'English', 'English beginner', false],
+  ['Fluent English required.', 'English', 'English fluent', true],
+  ['Fluent English required.', 'English', 'English beginner, Arabic fluent', false],
+  ['English language required.', 'English', 'English B2', true],
+  ['Minimum 2 years of ICU experience required.', 'Minimum', '5 years experience in accounting. ICU training planned.', false],
+  ['Minimum 2 years of ICU experience required.', 'Minimum', '3 years of ICU experience', true],
+  ['Minimum 2 years experience required.', 'Minimum', 'خبرة 5 سنوات', true],
+  ['Minimum 2 years experience required.', 'Minimum', '1 year experience', false],
+  ['Minimum 2 years experience required.', 'Minimum', 'Employment 2022–2026', false],
+];
+for (const [jd, label, cv, expected] of evidenceCases) {
+  assert.equal(matchRequirement(cv, requirement(jd, label)), expected, `${jd} / ${cv}`);
+}
+for (const [jd, expected] of [
+  ['BLS required, ACLS preferred.', 'preferred'],
+  ['BLS required and ACLS preferred.', 'preferred'],
+  ['ACLS preferred. ACLS required.', 'required'],
+  ['Required:\nBLS\nACLS', 'required'],
+  ['Required:\nBLS\nPreferred:\nACLS', 'preferred'],
+]) assert.equal(requirement(jd, 'ACLS').priority, expected, jd);
+for (const [jd, expected] of [
+  ['Required: 2-5 years experience.', 2],
+  ['Required: 2–5 years experience.', 2],
+  ['مطلوب خبرة لا تقل عن ٣ سنوات في العناية المركزة.', 3],
+]) assert.equal(requirement(jd, 'Minimum').minimumYears, expected, jd);
+const years = extractRequirements('', 'Minimum 2 years experience required. 5 years experience preferred.');
+assert(years.some((item) => item.minimumYears === 2 && item.priority === 'required'));
+assert(years.some((item) => item.minimumYears === 5 && item.priority === 'preferred'));
+assert.equal(extractRequirements('', 'DHA license required. DHA licence mandatory.').filter((item) => item.term.includes('DHA')).length, 1);
+const fallbacks = extractRequirements('', 'Required: time management, attention to detail.');
+assert.equal(fallbacks.length, 2);
+assert(matchRequirement('Attention to detail', requirement('Required: attention to detail.', 'attention to detail')));
+assert(!fallbacks.some((item) => item.term.includes('management attention')));
+console.log('PASS: Job Match engine factuality, priority, experience, Arabic and deduplication regressions');
+// End standalone engine checks.
+const { chromium } = await import('playwright');
+
 
 const base = 'http://127.0.0.1:4173/sirati';
 const browser = await chromium.launch({ headless: true });
@@ -99,6 +159,7 @@ assert.equal(await jobTailorTrigger.count(), 1, 'target job tailoring trigger mi
 await jobTailorTrigger.click();
 const jobTailorPanel = page.locator('.job-tailor__panel');
 assert.equal(await jobTailorPanel.count(), 1, 'target job tailoring panel missing');
+const cvBeforeJobAnalysis = await page.locator('.cv-sheet').innerText();
 await jobTailorPanel.locator('input').fill('ICU Nurse');
 await jobTailorPanel.locator('textarea').fill(
   "Required: Registered Nurse with minimum 2 years of ICU experience. Must hold DHA license, BLS and ACLS. Skills required: ventilator care, patient safety, clinical documentation, hemodynamic monitoring, infection control, communication skills and computer skills. English language required. Bachelor's degree required. Preferred: TNCC, multidisciplinary teamwork and quality improvement."
@@ -115,7 +176,7 @@ assert((await jobTailorPanel.locator('.job-tailor__breakdown article').count()) 
 
 const requirementLabels = await jobTailorPanel.locator('.job-tailor__requirements strong').allTextContents();
 for (const expected of [
-  'Minimum 2 years experience',
+  'Minimum 2 years experience (Critical Care / ICU)',
   'Dubai Health Authority (DHA) License',
   'Basic Life Support (BLS)',
   'Advanced Cardiovascular Life Support (ACLS)',
@@ -131,7 +192,18 @@ for (const noise of ['basic', 'patient', 'nursing', 'emergency', 'department', '
 }
 assert(requirementLabels.filter((label) => label.toLowerCase().includes('dha')).length === 1, 'DHA requirement duplicated');
 const tailorCoverageBefore = Number((await jobTailorPanel.locator('.job-tailor__score').first().locator('strong').innerText()).replace('%', ''));
-log('Job Match V2.1 extracts structured requirements without generic-word noise');
+assert.equal(await page.locator('.cv-sheet').innerText(), cvBeforeJobAnalysis, 'Job analysis must not insert CV facts');
+await page.evaluate(() => {
+  const input = document.createElement('input');
+  input.id = 'qa-unrelated-input';
+  input.value = 'DHA license ACLS BLS English language';
+  document.body.appendChild(input);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await page.waitForTimeout(1000);
+assert.equal(Number((await jobTailorPanel.locator('.job-tailor__score strong').first().innerText()).replace('%', '')), tailorCoverageBefore, 'Unrelated input must not count as CV evidence');
+await page.evaluate(() => document.getElementById('qa-unrelated-input').remove());
+log('Job Match V2.1 extracts structured requirements without generic-word noise or fabricated CV evidence');
 await jobTailorPanel.locator('.job-tailor__close').click();
 
 const library = page.locator('details.smart-nursing-library');
