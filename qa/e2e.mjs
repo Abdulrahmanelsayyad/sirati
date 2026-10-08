@@ -72,6 +72,17 @@ assert.equal(await sidebarCard.locator('.profile-sidebar-main .profile-sidebar-s
 assert((await sidebarCard.innerText()).includes('Photo + sidebar'), 'card must describe true visual difference');
 log('Profile Sidebar thumbnail shows actual portrait slot, skill rail and main body');
 
+const polishedMini = await sidebarCard.locator('.profile-sidebar-portrait-placeholder').evaluate(el => {
+  const rect = el.getBoundingClientRect();
+  const styles = getComputedStyle(el);
+  return { width: rect.width, height: rect.height, borderRadius: styles.borderRadius, borderColor: styles.borderTopColor };
+});
+assert(Math.abs(polishedMini.width - polishedMini.height) <= 1, 'sidebar miniature portrait must be square for circular crop');
+assert.equal(polishedMini.borderRadius, '50%', 'portrait in mini-CV must be circular');
+fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
+log('Profile Sidebar template card shows integrated circular photo framing');
+
+
 
 await page.getByRole('button', { name: 'العربية' }).click();
 assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet[dir="rtl"]').count(), 7, 'all seven mini CVs must support Arabic RTL');
@@ -111,6 +122,8 @@ assert(mobileMetrics.card <= 195, 'mobile template card too wide');
 assert(mobileMetrics.page <= 392, 'mobile template carousel causes page overflow');
 await page.setViewportSize({ width: 1440, height: 1000 });
 log('mobile horizontal template strip stays inside viewport');
+await sidebarCard.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-card-desktop.png'});
+log('captured Profile Sidebar sample card for independent visual review');
 
 
 await cards.filter({ hasText: 'Compact ATS' }).click();
@@ -522,10 +535,56 @@ assert(uploadedImage?.startsWith('data:image/jpeg;base64,'), 'uploaded portrait 
 assert.equal(await sidebarPaper.locator('.profile-sidebar-layout > .profile-sidebar-main').count(), 1);
 log('Profile Sidebar uses existing photo upload and renders uploaded portrait');
 
+const imageStyle = await sidebarPaper.locator('img.profile-sidebar-portrait').evaluate(image => {
+  const photo = image.getBoundingClientRect();
+  const wrap = image.closest('.profile-sidebar-portrait-wrap')?.getBoundingClientRect();
+  const rail = image.closest('.profile-sidebar-rail')?.getBoundingClientRect();
+  const css = getComputedStyle(image);
+  return {width:photo.width, height:photo.height, borderRadius:css.borderRadius,
+    objectFit:css.objectFit, objectPosition:css.objectPosition,
+    centered: wrap ? Math.abs((photo.left+photo.right)/2-(wrap.left+wrap.right)/2) : 999,
+    insideRail: Boolean(rail && photo.left >= rail.left && photo.right <= rail.right)};
+});
+assert(Math.abs(imageStyle.width - imageStyle.height) <= 2, 'headshot frame must use a square 1:1 crop');
+assert.equal(imageStyle.borderRadius, '50%', 'headshot should be a circle');
+assert.equal(imageStyle.objectFit, 'cover', 'headshot needs crop-to-fill, not distorted stretch');
+assert(imageStyle.objectPosition.includes('30%'), 'headshot needs portrait-friendly face position');
+assert(imageStyle.centered <= 2 && imageStyle.insideRail, 'portrait frame must align within left sidebar');
+await sidebarPaper.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-uploaded-photo-desktop.png'});
+log('Profile Sidebar portrait is centered, circular and crop-to-fill without distortion');
+
+await page.emulateMedia({media: 'print'});
+const printStyle = await sidebarPaper.locator('img.profile-sidebar-portrait').evaluate(img => ({
+  width:img.getBoundingClientRect().width, height:img.getBoundingClientRect().height,
+  radius:getComputedStyle(img).borderRadius,
+  railBackground:getComputedStyle(img.closest('.profile-sidebar-rail')).backgroundColor
+}));
+assert(Math.abs(printStyle.width-printStyle.height) <= 2, 'A4 print portrait must be square');
+assert.equal(printStyle.radius, '50%', 'A4 print portrait should be circular');
+assert.notEqual(printStyle.railBackground, 'rgba(0, 0, 0, 0)', 'A4 sidebar must have a visible background');
+await page.emulateMedia({media: 'screen'});
+log('Profile Sidebar circular crop and dark rail are retained in print media');
+
+
 await page.reload({ waitUntil: 'networkidle' });
 const sidebarAfterReload = page.locator('.wizard-preview-wrap .cv-sheet.template-profile-sidebar');
 assert.equal(await sidebarAfterReload.locator('img.profile-sidebar-portrait').count(), 1, 'photo must survive existing draft restore');
 log('Profile Sidebar photo and selected template survive reload');
+
+await page.setViewportSize({width:390, height:844});
+await page.waitForTimeout(100);
+const mobilePortrait = await sidebarAfterReload.locator('img.profile-sidebar-portrait').evaluate(img => {
+  const p=img.getBoundingClientRect();
+  const rail=img.closest('.profile-sidebar-rail').getBoundingClientRect();
+  return {w:p.width,h:p.height,inRail:p.left >= rail.left-1 && p.right <= rail.right+1,
+    overflow:document.documentElement.scrollWidth-window.innerWidth};
+});
+assert(Math.abs(mobilePortrait.w-mobilePortrait.h) <= 2, 'mobile portrait should stay circular/square');
+assert(mobilePortrait.inRail, 'mobile portrait should remain inside rail');
+assert(mobilePortrait.overflow <= 2, 'mobile portrait causes page overflow: '+mobilePortrait.overflow);
+await sidebarAfterReload.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-mobile.png'});
+log('Profile Sidebar mobile circular portrait stays inside rail without horizontal overflow');
+
 
 await browser.close();
 console.log('E2E QA COMPLETE');
