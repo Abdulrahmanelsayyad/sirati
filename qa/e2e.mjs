@@ -113,6 +113,23 @@ await experienceTrigger.click();
 assert.equal(await page.locator('.experience-picker').count(), 1, 'Experience Pro did not reopen from trigger');
 await page.locator('.experience-picker__heading button').click();
 
+// Manual specialty/level edits must survive refocus for the same job.
+const qaExperienceRole = page.locator('#qa-experience-role');
+await qaExperienceDescription.focus();
+await page.locator('.experience-picker__selectors select').nth(0).selectOption('emergency');
+await page.locator('.experience-picker__selectors select').nth(1).selectOption('beginner');
+await qaExperienceRole.focus();
+await qaExperienceDescription.focus();
+assert.equal(await page.locator('.experience-picker__selectors select').nth(0).inputValue(), 'emergency', 'manual specialty should survive refocus');
+assert.equal(await page.locator('.experience-picker__selectors select').nth(1).inputValue(), 'beginner', 'manual level should survive refocus');
+
+// A new job title should re-enable clinical specialty and leadership-level detection.
+await qaExperienceRole.fill('ER Supervisor');
+await qaExperienceDescription.focus();
+assert.equal(await page.locator('.experience-picker__selectors select').nth(0).inputValue(), 'emergency', 'ER Supervisor should retain ER as the specialty');
+assert.equal(await page.locator('.experience-picker__selectors select').nth(1).inputValue(), 'supervisor', 'ER Supervisor should be detected at supervisor level');
+await page.locator('.experience-picker__heading button').click();
+
 await page.evaluate(() => document.getElementById('qa-experience-description-field')?.remove());
 log('Experience Description Pro auto-detects role/level, filters suggestions, supports multi-select and manual writing');
 
