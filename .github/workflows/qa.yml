@@ -68,3 +68,11 @@ jobs:
             /tmp/sirati-qa-pdfs
             /tmp/sirati-qa-server.log
           if-no-files-found: ignore
+
+      - name: Upload Profile Sidebar visual QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-sidebar-visual-qa
+          path: /tmp/sirati-qa-pdfs/profile-sidebar-*.png
+          if-no-files-found: ignore
