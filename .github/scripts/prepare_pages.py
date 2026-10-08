@@ -166,3 +166,6 @@ if "<LegacyJobMatchCleanup />" not in layout_text:
         raise RuntimeError("Could not install legacy Job Match storage cleanup")
     layout_text = layout_text.replace("</body>", "        <LegacyJobMatchCleanup />\n      </body>", 1)
 layout_path.write_text(layout_text, encoding="utf-8")
+
+# Apply contextual descriptions after the existing Builder/Experience generators.
+subprocess.run([sys.executable, str(Path(__file__).with_name("career_description_upgrade.py")), str(root)], check=True)
