@@ -103,6 +103,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('mobile_builder_fix
 subprocess.run([sys.executable, str(Path(__file__).with_name('account_storage_isolation.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('add_specialty_templates.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_carousel.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name("real_template_previews.py")), str(root)], check=True)
 
 subprocess.run([sys.executable, str(Path(__file__).with_name("cv_quality_preview_anchor.py")), str(root)], check=True)
 
