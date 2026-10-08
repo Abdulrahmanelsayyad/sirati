@@ -5,11 +5,11 @@
 ## Connected environments
 - Staging Supabase project: `Sirati-Staging` / `ykfxcxhozqqsvhtdyxho`.
 - Production Supabase project: `Sirati` / `hzzojoiqzbeivxesjlyf` (DO NOT USE for tests).
-- This PR adds a **pull_request-only** GitHub Actions workflow that reconstructs the existing app, injects *only* the staging **publishable** key, checks that exported browser assets contain the staging URL but not the production URL, and runs the repository's existing E2E UI/PDF rendering smoke checks.
+- This PR adds a **pull_request-only** GitHub Actions workflow that reconstructs the existing app, injects *only* the staging **publishable** key, checks that exported browser assets contain the staging URL but not the production URL, and runs a staging-specific login/route bootstrap smoke test. The repository's existing E2E UI/PDF rendering check also runs as a **separate PR workflow**, not as proof of staging account payment unlock.
 - A successful job uploads `sirati-staging-pdf-preview` as an **Actions artifact only**. This is not a live hosted website or a public testing link. No secrets or service-role keys are provided to the browser.
 
 ## Steps to use the preview (after CI passes)
-1. Open the PR > **Checks** > **Sirati Staging PDF Preview (build only)** > job. Confirm PASS and the staging bundle guard PASS.
+1. Open the PR > **Checks** > **Sirati Staging PDF Preview (build only)** > job. Confirm PASS, the staging bundle guard PASS, and the staging login/route bootstrap check PASS.
 2. Download the `sirati-staging-pdf-preview` artifact from the Actions run. Extract the contents into a local folder `preview-root/sirati/`.
 3. Serve `preview-root` locally with `python3 -m http.server 4173 --directory preview-root` (or another static local server). Browse to `http://127.0.0.1:4173/sirati/`.
 4. For actual sign-in, configure the **staging-only** Supabase Auth allowed redirect URL to match the chosen test origin (e.g. `http://127.0.0.1:4173/sirati/auth/confirm`), after owner approval. Do **not** change production auth redirect settings.
