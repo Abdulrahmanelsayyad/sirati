@@ -232,6 +232,51 @@ assert(readinessText.includes('not an ATS score or a hiring guarantee'), 'CV Qua
 log('CV Quality Center shows essentials plus actionable content-quality checks');
 await readinessTrigger.click();
 
+// Role-aware personal summaries must be available on demand, not injected automatically.
+await page.evaluate(() => {
+  const roleField = document.createElement('div');
+  roleField.className = 'field';
+  roleField.id = 'qa-summary-role-field';
+  roleField.innerHTML = '<label>Job title</label><input id="qa-summary-role" value="Accountant">';
+  const summaryField = document.createElement('div');
+  summaryField.className = 'field';
+  summaryField.id = 'qa-personal-summary-field';
+  summaryField.innerHTML = '<label>Personal Summary</label><textarea id="qa-personal-summary"></textarea>';
+  document.body.append(roleField, summaryField);
+});
+const qaSummary = page.locator('#qa-personal-summary');
+await qaSummary.focus();
+const summaryTrigger = page.locator('#qa-personal-summary-field .sirati-summary-trigger');
+assert.equal(await summaryTrigger.count(), 1, 'Personal Summary helper missing from summary field');
+assert.equal(await page.locator('.sirati-summary-panel').count(), 0, 'Personal Summary must not open automatically');
+await summaryTrigger.click();
+const summaryPanel = page.locator('.sirati-summary-panel');
+assert.equal(await summaryPanel.locator('.sirati-summary-choices label').count(), 3, 'expected three ready-made personal summaries');
+assert.equal(await summaryPanel.locator('.sirati-summary-role input').inputValue(), 'Accountant', 'role should be detected from the existing job title');
+assert((await summaryPanel.innerText()).includes('accurate financial records'), 'accountant summary must be profession-specific');
+await summaryPanel.locator('.sirati-summary-choices label').nth(1).click();
+const pickedSummary = (await summaryPanel.locator('.sirati-summary-choices label').nth(1).locator('span').innerText()).trim();
+await summaryPanel.getByRole('button', { name: 'Use this summary' }).click();
+assert.equal(await qaSummary.inputValue(), pickedSummary, 'selected summary was not inserted');
+await qaSummary.fill('My existing personally written summary.');
+await summaryTrigger.click();
+page.once('dialog', dialog => dialog.dismiss());
+await summaryPanel.getByRole('button', { name: 'Use this summary' }).click();
+assert.equal(await qaSummary.inputValue(), 'My existing personally written summary.', 'declined replacement must preserve manual summary');
+await summaryPanel.locator('.sirati-summary-role input').fill('Software Developer');
+assert((await summaryPanel.innerText()).includes('maintainable software'), 'changing job title must refresh the summary choices');
+await summaryPanel.getByRole('button', { name: 'Close' }).last().click();
+await page.locator('#qa-summary-role').fill('Unlisted Job Profession');
+await qaSummary.focus();
+await summaryTrigger.click();
+assert((await summaryPanel.innerText()).includes('organized work and clear communication'), 'unlisted roles need safe generic suggestions');
+await summaryPanel.getByRole('button', { name: 'Close' }).last().click();
+await page.evaluate(() => {
+  document.getElementById('qa-summary-role-field')?.remove();
+  document.getElementById('qa-personal-summary-field')?.remove();
+});
+log('Personal Summary: role detection, 3 templates, manual edit safety, refusal and fallback');
+
 await page.evaluate(() => {
   const field = document.createElement('div');
   field.className = 'field';
