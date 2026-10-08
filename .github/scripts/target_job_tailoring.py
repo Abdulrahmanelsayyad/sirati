@@ -377,18 +377,6 @@ function writeSavedTarget(scope: { key: string; persistent: boolean }, targetRol
   store.setItem(scope.key, JSON.stringify({ version: 2, targetRole, jobDescription }));
 }
 
-function patchSavedTarget(
-  scope: { key: string; persistent: boolean },
-  patch: Partial<{ targetRole: string; jobDescription: string }>
-) {
-  const existing = readSavedTarget(scope) || { targetRole: '', jobDescription: '' };
-  writeSavedTarget(
-    scope,
-    patch.targetRole !== undefined ? patch.targetRole : existing.targetRole,
-    patch.jobDescription !== undefined ? patch.jobDescription : existing.jobDescription
-  );
-}
-
 function findBuilderSection(category: Category) {
   const patterns: Record<Category, RegExp> = {
     skills: /skills|competencies|مهارات|الكفاءات/i,
@@ -452,14 +440,6 @@ export default function TargetJobTailor() {
       document.removeEventListener('change', scan, true);
     };
   }, []);
-
-  useEffect(() => {
-    if (!enabled || !storageReady || !storageScope.key) return;
-    // Empty initial renders must never erase a draft that was just written by the user.
-    // Clearing is handled explicitly by the Clear button.
-    if (!targetRole.trim() && !jobDescription.trim()) return;
-    writeSavedTarget(storageScope, targetRole, jobDescription);
-  }, [enabled, storageReady, storageScope, targetRole, jobDescription]);
 
   useEffect(() => {
     if (!open) return;
@@ -630,7 +610,7 @@ export default function TargetJobTailor() {
                   onChange={(event) => {
                     const nextRole = event.target.value;
                     setTargetRole(nextRole);
-                    patchSavedTarget(currentStorageScope(), { targetRole: nextRole });
+                    writeSavedTarget(currentStorageScope(), nextRole, jobDescription);
                   }}
                   placeholder={copy.rolePlaceholder}
                   autoComplete="off"
@@ -644,7 +624,7 @@ export default function TargetJobTailor() {
                   onChange={(event) => {
                     const nextDescription = event.target.value;
                     setJobDescription(nextDescription);
-                    patchSavedTarget(currentStorageScope(), { jobDescription: nextDescription });
+                    writeSavedTarget(currentStorageScope(), targetRole, nextDescription);
                   }}
                   placeholder={copy.jdPlaceholder}
                   rows={7}
