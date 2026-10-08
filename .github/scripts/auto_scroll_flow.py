@@ -68,7 +68,7 @@ export default function FlowAutoScroll() {
 
     // The active CV section is numbered 1–9 in Builder's own progress line.
     function activeSection(panel: HTMLElement): number {
-      const progress = panel.querySelector('.wizard-progress-meta')?.textContent || '';
+      const progress = panel.querySelector('.wizard-progress-meta > span')?.textContent || '';
       const match = progress.match(/Section\s+(\d+)\s+of\s+(\d+)/i);
       return match && Number(match[2]) === 9 ? Number(match[1]) - 1 : -1;
     }
