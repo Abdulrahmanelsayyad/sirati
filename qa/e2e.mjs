@@ -884,9 +884,13 @@ log('guided builder continues without standalone Nursing library');
 const realSummary = page.locator('.wizard-section-card textarea').first(); // stable even after suggestion panel closes
 assert.equal(await realSummary.count(), 1, 'actual Personal Summary field must exist');
 const realSummaryPanel = page.locator('.sirati-summary-panel');
+const realSummaryTrigger = page.locator('.wizard-section-card .sirati-summary-trigger');
+await realSummaryTrigger.waitFor();
+assert.equal(await realSummaryPanel.count(), 0, 'real Builder should keep Smart CV Pro V4 closed until requested');
+await realSummaryTrigger.click();
 await realSummaryPanel.waitFor();
 assert((await realSummaryPanel.locator('.sirati-summary-context').innerText()).includes('Emergency Nurse'), 'Summary must use Professional Title from earlier wizard step');
-assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 3, 'real Summary must auto-offer 3 templates');
+assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 3, 'real Summary must offer 3 templates when requested');
 const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choice__text').first().innerText()).trim();
 await realSummaryPanel.locator('.sirati-summary-choice').first().click();
 const afterSmartChoice = await page.evaluate((selected) => ({
