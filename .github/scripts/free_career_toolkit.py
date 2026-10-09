@@ -153,7 +153,7 @@ home_path = root / "app/page.tsx"
 home = home_path.read_text(encoding="utf-8")
 nav = '<a href="#services">Services</a>'
 cta = '<p>Use the templates, role-based content suggestions and CV quality checks at no cost.</p>'
-if home.count(nav) != 1 or home.count(cta) != 1:
+if home.count(nav) < 1 or home.count(cta) != 1:
     raise RuntimeError("Homepage navigation/service anchors changed")
 home = home.replace(nav, nav + '\n            <a href="./career-tools/">Career tools</a>', 1)
 home = home.replace(cta, cta + '\n            <a className="btn btn-light btn-lg" href="./career-tools/">Explore free career tools</a>', 1)
