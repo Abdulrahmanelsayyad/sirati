@@ -7,7 +7,7 @@ component_path.parent.mkdir(parents=True, exist_ok=True)
 
 component_path.write_text(r''' 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type Check = {
   id: string;
@@ -17,135 +17,112 @@ type Check = {
   passed: boolean;
 };
 
-function fieldValue(pattern: RegExp): string {
-  const fields = Array.from(document.querySelectorAll<HTMLElement>('.field, label, .wizard-section-card'));
-  for (const field of fields) {
-    const text = (field.innerText || field.textContent || '').replace(/\s+/g, ' ').trim();
-    if (!pattern.test(text)) continue;
-    const control = field.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea');
-    if (control?.value?.trim()) return control.value.trim();
+type CVRecord = Record<string, unknown>;
+function isRecord(value: unknown): value is CVRecord {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+function record(value: unknown): CVRecord {
+  return isRecord(value) ? value : {};
+}
+function textValue(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
+}
+function firstValue(source: CVRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = textValue(source[key]);
+    if (value) return value;
   }
   return '';
 }
-
-function anyTextArea(minLength = 1): string {
-  const areas = Array.from(document.querySelectorAll<HTMLTextAreaElement>('textarea'));
-  const match = areas.find((item) => item.value.trim().length >= minLength);
-  return match?.value.trim() || '';
-}
-
-function anyControlByType(type: string): string {
-  const control = document.querySelector<HTMLInputElement>(`input[type="${type}"]`);
-  return control?.value?.trim() || '';
-}
-
-function valuesFor(pattern: RegExp): string[] {
-  const fields = Array.from(document.querySelectorAll<HTMLElement>('.field, label, .wizard-section-card'));
-  const values: string[] = [];
-  for (const field of fields) {
-    const text = (field.innerText || field.textContent || '').replace(/\s+/g, ' ').trim();
-    if (!pattern.test(text)) continue;
-    for (const control of Array.from(field.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'))) {
-      const value = control.value.trim();
-      if (value) values.push(value);
-    }
+function sectionRows(value: unknown): CVRecord[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => typeof item === 'string' ? { text: item } : record(item));
   }
-  return Array.from(new Set(values));
+  if (typeof value === 'string') return value.trim() ? [{ text: value }] : [];
+  return isRecord(value) ? [value] : [];
+}
+function sectionText(value: unknown, keys: string[]): string {
+  return sectionRows(value)
+    .map((item) => keys.map((key) => textValue(item[key])).filter(Boolean).join(' '))
+    .filter(Boolean).join('\n');
+}
+function countUniqueItems(value: unknown): number {
+  const raw = Array.isArray(value) ? value.map((v) =>
+    typeof v === 'string' ? v : firstValue(record(v), ['name', 'skill', 'text'])
+  ).join('\n') : textValue(value);
+  const items = raw.split(/[\n,;•|]+/)
+    .map((item) => item.toLocaleLowerCase().trim().replace(/\s+/g, ' '))
+    .filter((item) => item.length >= 2);
+  return new Set(items).size;
+}
+function hasActionLanguage(value: string): boolean {
+  return /(managed|led|supervised|coordinated|implemented|improved|reduced|increased|developed|performed|administered|assessed|monitored|trained|maintained|documented|أدرت|ادرت|قدت|أشرفت|اشرفت|نسقت|نفذت|حسنت|راقبت|دربت|وثقت)/i.test(value);
+}
+function hasMeasuredImpact(value: string): boolean {
+  return /[0-9٠-٩]{1,3}\s*%/.test(value)
+    || /[0-9٠-٩]+\+?\s+(patients?|cases?|staff|employees?|projects?|beds?|calls?|clients?|مريض|مرضى|حالة|حالات|موظف|موظفين|مشروع|مشاريع|سرير|أسرة|اسرة)/i.test(value);
 }
 
-function countItems(value: string) {
-  return Array.from(new Set(
-    value.split(/[\n,;•|]+/).map((item) => item.trim().toLowerCase()).filter((item) => item.length >= 2)
-  )).length;
-}
-
-function hasActionLanguage(value: string) {
-  const text = value.toLowerCase();
-  const verbs = [
-    'managed','led','supervised','coordinated','implemented','improved','reduced','increased','developed',
-    'performed','administered','assessed','monitored','trained','maintained','documented',
-    'أدرت','ادرت','قدت','أشرفت','اشرفت','نسقت','نفذت','حسنت','راقبت','دربت','وثقت'
-  ];
-  return verbs.some((verb) => text.includes(verb.toLowerCase()));
-}
-
-function hasMeasuredImpact(value: string) {
-  return /\b\d{1,3}\s*%/.test(value)
-    || /\b\d+\+?\s+(patients?|cases?|staff|employees?|projects?|beds?|calls?|clients?)\b/i.test(value)
-    || /\b\d+\+?\s+(مريض|مرضى|حالة|حالات|موظف|موظفين|مشروع|مشاريع|سرير|أسرة|اسرة)\b/i.test(value);
-}
-
-function detectLanguage(): 'en' | 'ar' {
-  const cv = document.querySelector<HTMLElement>('.cv-sheet');
-  if (cv?.getAttribute('dir') === 'rtl') return 'ar';
-  if (document.documentElement.getAttribute('dir') === 'rtl') return 'ar';
-  return 'en';
-}
-
-function scanChecks(): Check[] {
-  const fullName = fieldValue(/full name|الاسم الكامل|الاسم/i);
-  const email = anyControlByType('email') || fieldValue(/email|البريد/i);
-  const phone = anyControlByType('tel') || fieldValue(/phone|mobile|هاتف|موبايل|جوال/i);
-  const summary = fieldValue(/professional summary|summary|profile|نبذة|ملخص/i) || anyTextArea(80);
-  const experience = fieldValue(/job title|position|company|employer|experience|المسمى|الوظيفة|الشركة|جهة العمل|الخبرة/i);
-  const education = fieldValue(/education|degree|university|school|التعليم|المؤهل|الجامعة|الكلية/i);
-  const skills = fieldValue(/skills|مهارات/i);
-  const skillValues = valuesFor(/skills|competenc|مهارات|كفاءات/i).join('\n');
-  const experienceValues = valuesFor(/experience|job title|position|company|employer|responsibilit|achievement|الخبرة|المسمى|الوظيفة|الشركة|المسؤوليات|الإنجازات|الانجازات/i).join('\n');
-  const emailValid = email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-
+/**
+ * Pure, read-only CV quality guide, not an ATS vendor score.
+ * Uses the current Builder's authoritative data object instead of DOM labels.
+ * No factual content is inferred, created or saved by this function.
+ */
+export function evaluateCvQuality(input: unknown): Check[] {
+  const data = record(input);
+  const contact = record(data.contact);
+  const person = record(data.personal);
+  const name = firstValue(data, ['fullName', 'name']) ||
+    firstValue(person, ['fullName', 'name']) ||
+    [firstValue(data, ['firstName']), firstValue(data, ['lastName'])].filter(Boolean).join(' ');
+  const email = firstValue(data, ['email']) || firstValue(contact, ['email']) || firstValue(person, ['email']);
+  const phone = firstValue(data, ['phone', 'mobile']) ||
+    firstValue(contact, ['phone', 'mobile']) || firstValue(person, ['phone', 'mobile']);
+  const summary = firstValue(data, ['profile', 'summary', 'personalSummary']);
+  const skillsValue = data.skills;
+  const work = sectionRows(data.experience);
+  const workText = sectionText(data.experience, ['details', 'description', 'responsibilities', 'achievements', 'text']);
+  const education = sectionText(data.education, ['degree', 'institution', 'school', 'university', 'qualification', 'text']);
+  const workPresent = work.some((item) =>
+    !!firstValue(item, ['role', 'title', 'position', 'jobTitle', 'company', 'employer', 'details', 'description', 'text'])
+  );
+  const hasSkills = countUniqueItems(skillsValue) > 0;
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
   return [
-    { id: 'name', labelEn: 'Full name', labelAr: 'الاسم الكامل', weight: 10, passed: fullName.length >= 2 },
-    { id: 'contact', labelEn: 'Contact details', labelAr: 'بيانات التواصل', weight: 10, passed: email.length >= 5 || phone.length >= 6 },
+    { id: 'name', labelEn: 'Full name', labelAr: 'الاسم الكامل', weight: 10, passed: name.length >= 2 },
+    { id: 'contact', labelEn: 'Contact details', labelAr: 'بيانات التواصل', weight: 10, passed: !!(emailValid || phone.length >= 6) },
     { id: 'summary', labelEn: 'Professional summary', labelAr: 'الملخص المهني', weight: 10, passed: summary.length >= 60 },
-    { id: 'experience', labelEn: 'Work experience', labelAr: 'الخبرة العملية', weight: 10, passed: experience.length >= 2 },
+    { id: 'experience', labelEn: 'Work experience', labelAr: 'الخبرة العملية', weight: 10, passed: workPresent },
     { id: 'education', labelEn: 'Education', labelAr: 'التعليم', weight: 10, passed: education.length >= 2 },
-    { id: 'skills', labelEn: 'Skills', labelAr: 'المهارات', weight: 10, passed: skills.length >= 2 },
+    { id: 'skills', labelEn: 'Skills', labelAr: 'المهارات', weight: 10, passed: hasSkills },
     { id: 'email-quality', labelEn: 'Valid professional email', labelAr: 'بريد إلكتروني صحيح', weight: 8, passed: emailValid },
     { id: 'summary-focus', labelEn: 'Focused summary (60–350 chars)', labelAr: 'ملخص مركز (60–350 حرف)', weight: 8, passed: summary.length >= 60 && summary.length <= 350 },
-    { id: 'skills-depth', labelEn: '5+ relevant skills', labelAr: '5 مهارات مناسبة أو أكثر', weight: 8, passed: countItems(skillValues) >= 5 },
-    { id: 'action-language', labelEn: 'Action-oriented experience wording', labelAr: 'صياغة خبرة بأفعال قوية', weight: 8, passed: experienceValues.length >= 20 && hasActionLanguage(experienceValues) },
-    { id: 'impact', labelEn: 'Measurable impact when available', labelAr: 'أثر قابل للقياس عند توفره', weight: 8, passed: hasMeasuredImpact(experienceValues) },
+    { id: 'skills-depth', labelEn: '5+ relevant skills', labelAr: '5 مهارات مناسبة أو أكثر', weight: 8, passed: countUniqueItems(skillsValue) >= 5 },
+    { id: 'action-language', labelEn: 'Action-oriented experience wording', labelAr: 'صياغة خبرة بأفعال قوية', weight: 8, passed: workText.length >= 20 && hasActionLanguage(workText) },
+    { id: 'impact', labelEn: 'Measurable impact when available', labelAr: 'أثر قابل للقياس عند توفره', weight: 8, passed: hasMeasuredImpact(workText) },
   ];
 }
 
-export default function CvReadinessCheck() {
-  const [enabled, setEnabled] = useState(false);
+const qualityAdvice: Record<string, { en: string; ar: string }> = {
+  name: { en: 'Add the name you want employers to see.', ar: 'أضف الاسم الذي تريد ظهوره لأصحاب العمل.' },
+  contact: { en: 'Add a working phone number or valid email.', ar: 'أضف رقم هاتف صحيحًا أو بريدًا إلكترونيًا صالحًا.' },
+  summary: { en: 'Write a concise factual summary of your work and strengths.', ar: 'اكتب ملخصًا موجزًا وصحيحًا عن خبراتك ونقاط قوتك.' },
+  experience: { en: 'Add a real role, employer, and relevant work details.', ar: 'أضف وظيفة حقيقية وجهة العمل والمهام ذات الصلة.' },
+  education: { en: 'Add your qualification and institution.', ar: 'أضف مؤهلك الدراسي والجهة التعليمية.' },
+  skills: { en: 'Add skills you can genuinely demonstrate.', ar: 'أضف مهارات تمتلكها بالفعل ويمكنك إثباتها.' },
+  'email-quality': { en: 'Check the spelling and format of your email address.', ar: 'راجع كتابة البريد الإلكتروني وتنسيقه.' },
+  'summary-focus': { en: 'Aim for 60–350 characters with specific, truthful wording.', ar: 'اجعل الملخص بين 60 و350 حرفًا بصياغة محددة وصادقة.' },
+  'skills-depth': { en: 'Add up to five or more distinct, relevant skills you possess.', ar: 'اذكر خمس مهارات مختلفة أو أكثر إذا كنت تمتلكها.' },
+  'action-language': { en: 'Explain what you actually did using clear action verbs.', ar: 'اشرح ما قمت به بالفعل باستخدام أفعال واضحة.' },
+  impact: { en: 'If you have verified outcomes, describe them. Never invent numbers.', ar: 'إذا كان لديك نتائج موثقة فاذكرها، ولا تختلق أي أرقام.' },
+};
+
+export default function CvReadinessCheck({ data, language: requestedLanguage }: { data: unknown; language: string }) {
   const [open, setOpen] = useState(false);
-  const [language, setLanguage] = useState<'en' | 'ar'>('en');
-  const [checks, setChecks] = useState<Check[]>([]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onBuilder = window.location.pathname.includes('/builder');
-    setEnabled(onBuilder);
-    if (!onBuilder) return;
-
-    const scan = () => {
-      setLanguage(detectLanguage());
-      setChecks(scanChecks());
-    };
-
-    // Let React finish handling the edited field before scanning controlled inputs.
-    // A capture-phase state update can restore the previous value before onChange.
-    let scanFrame = 0;
-    const scheduleScan = () => {
-      window.cancelAnimationFrame(scanFrame);
-      scanFrame = window.requestAnimationFrame(scan);
-    };
-
-    scan();
-    const timer = window.setInterval(scan, 700);
-    document.addEventListener('input', scheduleScan, true);
-    document.addEventListener('change', scheduleScan, true);
-
-    return () => {
-      window.clearInterval(timer);
-      window.cancelAnimationFrame(scanFrame);
-      document.removeEventListener('input', scheduleScan, true);
-      document.removeEventListener('change', scheduleScan, true);
-    };
-  }, []);
+  const language: 'en' | 'ar' = requestedLanguage === 'ar' ? 'ar' : 'en';
+  const checks = useMemo(() => evaluateCvQuality(data), [data]);
 
   const score = useMemo(
     () => checks.reduce((sum, item) => sum + (item.passed ? item.weight : 0), 0),
@@ -158,8 +135,6 @@ export default function CvReadinessCheck() {
       : score >= 55
         ? (language === 'ar' ? 'جيد ويحتاج بعض التحسين' : 'Good, with a few improvements')
         : (language === 'ar' ? 'يحتاج تحسين قبل الإرسال' : 'Needs improvement before sending');
-
-  if (!enabled) return null;
 
   return (
     <aside className="cv-readiness" dir={language === 'ar' ? 'rtl' : 'ltr'} aria-label={language === 'ar' ? 'مركز جودة السيرة الذاتية' : 'CV Quality Center'}>
@@ -197,7 +172,12 @@ export default function CvReadinessCheck() {
             {checks.map((item) => (
               <li key={item.id} className={item.passed ? 'is-complete' : ''}>
                 <span aria-hidden="true">{item.passed ? '✓' : '○'}</span>
-                <span>{language === 'ar' ? item.labelAr : item.labelEn}</span>
+                <span>
+                  {language === 'ar' ? item.labelAr : item.labelEn}
+                  {!item.passed && <small className="cv-readiness__advice">
+                    {language === 'ar' ? qualityAdvice[item.id]?.ar : qualityAdvice[item.id]?.en}
+                  </small>}
+                </span>
               </li>
             ))}
           </ul>

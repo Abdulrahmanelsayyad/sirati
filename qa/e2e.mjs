@@ -212,6 +212,12 @@ assert.equal(await onboardingTemplateSelect.inputValue(), 'compact-ats');
 assert((await page.locator('.cv-sheet').getAttribute('class')).includes('template-compact-ats'));
 log('Compact ATS selection survives template onboarding');
 
+const qualityImplementation = fs.readFileSync('components/CvReadinessCheck.tsx', 'utf8');
+assert(qualityImplementation.includes('evaluateCvQuality(data)'), 'Quality engine must evaluate Builder CV data');
+assert(!qualityImplementation.includes('document.querySelectorAll'), 'Quality must not scan editable DOM fields');
+assert(!qualityImplementation.includes('setInterval'), 'Quality must not poll the browser for field text');
+log('CV Quality checker V2 uses the authoritative CV data object, not DOM scraping');
+
 const anchoredQuality = page.locator('.wizard-preview-wrap .preview-stage > .cv-readiness');
 assert.equal(await anchoredQuality.count(), 1, 'CV Quality must be mounted in the CV preview panel');
 assert.equal(await page.locator('body > .cv-readiness').count(), 0, 'old floating CV Quality must be absent');
@@ -496,6 +502,12 @@ const readinessScoreAfterName = Number((await page.locator('.cv-readiness__trigg
 assert(readinessScoreAfterName >= 10, 'CV Quality Center did not recognize completed name');
 assert.equal(await inlineProgress.getAttribute('aria-valuenow'), String(readinessScoreAfterName), 'anchored progress must match quality score');
 log('CV Quality Center score reacts to Builder input');
+await page.getByRole('button', { name: 'Continue →' }).click();
+await page.waitForTimeout(400);
+const qualityAfterStepSwitch = Number((await page.locator('.cv-readiness__trigger strong').innerText()).replace('%', ''));
+assert.equal(qualityAfterStepSwitch, readinessScoreAfterName, 'Quality score changed merely because the active wizard step changed');
+await page.getByRole('button', { name: '← Back' }).click();
+log('CV Quality score remains stable between wizard steps when the CV data is unchanged');
 await page.reload({ waitUntil: 'networkidle' });
 assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
 assert.equal(await page.locator('.job-tailor').count(), 0);
