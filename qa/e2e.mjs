@@ -395,7 +395,7 @@ await page.evaluate(() => {
     return original.apply(this, args);
   };
 });
-await field('Professional title').fill('Emergency Nurse');
+await page.locator('.field').filter({ hasText: 'Professional title' }).locator('input').first().fill('Emergency Nurse');
 log('Professional Title entered once in profile section');
 const continueButton = page.getByRole('button', { name: /Continue/ }).last();
 await continueButton.click();
