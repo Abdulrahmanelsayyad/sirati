@@ -54,6 +54,11 @@ source = (source[:match.end()] +
 source = one(source,
     "['modern', 'classic', 'executive-ats'].includes(id)",
     "['modern', 'classic', 'executive-ats', 'executive-letterhead'].includes(id)")
+# Make the original Executive Letterhead one of eight immediately visible featured templates.
+# Executive ATS remains fully available in the searchable 33-template catalogue.
+source = one(source,
+    "'modern','classic','compact','compact-ats','healthcare-pro','executive-ats','profile-sidebar','gold-sidebar'",
+    "'modern','classic','compact','compact-ats','healthcare-pro','executive-letterhead','profile-sidebar','gold-sidebar'")
 source = source.replace('32 قالبًا', '33 قالبًا')
 source = source.replace('32 templates', '33 templates')
 source = source.replace('الـ32', 'الـ33')
