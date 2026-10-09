@@ -172,3 +172,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("career_description
 
 # Add opt-in role-based Personal Summary templates after the description helper.
 subprocess.run([sys.executable, str(Path(__file__).with_name("personal_summary_picker.py")), str(root)], check=True)
+
+# Polish the builder navigation without changing save/auth/payment behavior.
+subprocess.run([sys.executable, str(Path(__file__).with_name("builder_toolbar_upgrade.py")), str(root)], check=True)
