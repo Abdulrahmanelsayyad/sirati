@@ -781,30 +781,22 @@ for (let step = 0; step < 8; step++) {
   await next.click();
   await page.waitForTimeout(50);
 }
-const paymentCard = page.locator('.manual-payment-card');
-assert.equal(await paymentCard.count(), 1, 'clean-PDF payment card missing');
-const paymentCopy = (await paymentCard.innerText()).replace(/\s+/g, ' ');
-for (const phrase of [
-  'Clean PDF · EGP 50',
-  'Get payment details from Sirati Support',
-  'Pay EGP 50 by InstaPay or Vodafone Cash',
-  'Payment transaction reference',
-  'Submit payment reference'
-]) {
-  assert(paymentCopy.includes(phrase), 'missing payment guidance: ' + phrase);
-}
-const supportLink = paymentCard.getByRole('link', { name: /Get payment details from Sirati Support/ });
-const supportHref = await supportLink.getAttribute('href');
-assert(supportHref && supportHref !== '#', 'payment support link must have a real fallback');
-assert(supportHref.startsWith('mailto:') || supportHref.startsWith('http'), 'unexpected payment support link: ' + supportHref);
-log('clean PDF payment flow clarity and support fallback');
+const freeNotice = page.locator('.free-pdf-notice');
+assert.equal(await freeNotice.count(), 1, 'free export guidance must be displayed');
+assert((await freeNotice.innerText()).includes('Everything in Sirati is free'), 'free promise must be explicit');
+assert.equal(await page.locator('.manual-payment-card').count(), 0, 'payment form must be absent');
+assert.equal(await page.locator('.cv-watermark').count(), 0, 'free CV must not be watermarked');
+assert.equal(await page.getByRole('button', {name:'Print / Save free PDF'}).count(), 1,
+  'free PDF export must be available without an order');
+assert(!(await page.locator('body').innerText()).includes('EGP 50'), 'legacy fee must not appear in Builder');
+log('free CV/clean PDF is available without payments or approval');
 
 await page.setViewportSize({ width: 390, height: 844 });
 overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-assert(overflow <= 2, 'payment review mobile horizontal overflow=' + overflow);
-const paymentCardWidth = await paymentCard.evaluate((el) => Math.round(el.getBoundingClientRect().width));
-assert(paymentCardWidth <= 390, 'payment card exceeds mobile viewport: ' + paymentCardWidth);
-log('clean PDF payment card mobile layout');
+assert(overflow <= 2, 'free review mobile horizontal overflow=' + overflow);
+const freeNoticeWidth = await freeNotice.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+assert(freeNoticeWidth <= 390, 'free notice exceeds mobile viewport: ' + freeNoticeWidth);
+log('free PDF review guidance fits 390px mobile');
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
@@ -1183,15 +1175,12 @@ log('Auto-Advance remains absent on 390px mobile and section does not change on 
 await page.setViewportSize({width:1440,height:1000});
 
 await page.locator('.cv-substep').last().click();
-assert((await currentStep()).includes('Section 9 of 9'), 'review/payment remains manually reachable');
-const paymentInput = page.locator('.manual-payment-card input').first();
-if (await paymentInput.count()) {
-  await paymentInput.fill('QA_TEST_ONLY');
-  await paymentInput.blur();
-  await page.waitForTimeout(700);
-}
-assert((await currentStep()).includes('Section 9 of 9'), 'payment/review must never automatically submit or navigate');
-log('Review/payment remains manual and unchanged');
+assert((await currentStep()).includes('Section 9 of 9'), 'free review remains manually reachable');
+assert.equal(await page.locator('.manual-payment-card').count(), 0, 'paid request must remain absent');
+assert.equal(await page.getByRole('button', {name:'Print / Save free PDF'}).count(), 1,
+  'free PDF must be available on review step');
+assert((await currentStep()).includes('Section 9 of 9'), 'free review must not automatically submit or navigate');
+log('Free PDF review remains manually accessible');
     
 await browser.close();
 console.log('E2E QA COMPLETE');

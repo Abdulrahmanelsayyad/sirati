@@ -186,3 +186,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("executive_letterhe
 
 # Add opt-in role-based skill and achievement prompts; reuse existing Experience Pro for duties.
 subprocess.run([sys.executable, str(Path(__file__).with_name("smart_content_suggestions.py")), str(root)], check=True)
+
+# Owner-approved all-free offering: applied after every Builder and homepage patch.
+# Does not alter legacy payment data, RLS, auth, or historic entitlement records.
+subprocess.run([sys.executable, str(Path(__file__).with_name("free_access_v1.py")), str(root)], check=True)
