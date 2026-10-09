@@ -26,6 +26,15 @@ BEGIN
 END;
 $preflight$;
 
+-- Server-issued opaque revision, changed even by stale writes or forged tokens.
+ALTER TABLE public.cv_documents ADD COLUMN revision uuid NOT NULL
+  DEFAULT gen_random_uuid();
+ALTER TABLE public.pdf_orders ADD COLUMN expected_revision uuid;
+-- Legacy orders deliberately remain NULL/unbound. One active entitlement per revision.
+CREATE UNIQUE INDEX sirati_pdf_order_active_revision
+  ON public.pdf_orders (document_id, expected_revision)
+  WHERE expected_revision IS NOT NULL AND status IN ('pending', 'approved');
+
 -- Separate non-exposed schema: do NOT expose this schema in Supabase Data API.
 -- CREATE (without IF NOT EXISTS) intentionally aborts on a conflicting schema.
 CREATE SCHEMA sirati_private;
@@ -39,6 +48,7 @@ CREATE TABLE sirati_private.pdf_order_snapshots (
     REFERENCES public.pdf_orders (id) ON DELETE CASCADE,
   owner_user_id uuid NOT NULL,
   source_document_id uuid NOT NULL,
+  source_revision uuid NOT NULL,
   snapshot_data jsonb NOT NULL,
   snapshot_template text NOT NULL,
   snapshot_language text NOT NULL,
@@ -54,6 +64,53 @@ REVOKE ALL ON TABLE sirati_private.pdf_order_snapshots
 -- Trusted server may only read snapshots after independently verifying user/order.
 GRANT SELECT ON TABLE sirati_private.pdf_order_snapshots TO service_role;
 -- No PUBLIC/authenticated RLS policy: customers cannot read or modify snapshots.
+
+-- Invoker trigger always overwrites any client-supplied revision.
+CREATE FUNCTION sirati_private.advance_cv_revision()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $revision$
+BEGIN
+  NEW.revision := pg_catalog.gen_random_uuid();
+  RETURN NEW;
+END;
+$revision$;
+REVOKE ALL ON FUNCTION sirati_private.advance_cv_revision()
+  FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER sirati_cv_revision_before_write
+BEFORE INSERT OR UPDATE ON public.cv_documents
+FOR EACH ROW EXECUTE FUNCTION sirati_private.advance_cv_revision();
+
+-- Trusted reviewers may change status, never move an order to another revision/owner.
+CREATE FUNCTION sirati_private.protect_pdf_order_binding()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $binding$
+BEGIN
+  IF ROW(NEW.id, NEW.user_id, NEW.document_id, NEW.expected_revision)
+     IS DISTINCT FROM ROW(OLD.id, OLD.user_id, OLD.document_id, OLD.expected_revision) THEN
+    RAISE EXCEPTION 'Paid PDF order revision binding is immutable' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$binding$;
+REVOKE ALL ON FUNCTION sirati_private.protect_pdf_order_binding()
+  FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER sirati_pdf_order_binding_before_update
+BEFORE UPDATE ON public.pdf_orders
+FOR EACH ROW EXECUTE FUNCTION sirati_private.protect_pdf_order_binding();
+
+-- Defense in depth: approval cannot rewrite even a privileged server's snapshot.
+CREATE FUNCTION sirati_private.reject_snapshot_update()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $immutable$
+BEGIN
+  RAISE EXCEPTION 'Paid PDF snapshot is immutable' USING ERRCODE = '23514';
+END;
+$immutable$;
+REVOKE ALL ON FUNCTION sirati_private.reject_snapshot_update()
+  FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER sirati_snapshot_no_update
+BEFORE UPDATE ON sirati_private.pdf_order_snapshots
+FOR EACH ROW EXECUTE FUNCTION sirati_private.reject_snapshot_update();
 
 -- Trigger runs inside the original order INSERT transaction.
 -- Caller cannot supply snapshot content, approved status, or a version ID.
@@ -100,12 +157,20 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  -- PT409 is PostgREST's explicit HTTP 409 custom SQLSTATE. Raising aborts
+  -- the INSERT and all its effects, including the AFTER trigger snapshot.
+  IF NEW.expected_revision IS NULL OR
+     NEW.expected_revision IS DISTINCT FROM v_document.revision THEN
+    RAISE EXCEPTION 'CV revision conflict: review and save the current CV before retrying'
+      USING ERRCODE = 'PT409';
+  END IF;
+
   INSERT INTO sirati_private.pdf_order_snapshots (
-    order_id, owner_user_id, source_document_id,
+    order_id, owner_user_id, source_document_id, source_revision,
     snapshot_data, snapshot_template, snapshot_language,
     source_updated_at
   ) VALUES (
-    NEW.id, NEW.user_id, NEW.document_id,
+    NEW.id, NEW.user_id, NEW.document_id, v_document.revision,
     v_document.data, v_document.template, v_document.language,
     v_document.updated_at
   );
@@ -124,3 +189,4 @@ EXECUTE FUNCTION sirati_private.capture_pdf_order_snapshot();
 
 -- No UPDATE/DELETE on historical orders, no data backfill, no UI deployment.
 COMMIT;
+

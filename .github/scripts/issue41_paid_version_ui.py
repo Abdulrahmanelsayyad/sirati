@@ -136,8 +136,9 @@ builder = replace_between(
 
       // CRITICAL: save both NEW and EXISTING CVs before a pending paid order.
       // queueCloudSave serializes with any autosave already in flight.
-      const id = await saveToAccount(false);
-      if (!id) {
+      let expectedRevision: string | null = null;
+      const id = await saveToAccount(false, revision => { expectedRevision = revision; });
+      if (!id || !expectedRevision) {
         setOrderMessage('Could not save the CV. No payment order was created.');
         return;
       }
@@ -168,10 +169,14 @@ builder = replace_between(
         .insert({
           user_id: activeUserId, document_id: id, amount_egp: 50,
           payment_method: paymentMethod, payment_reference: paymentReference.trim(),
-          status: 'pending'
+          status: 'pending', expected_revision: expectedRevision
         });
       if (error) {
-        setOrderMessage(error.message);
+        setOrderMessage(error.code === 'PT409'
+          ? '409 Conflict: this CV changed in another tab or device. Review and save it again; no order was created.'
+          : error.code === '23505'
+            ? '409 Conflict: an order already exists for this revision. Check your order history; no duplicate order was created.'
+            : error.message);
         return;
       }
       setPdfOrderStatus('pending');
@@ -204,14 +209,35 @@ builder = replace_once(
           .from('cv_documents')
           .update({ title: documentTitle(data), data, template, language })
           .eq('id', id)
-          .select('id')
+          .select('id,revision')
           .single()
       );
       if (error || !saved) {
         setCloudStatus(`Cloud save failed: ${error?.message || 'Document not found'}`);
         return null;
-      }""",
+      }
+      captureRevision?.(saved.revision as string);""",
     "awaited existing CV update",
+)
+
+# Obtain the revision from the very same INSERT/UPDATE response, never a later SELECT.
+builder = replace_once(
+    builder,
+    "  async function saveToAccount(createVersion = true) {",
+    "  async function saveToAccount(createVersion = true, captureRevision?: (revision: string) => void) {",
+    "capture exact persistence revision",
+)
+builder = replace_once(
+    builder,
+    "        .select('id')\n        .single();",
+    "        .select('id,revision')\n        .single();",
+    "new CV returns server revision",
+)
+builder = replace_once(
+    builder,
+    "      id = created.id as string;",
+    "      captureRevision?.(created.revision as string);\n      id = created.id as string;",
+    "new CV passes exact revision to requester",
 )
 
 # Hide no payment history: old approved payments NEVER unlock mutable preview.
@@ -370,3 +396,4 @@ documents = replace_once(
 builder_path.write_text(builder, encoding="utf-8")
 documents_path.write_text(documents, encoding="utf-8")
 print("PASS Issue #41: serialized save-before-order, fixed-version order history, watermarked preview, explicit paid-delete warning")
+

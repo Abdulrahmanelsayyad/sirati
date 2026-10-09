@@ -18,13 +18,13 @@ def require(expression: bool, label: str) -> None:
 
 
 start = builder.index("  async function requestCleanPdf() {")
-end = builder.index("  async function saveToAccount(createVersion = true) {", start)
+end = builder.index("  async function saveToAccount(createVersion = true, captureRevision?: (revision: string) => void) {", start)
 request = builder[start:end]
 
-require(request.count("await saveToAccount(false)") == 1,
+require(request.count("await saveToAccount(false, revision => { expectedRevision = revision; })") == 1,
         "EVERY order requires awaited persisted CV save")
-require("if (!id)" in request and request.index("await saveToAccount(false)") <
-        request.index("if (!id)") < request.index(".from('pdf_orders')"),
+require("if (!id || !expectedRevision)" in request and request.index("await saveToAccount(false, revision => { expectedRevision = revision; })") <
+        request.index("if (!id || !expectedRevision)") < request.index(".from('pdf_orders')"),
         "payment order blocked on save failure")
 require("if (!documentId)" not in request,
         "existing CV is saved before order too")
@@ -34,12 +34,12 @@ require(request.index("latestDraftFingerprintRef.current !== draftAtStart") <
 require("paymentSubmittingRef.current = true" in request and
         "paymentSubmittingRef.current = false" in request,
         "payment guard set and released in finally")
-require(request.index(".from('pdf_orders')") > request.index("await saveToAccount(false)"),
+require(request.index(".from('pdf_orders')") > request.index("await saveToAccount(false, revision => { expectedRevision = revision; })"),
         "pending order inserted after save only")
 require("queueCloudSave(async () =>" in builder and
         "const { data: saved, error } = await queueCloudSave" in builder,
         "autosave and explicit save share a serialization queue")
-require(".select('id')\n          .single()" in builder,
+require(".select('id,revision')\n          .single()" in builder,
         "existing CV save confirms a row was really persisted")
 
 require(".select('id,status,requested_at,amount_egp')" in builder and
@@ -62,3 +62,10 @@ require("if (!window.confirm(warning)) return;" in docs and
 require("disabled={deletingId !== null}" in docs,
         "document Delete button disabled during deletion")
 print("PASS Issue #41: prepared Builder and Documents source guard checks")
+
+
+require("expected_revision: expectedRevision" in request and "error.code === 'PT409'" in request,
+        "order carries exact save revision and shows conflict without retry")
+require("captureRevision?.(created.revision as string)" in builder and
+        "captureRevision?.(saved.revision as string)" in builder,
+        "new and existing saves capture returned server revision")

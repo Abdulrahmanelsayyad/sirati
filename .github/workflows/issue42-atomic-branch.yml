@@ -1,0 +1,33 @@
+# Isolated PostgreSQL unit fixture only; no Supabase, migrations or deployment.
+name: Issue 42 atomic revision tests
+on:
+  push:
+    branches: [feat/issue-41-synthetic-server-pdf-poc]
+    paths:
+      - .github/workflows/issue42-atomic-branch.yml
+      - qa/issue42_atomic_revision_test.py
+      - supabase/migrations/20261009100000_freeze_pdf_order_snapshot.sql
+permissions:
+  contents: read
+jobs:
+  atomic-revision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: synthetic-fixture-only
+          POSTGRES_DB: sirati_atomic_fixture
+        ports: [5432:5432]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test exact trigger definitions in disposable local PostgreSQL
+        env:
+          PGPASSWORD: synthetic-fixture-only
+        run: python3 qa/issue42_atomic_revision_test.py
