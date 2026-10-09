@@ -226,3 +226,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('ux_cv_editor_forms
 
 # Keep Career Tools text per tab/language during this open session (in memory only).
 subprocess.run([sys.executable, str(Path(__file__).with_name('career_draft_preservation_ux.py')), str(root)], check=True)
+
+# Privacy guard runs last, after all generated components have been finalized.
+subprocess.run([sys.executable, str(Path(__file__).with_name('privacy_draft_signout.py')), str(root)], check=True)
