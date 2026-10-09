@@ -854,90 +854,68 @@ assert(goldMobile.overflow<=2,'Gold Sidebar must not overflow narrow screen');
 await page.locator('.cv-sheet.template-gold-sidebar').screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-mobile.png'});
 log('Gold Sidebar narrow mobile render preserves portrait alignment and page width');
 
-// Auto-advance must be safe: do not skip incomplete forms or mutate a saved CV,
-// and never submit anything from the review/payment section.
+// Regression: Auto-Advance has been removed at the customer's request.
+// Completing a field must never click Next. Manual Continue/Back must still work.
 await page.goto(base + '/builder/?template=modern&language=en', {waitUntil:'networkidle'});
 await page.locator('.cv-substep').first().click();
-const autoAdvanceToggle = page.getByRole('checkbox', {name:'Auto-advance completed CV sections'});
-await autoAdvanceToggle.waitFor();
-assert(await autoAdvanceToggle.isChecked(), 'existing auto-advance defaults to enabled');
-const mobilePreferenceBounds = await autoAdvanceToggle.evaluate(input => {
-  const host = input.closest('.wizard-progress-block');
-  return {inline:Boolean(host),visible:input.getClientRects().length > 0};
-});
-assert(mobilePreferenceBounds.inline && mobilePreferenceBounds.visible, 'auto-advance control must live inside the Builder progress, not float');
+assert.equal(await page.locator('.sirati-auto-advance-control').count(), 0, 'removed Auto-Advance UI must not render');
+assert.equal(await page.getByRole('checkbox', {name:'Auto-advance completed CV sections'}).count(), 0, 'old toggle must be removed');
 const currentStep = () => page.locator('.wizard-progress-meta > span').first().textContent();
 const field = (label) => page.locator('.wizard-section-card .field')
   .filter({has:page.locator('label', {hasText:label})}).locator('input,textarea').first();
-await field('Full name').fill('Auto Advance QA');
+await field('Full name').fill('Manual Navigation QA');
 await field('Professional title').fill('Registered Nurse');
 await field('Email').fill('not-an-email');
 await field('Phone').fill('');
 await field('LinkedIn / professional link').fill('https://example.com/profile');
 await field('City & country').fill('Cairo, Egypt');
-await field('LinkedIn / professional link').focus();
 await field('LinkedIn / professional link').blur();
-await page.waitForTimeout(650);
-assert((await currentStep())?.includes('Section 1 of 9'), 'invalid email must block auto-advance');
+await page.waitForTimeout(700);
+assert((await currentStep()).includes('Section 1 of 9'), 'invalid data must not change the CV step');
 await field('Email').fill('qa@example.com');
-await autoAdvanceToggle.uncheck(); // A customer's explicit opt-out is respected.
-await field('LinkedIn / professional link').fill('https://example.com/disabled');
-await field('LinkedIn / professional link').blur();
-await page.waitForTimeout(650);
-assert((await currentStep()).includes('Section 1 of 9'), 'opt-out must block automatic advancement after valid completion');
-await page.reload({waitUntil:'networkidle'});
-assert(!(await autoAdvanceToggle.isChecked()), 'opt-out should survive tab reload via sessionStorage');
-assert((await currentStep()).includes('Section 1 of 9'), 'restored draft must not jump steps when auto-advance is disabled');
-await autoAdvanceToggle.check();
-log('Auto-advance opt-out is accessible, prevents navigation and survives reload');
-// This is a new, intentional edit of the terminal field, not a mere focus/blur.
 await field('LinkedIn / professional link').fill('https://example.com/profile-updated');
 await field('LinkedIn / professional link').blur();
-await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 2 of 9'));
-log('Auto advance: personal info only after valid completion; invalid email stays on current step');
+await page.waitForTimeout(850);
+assert((await currentStep()).includes('Section 1 of 9'), 'completed form and blur must not auto-advance anymore');
+log('Auto-Advance removed: completed personal information does not advance without Continue');
 
+await page.locator('.wizard-footer-nav button').filter({hasText:/Continue|Next step/i}).first().click();
+await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 2 of 9'));
 const profileEditor = page.locator('.wizard-section-card textarea').first();
-await profileEditor.fill('');
+await profileEditor.fill('Emergency nursing professional focused on timely assessment, communication and patient safety.');
 await profileEditor.blur();
-await page.waitForTimeout(650);
-assert((await currentStep()).includes('Section 2 of 9'), 'empty profile must never auto-advance');
-await profileEditor.fill('Emergency nursing professional with hands-on triage experience and patient safety practice.');
-await profileEditor.blur();
+await page.waitForTimeout(850);
+assert((await currentStep()).includes('Section 2 of 9'), 'completed summary must remain in the same section without Continue');
+await page.locator('.wizard-footer-nav button').filter({hasText:/Continue|Next step/i}).first().click();
 await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 3 of 9'));
-log('Auto advance: valid professional profile reaches Experience without pressing Continue');
 await page.getByRole('button', {name:'← Back'}).click();
-assert((await currentStep()).includes('Section 2 of 9'), 'manual Back must stay functional after auto advance');
-// Cancellation: a new pointer/focus action must invalidate the delayed auto-next.
-await profileEditor.fill('Professional triage care with documented communication, prioritization and reassessment.');
+assert((await currentStep()).includes('Section 2 of 9'), 'manual Back must remain available');
+log('Manual Continue and Back still change steps; completion alone does not');
+
+await page.setViewportSize({width:390,height:844});
+// Mobile focus mode deliberately hides the desktop wizard footer; check the
+// actual regression (no surprise step transition) rather than that hidden element.
+assert.equal(await page.locator('.sirati-auto-advance-control').count(), 0, 'Auto-Advance toggle must remain removed on mobile');
+await profileEditor.fill('A completed summary can be reviewed manually on mobile without moving to a different CV section.');
 await profileEditor.blur();
-await autoAdvanceToggle.focus();
-await page.waitForTimeout(650);
-assert((await currentStep()).includes('Section 2 of 9'), 'refocusing navigation preference must cancel stale auto-advance');
-log('Auto-advance timer cancels after a new focus and Back still works');
-log('manual Back navigation remains functional');
-// Opt-out also remains usable on the 390px mobile layout.
-await page.setViewportSize({width:390, height:844});
-const autoToggleMobile = await autoAdvanceToggle.evaluate(el => {
-  const rect = el.closest('.sirati-auto-advance-control').getBoundingClientRect();
-  return {left:rect.left,right:rect.right,visible:el.getClientRects().length > 0,
-    overflow:document.documentElement.scrollWidth-window.innerWidth};
-});
-assert(autoToggleMobile.visible && autoToggleMobile.left >= -2 && autoToggleMobile.right <= 392 && autoToggleMobile.overflow <= 2,
-  'auto-advance opt-out must be reachable without horizontal scrolling at mobile width');
+await page.waitForTimeout(800);
+assert((await currentStep()).includes('Section 2 of 9'), 'mobile completed field must not auto-advance');
+const mobileFlowOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+assert(mobileFlowOverflow <= 2, 'mobile removal must not introduce horizontal overflow: ' + mobileFlowOverflow);
+log('Auto-Advance remains absent on 390px mobile and section does not change on blur');
 await page.setViewportSize({width:1440,height:1000});
-log('Auto-advance control remains accessible and inside mobile viewport');
 
 await page.locator('.cv-substep').last().click();
-assert((await currentStep()).includes('Section 9 of 9'), 'review section accessible manually');
+assert((await currentStep()).includes('Section 9 of 9'), 'review/payment remains manually reachable');
 const paymentInput = page.locator('.manual-payment-card input').first();
 if (await paymentInput.count()) {
   await paymentInput.fill('QA_TEST_ONLY');
   await paymentInput.blur();
-  await page.waitForTimeout(650);
+  await page.waitForTimeout(700);
 }
-assert((await currentStep()).includes('Section 9 of 9'), 'payment/review must never auto-progress');
-log('Review/payment remain explicitly controlled without automatic submission');
-
+assert((await currentStep()).includes('Section 9 of 9'), 'payment/review must never automatically submit or navigate');
+log('Review/payment remains manual and unchanged');
+    
 await browser.close();
 console.log('E2E QA COMPLETE');
 

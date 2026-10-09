@@ -109,7 +109,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("profile_sidebar_po
 subprocess.run([sys.executable, str(Path(__file__).with_name("gold_sidebar_template.py")), str(root)], check=True)
 
 subprocess.run([sys.executable, str(Path(__file__).with_name("cv_quality_preview_anchor.py")), str(root)], check=True)
-subprocess.run([sys.executable, str(Path(__file__).with_name("auto_scroll_flow.py")), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name("manual_navigation_scroll.py")), str(root)], check=True)
 
 print("Prepared Sirati for GitHub Pages.")
 
