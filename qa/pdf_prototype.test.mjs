@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import handler, { renderSyntheticCompactAtsPdf } from '../netlify/functions/pdf-prototype.mjs';
+import handler, { renderSyntheticCompactAtsPdf, renderCompactAtsSnapshotPdf } from '../netlify/functions/pdf-prototype.mjs';
 
 const staging = 'https://ykfxcxhozqqsvhtdyxho.supabase.co';
 const request = (payload = '{"synthetic":true}', method = 'POST') => new Request(
@@ -38,4 +38,53 @@ test('synthetic-only allowed under explicit staging flags', async () => {
   assert.equal(response.headers.get('content-type'), 'application/pdf');
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.ok((await response.arrayBuffer()).byteLength > 600);
+});
+
+
+const snapshot = {
+  order_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  source_revision: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  snapshot_template: 'compact-ats',
+  snapshot_language: 'en',
+  snapshot_data: {
+    fullName: 'FROZEN ALICE', title: 'Registered Nurse',
+    email: 'alice@example.invalid', profile: 'Triage and critical care.',
+    experience: [{ role: 'Emergency Nurse', company: 'Sample Hospital',
+      period: '2022-2026', details: 'Patient assessment and safe handoff.' }],
+    skills: 'BLS\nACLS',
+  },
+};
+
+test('new renderer produces content from the FROZEN order snapshot, not a demo CV', () => {
+  const pdf = renderCompactAtsSnapshotPdf(snapshot).toString('ascii');
+  assert.match(pdf, /^%PDF-1\.4/);
+  assert.match(pdf, /MediaBox \[0 0 595\.28 841\.89\]/);
+  assert.match(pdf, /\(FROZEN ALICE\)/);
+  assert.match(pdf, /Sample Hospital/);
+  assert.doesNotMatch(pdf, /JANE SAMPLE/);
+  const changedCurrentCv = { ...snapshot.snapshot_data, fullName: 'MUTABLE MALLORY' };
+  assert.notEqual(changedCurrentCv.fullName, snapshot.snapshot_data.fullName);
+  assert.deepEqual(renderCompactAtsSnapshotPdf(snapshot),
+    renderCompactAtsSnapshotPdf(snapshot), 'repeat download must remain deterministic');
+});
+
+test('renderer fails closed instead of silently corrupting Arabic, photos or other templates', () => {
+  for (const modification of [
+    { snapshot_language: 'ar' },
+    { snapshot_template: 'gold-sidebar' },
+    { snapshot_data: { ...snapshot.snapshot_data, fullName: 'علي' } },
+    { snapshot_data: { ...snapshot.snapshot_data, avatar: 'data:image/png;base64,xx' } },
+    { snapshot_data: { ...snapshot.snapshot_data, experience: 'invalid' } },
+  ]) assert.throws(() => renderCompactAtsSnapshotPdf({ ...snapshot, ...modification }));
+});
+
+test('PDF escaping and safe pagination for long immutable content', () => {
+  const long = { ...snapshot, snapshot_data: {
+    ...snapshot.snapshot_data,
+    profile: ('Handles (complex) \\ tasks safely. ').repeat(90),
+  }};
+  const pdf = renderCompactAtsSnapshotPdf(long).toString('ascii');
+  assert.match(pdf, /Handles \\(complex\\) \\\\ tasks safely/);
+  assert.match(pdf, /\/Count [2-8] /);
+  assert.match(pdf, /startxref\n\d+\n%%EOF/);
 });
