@@ -35,6 +35,7 @@ jobs:
           mkdir site-src
           unzip -q /tmp/sirati.zip -d site-src
           python .github/scripts/prepare_pages.py site-src/sirati-cv-source
+          python qa/print_isolation_fix.py site-src/sirati-cv-source
 
       - name: Install dependencies
         working-directory: site-src/sirati-cv-source
