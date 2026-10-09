@@ -1,4 +1,4 @@
-import './pdf_prototype.test.mjs'; // Shared serializer regression on the same branch SHA.
+import './pdf_prototype.test.mjs'; // Run auth guards and snapshot/A4 renderer tests on the exact same commit.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleAuthorizedPdfPrototype } from '../netlify/functions/pdf-auth-prototype.mjs';
