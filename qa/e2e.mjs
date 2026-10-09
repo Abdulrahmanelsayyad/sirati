@@ -667,8 +667,9 @@ assert((await jobInsight.innerText()).includes('SAP') && (await jobInsight.inner
 assert((await jobInsight.innerText()).includes('SQL') && (await jobInsight.innerText()).includes('Power BI'),
   'V6 should show requirements absent from user-entered facts');
 const atsDraft = await summaryPanel.locator('.sirati-summary-choice__text').first().innerText();
-assert(atsDraft.includes('User-listed skills relevant to the job ad: SAP, Excel'),
-  'V6 ATS draft must reference only supported, overlapping skill terms');
+assert(atsDraft.includes('User-listed skills relevant to the job ad:') &&
+       atsDraft.includes('SAP') && atsDraft.includes('Excel'),
+  'V6 ATS draft must reference only supported, overlapping skill terms regardless of display order');
 assert(!atsDraft.includes('SQL') && !atsDraft.includes('Power BI'),
   'V6 must not promote a job ad requirement into claimed experience');
 const editButtons = summaryPanel.locator('.sirati-summary-v6-edit-btn');
