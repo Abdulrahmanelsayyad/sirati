@@ -626,6 +626,16 @@ await page.evaluate(() => {
   skills.innerHTML = '<label>Skills</label><textarea id="qa-smart-skills"></textarea>';
   document.body.appendChild(skills);
 });
+console.log('SMART CONTENT MOUNT DIAGNOSTIC', JSON.stringify(await page.evaluate(() => ({
+  anyTrigger:document.querySelectorAll('.sirati-content-trigger').length,
+  syntheticField:!!document.getElementById('qa-smart-skills-field'),
+  skillsFields:[...document.querySelectorAll('.field')].filter(el=>/skills|مهارات/i.test(el.textContent||'')).slice(0,9).map(el=>({
+    id:el.id, label:el.querySelector('label')?.textContent?.trim().slice(0,70),
+    visible:!!el.getClientRects().length, html:el.outerHTML.slice(0,400)
+  })),
+  contentSlots:[...document.querySelectorAll('.sirati-content-slot')].map(el=>el.parentElement?.id || el.parentElement?.className),
+  renderedHtml:document.querySelector('.preview-stage')?.innerHTML.slice(0,160)
+}))));
 const smartContentTrigger = page.locator('#qa-smart-skills-field .sirati-content-trigger');
 await smartContentTrigger.waitFor();
 assert.equal(await page.locator('.sirati-content-panel').count(), 0, 'Smart Content must remain opt-in');
