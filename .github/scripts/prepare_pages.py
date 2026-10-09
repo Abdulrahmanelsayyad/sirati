@@ -183,3 +183,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("premium_minimal_v1
 subprocess.run([sys.executable, str(Path(__file__).with_name("template_library_v1.py")), str(root)], check=True)
 # One genuinely new document structure, built after the 32-style template library.
 subprocess.run([sys.executable, str(Path(__file__).with_name("executive_letterhead_template.py")), str(root)], check=True)
+
+# Add opt-in role-based skill and achievement prompts; reuse existing Experience Pro for duties.
+subprocess.run([sys.executable, str(Path(__file__).with_name("smart_content_suggestions.py")), str(root)], check=True)
