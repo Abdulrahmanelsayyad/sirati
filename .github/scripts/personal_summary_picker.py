@@ -104,8 +104,11 @@ export default function PersonalSummaryPicker() {
         }
         return;
       }
+      const titleOnCurrentStep = Array.from(document.querySelectorAll<HTMLInputElement>('.field input'))
+        .some(isProfessionalTitleInput);
       const currentTitle = visibleProfessionalTitle();
-      if (currentTitle && currentTitle !== titleRef.current) {
+      // Clear stale title when starting a new, empty CV in the same Builder.
+      if (titleOnCurrentStep && currentTitle !== titleRef.current) {
         titleRef.current = currentTitle;
         setRole(currentTitle);
       }
