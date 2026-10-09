@@ -281,6 +281,39 @@ const download = await downloadPromise;
 assert.equal(download.suggestedFilename(), 'sirati-letter-en.txt', 'text download should use clear filename');
 log('Cover Letter: only user facts, editable, downloadable, free');
 
+// User-visible bug regression: switching Career Studio tabs/languages must not erase edits.
+assert((await page.locator('.career-draft-memory-notice').innerText()).includes('before refreshing or leaving'),
+  'Career Studio must explain that in-memory drafts do not survive reload');
+await page.getByRole('button',{name:'LinkedIn profile'}).click();
+assert.equal(await generated.inputValue(),'',
+  'new LinkedIn draft slot must start empty instead of leaking Cover Letter content');
+await generated.fill('Edited LinkedIn summary for this tab only.');
+await page.getByRole('button',{name:'Interview prep'}).click();
+assert.equal(await generated.inputValue(),'',
+  'Interview drafts must not reuse LinkedIn content');
+await generated.fill('Interview practice draft written by the customer.');
+await page.getByRole('button',{name:'LinkedIn profile'}).click();
+assert.equal(await generated.inputValue(),'Edited LinkedIn summary for this tab only.',
+  'switching back to LinkedIn must restore its user-edited draft');
+await page.getByRole('button',{name:'Cover letter'}).click();
+assert.equal(await generated.inputValue(),'Manually edited letter',
+  'switching back to Cover Letter must restore its user-edited draft');
+await page.getByRole('button',{name:'Switch language'}).click();
+assert.equal(await generated.inputValue(),'',
+  'Arabic Cover Letter should have its own independent draft slot');
+await generated.fill('مسودة خطاب عربي خاصة بالمستخدم');
+await page.getByRole('button',{name:'Switch language'}).click();
+assert.equal(await generated.inputValue(),'Manually edited letter',
+  'English draft must survive Arabic language switch');
+await page.getByRole('button',{name:'Switch language'}).click();
+assert.equal(await generated.inputValue(),'مسودة خطاب عربي خاصة بالمستخدم',
+  'Arabic draft must survive English language switch');
+await page.getByRole('button',{name:'Switch language'}).click();
+assert.equal(await generated.inputValue(),'Manually edited letter',
+  'returning to English must not overwrite the previous letter');
+log('Career drafts preserved independently for Letter/LinkedIn/Interview and Arabic/English while page is open');
+
+
 // Letter Pro V2: styles change the structure, never supplied facts, and print only the letter.
 await page.locator('[data-field="letter-tone"]').selectOption('formal');
 await page.locator('[data-field="motivation"]').fill('I want to contribute to a patient safety focused team');
