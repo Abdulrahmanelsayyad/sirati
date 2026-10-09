@@ -53,14 +53,14 @@ assert.equal(await cards.count(), 8);
 log('eight template cards');
 
 const names = await cards.locator('strong').allTextContents();
-for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive ATS', 'Profile Sidebar', 'Gold Sidebar']) {
+for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive Letterhead', 'Profile Sidebar', 'Gold Sidebar']) {
   assert(names.includes(name), 'missing template ' + name);
 }
 log('all eight template names');
 
 // True finished-resume previews use the same CvPreview renderer as the Builder,
 // never six generic line-pattern illustrations or customer account data.
-const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar'];
+const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-letterhead', 'profile-sidebar', 'gold-sidebar'];
 assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 8);
 const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button => {
   const stage = button.querySelector('.template-real-preview__stage');
@@ -85,6 +85,14 @@ for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.watermark, 0, 'avoid watermark obscuring miniature');
 }
 log('all eight template cards render genuine sample CvPreview with distinct feature tags');
+assert.equal(await cards.filter({hasText:'Executive Letterhead'}).count(), 1,
+  'Executive Letterhead must appear in the featured eight');
+assert.equal(await cards.filter({hasText:'Executive ATS'}).count(), 0,
+  'Executive ATS should be in the full catalog, not the featured eight');
+assert.equal(await page.locator('.template-choice .cv-sheet.template-executive-letterhead').count(), 1,
+  'featured Executive Letterhead must use the real CvPreview component');
+log('Executive Letterhead appears immediately in the featured eight');
+
 
 const sidebarCard = page.locator('.template-choice').filter({ hasText: 'Profile Sidebar' });
 assert.equal(await sidebarCard.locator('.profile-sidebar-layout > .profile-sidebar-rail').count(), 1, 'new template must have a genuine sidebar');
@@ -183,6 +191,7 @@ const allVariantIds = await page.locator('.template-real-preview__stage').evalua
   nodes.map(node => node.getAttribute('data-demo-template'))
 );
 assert.equal(new Set(allVariantIds).size, 33, 'every gallery entry needs its own stable ID');
+assert(allVariantIds.includes('executive-ats'), 'Executive ATS must remain available in all 33 templates');
 for (const id of ['aurora-ats', 'ocean-profile', 'copper-timeline']) {
   assert(allVariantIds.includes(id), id + ' not found in library');
   assert.equal(await page.locator('.template-real-preview__stage[data-demo-template="' + id + '"] .cv-sheet.template-' + id).count(), 1, id + ' must use a genuine CvPreview');
