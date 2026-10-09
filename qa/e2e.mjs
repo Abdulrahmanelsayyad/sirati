@@ -8,6 +8,20 @@ assert(!fs.readFileSync('app/layout.tsx', 'utf8').includes('TargetJobTailor'), '
 assert(!fs.readFileSync('app/globals.css', 'utf8').includes('.job-tailor'), 'retired Job Match styles must not ship');
 console.log('PASS: retired Job Match absent from source, layout and CSS; Experience Pro preserved');
 
+// Account-discovery regression: logged-in My Documents view must expose Career Tools.
+// Do not fake authenticated access in this test; live session QA remains a separate gate.
+const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
+assert.equal((docsSource.match(/data-testid="career-tools-entry"/g) || []).length, 1,
+  'My Documents must have exactly one visible career tools entry');
+assert(docsSource.includes("withBasePath('/career-tools/')"),
+  'My Documents career tools link must use the GitHub Pages base path');
+assert(docsSource.includes('LinkedIn') && docsSource.includes('Cover Letter'),
+  'My Documents card must explain its professional tools');
+assert(fs.readFileSync('app/globals.css', 'utf8').includes('Sirati signed-in Career Tools entry'),
+  'responsive Career Tools shortcut styling missing');
+console.log('PASS: account landing has direct accessible bilingual Career Tools entry');
+
+
 const { chromium } = await import('playwright');
 
 
