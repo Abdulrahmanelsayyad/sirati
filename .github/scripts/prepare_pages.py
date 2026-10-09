@@ -175,3 +175,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("personal_summary_p
 
 # Polish the builder navigation without changing save/auth/payment behavior.
 subprocess.run([sys.executable, str(Path(__file__).with_name("builder_toolbar_upgrade.py")), str(root)], check=True)
+
+# Keep visual upgrades last: override inherited design styles, never business logic.
+subprocess.run([sys.executable, str(Path(__file__).with_name("premium_minimal_v1.py")), str(root)], check=True)
