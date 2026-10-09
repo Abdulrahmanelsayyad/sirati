@@ -189,15 +189,41 @@ if focus_marker not in css:
   body:has(.wizard-builder-page) .builder-guide {
     display: none;
   }
-  /* The footer must NEVER disappear while typing. Mobile users need manual
-     Continue/Back in every Builder section now that Auto-Advance is retired.
-     Switch from the sticky layout to normal document flow while an input is
-     focused: the buttons remain discoverable without covering the keyboard. */
-  body:has(.wizard-builder-page :is(input, textarea, select):focus) .wizard-footer-nav {
+  /* Compact manual navigation on the PHYSICAL RIGHT edge of the form.
+     Never float/stick over editable content or the on-screen keyboard:
+     deliberate Continue/Back taps only (Auto-Advance is retired). */
+  .wizard-builder-page .wizard-footer-nav {
     position: static;
     inset: auto;
-    bottom: auto;
-    margin-top: 12px;
+    transform: none;
+    box-sizing: border-box;
+    width: min(236px, 100%);
+    max-width: 100%;
+    min-width: 0;
+    margin: 18px 0 0 auto;
+    justify-self: end;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 4px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: none;
+    direction: ltr;
+  }
+  .wizard-builder-page .wizard-footer-nav .btn {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 6px;
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 650;
+    border-radius: 9px;
+    white-space: normal;
+    touch-action: manipulation;
   }
 }
 '''
