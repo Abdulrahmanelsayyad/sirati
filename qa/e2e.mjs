@@ -635,6 +635,26 @@ assert(optionsText.includes('SAP ERP, Excel') && optionsText.includes('12 accura
   'V4 should include only user-entered real skills and achievements');
 assert(!optionsText.includes('99%') && !optionsText.includes('10 years'),
   'V4 must never invent quantified achievements or years');
+
+// V5 adds truly distinct styles and a target job, but never asserts an unverified job change.
+const v5Labels = await summaryPanel.locator('.sirati-summary-choice__style').allInnerTexts();
+assert(v5Labels[0].includes('ATS concise') && v5Labels[1].includes('Evidence-led') && v5Labels[2].includes('Career direction'),
+  'V5 must offer three distinct writing goals');
+const v5Sources = summaryPanel.locator('.sirati-summary-v5-sources');
+assert((await v5Sources.innerText()).includes('Supplied skills') &&
+       (await v5Sources.innerText()).includes('Supplied achievement'),
+  'V5 must label whether skills/achievements actually came from user data');
+const v5Target = summaryPanel.getByRole('textbox',{name:'Summary target job'});
+await v5Target.fill('Cost Accounting Manager');
+const v5SummaryTexts = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
+assert.equal(v5SummaryTexts.length, 3, 'V5 must keep three selectable summaries');
+assert.equal(new Set(v5SummaryTexts).size, 3, 'V5 draft styles should be meaningfully different');
+assert(v5SummaryTexts[2].includes('Seeking Cost Accounting Manager opportunities'),
+  'V5 should treat targeted role as an aspiration, not proven past employment');
+assert(!v5SummaryTexts[0].includes('Cost Accounting Manager'),
+  'V5 must not misrepresent target job as the current professional title');
+assert(v5SummaryTexts[1].startsWith('Documented achievement supplied: Prepared 12'),
+  'evidence-led draft must lead with a real user-entered achievement');
 const pickedSummary = (await summaryPanel.locator('.sirati-summary-choice__text').nth(1).innerText()).trim();
 await summaryPanel.locator('.sirati-summary-choice').nth(1).click();
 assert.equal(await qaSummary.inputValue(),pickedSummary,
@@ -670,6 +690,13 @@ await page.locator('#qa-summary-role').fill('Unlisted Job Profession');
 await summaryTrigger.click();
 assert((await summaryPanel.innerText()).includes('core responsibilities associated with the stated role'),
   'unknown professions need safe role-specific fallback without invented skills');
+await summaryPanel.locator('.sirati-summary-pro-facts summary').click();
+await summaryPanel.getByRole('textbox',{name:'Summary actual skills'}).fill('');
+await summaryPanel.getByRole('textbox',{name:'Summary actual achievement'}).fill('');
+assert(!(await summaryPanel.locator('.sirati-summary-choices').innerText()).includes('Achievement supplied:'),
+  'unknown role with no user evidence must not invent achievements');
+assert((await summaryPanel.locator('.sirati-summary-v5-sources').innerText()).includes('Add your verified skills'),
+  'V5 evidence guidance should return after clearing user-entered facts');
 await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
 
 await page.locator('#qa-summary-role').fill('');
@@ -690,6 +717,10 @@ assert((await summaryPanel.innerText()).includes('محاسبة التكاليف'
   'Arabic specialization label should render in RTL');
 assert((await summaryPanel.innerText()).includes('توزيع التكاليف'),
   'Arabic suggestion must be specific to cost accounting');
+assert((await summaryPanel.locator('.sirati-summary-choice__style').allInnerTexts())[2].includes('اتجاه مهني'),
+  'V5 needs Arabic labels for the new career direction draft');
+assert(await summaryPanel.getByRole('textbox',{name:'Summary target job'}).isVisible(),
+  'V5 target job field should be available on Arabic and English mobile');
 for(const width of [360,390]) {
   await page.setViewportSize({width,height:844});
   const result = await summaryPanel.evaluate(el => {
