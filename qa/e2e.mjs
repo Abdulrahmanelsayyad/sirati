@@ -816,6 +816,14 @@ log('Gold Sidebar narrow mobile render preserves portrait alignment and page wid
 // and never submit anything from the review/payment section.
 await page.goto(base + '/builder/?template=modern&language=en', {waitUntil:'networkidle'});
 await page.locator('.cv-substep').first().click();
+const autoAdvanceToggle = page.getByRole('checkbox', {name:'Auto-advance completed CV sections'});
+await autoAdvanceToggle.waitFor();
+assert(await autoAdvanceToggle.isChecked(), 'existing auto-advance defaults to enabled');
+const mobilePreferenceBounds = await autoAdvanceToggle.evaluate(input => {
+  const host = input.closest('.wizard-progress-block');
+  return {inline:Boolean(host),visible:input.getClientRects().length > 0};
+});
+assert(mobilePreferenceBounds.inline && mobilePreferenceBounds.visible, 'auto-advance control must live inside the Builder progress, not float');
 const currentStep = () => page.locator('.wizard-progress-meta > span').first().textContent();
 const field = (label) => page.locator('.wizard-section-card .field')
   .filter({has:page.locator('label', {hasText:label})}).locator('input,textarea').first();
@@ -830,6 +838,16 @@ await field('LinkedIn / professional link').blur();
 await page.waitForTimeout(650);
 assert((await currentStep())?.includes('Section 1 of 9'), 'invalid email must block auto-advance');
 await field('Email').fill('qa@example.com');
+await autoAdvanceToggle.uncheck(); // A customer's explicit opt-out is respected.
+await field('LinkedIn / professional link').fill('https://example.com/disabled');
+await field('LinkedIn / professional link').blur();
+await page.waitForTimeout(650);
+assert((await currentStep()).includes('Section 1 of 9'), 'opt-out must block automatic advancement after valid completion');
+await page.reload({waitUntil:'networkidle'});
+assert(!(await autoAdvanceToggle.isChecked()), 'opt-out should survive tab reload via sessionStorage');
+assert((await currentStep()).includes('Section 1 of 9'), 'restored draft must not jump steps when auto-advance is disabled');
+await autoAdvanceToggle.check();
+log('Auto-advance opt-out is accessible, prevents navigation and survives reload');
 // This is a new, intentional edit of the terminal field, not a mere focus/blur.
 await field('LinkedIn / professional link').fill('https://example.com/profile-updated');
 await field('LinkedIn / professional link').blur();
@@ -847,7 +865,25 @@ await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')
 log('Auto advance: valid professional profile reaches Experience without pressing Continue');
 await page.getByRole('button', {name:'← Back'}).click();
 assert((await currentStep()).includes('Section 2 of 9'), 'manual Back must stay functional after auto advance');
+// Cancellation: a new pointer/focus action must invalidate the delayed auto-next.
+await profileEditor.fill('Professional triage care with documented communication, prioritization and reassessment.');
+await profileEditor.blur();
+await autoAdvanceToggle.focus();
+await page.waitForTimeout(650);
+assert((await currentStep()).includes('Section 2 of 9'), 'refocusing navigation preference must cancel stale auto-advance');
+log('Auto-advance timer cancels after a new focus and Back still works');
 log('manual Back navigation remains functional');
+// Opt-out also remains usable on the 390px mobile layout.
+await page.setViewportSize({width:390, height:844});
+const autoToggleMobile = await autoAdvanceToggle.evaluate(el => {
+  const rect = el.closest('.sirati-auto-advance-control').getBoundingClientRect();
+  return {left:rect.left,right:rect.right,visible:el.getClientRects().length > 0,
+    overflow:document.documentElement.scrollWidth-window.innerWidth};
+});
+assert(autoToggleMobile.visible && autoToggleMobile.left >= -2 && autoToggleMobile.right <= 392 && autoToggleMobile.overflow <= 2,
+  'auto-advance opt-out must be reachable without horizontal scrolling at mobile width');
+await page.setViewportSize({width:1440,height:1000});
+log('Auto-advance control remains accessible and inside mobile viewport');
 
 await page.locator('.cv-substep').last().click();
 assert((await currentStep()).includes('Section 9 of 9'), 'review section accessible manually');
