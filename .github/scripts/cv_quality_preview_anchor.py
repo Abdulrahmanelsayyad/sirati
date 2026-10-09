@@ -94,6 +94,14 @@ css_path.write_text(css_path.read_text(encoding="utf-8") + r'''
   height: 7px;
   margin: 8px 0 0;
 }
+.wizard-preview-wrap .cv-readiness__list .cv-readiness__advice {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 400;
+  opacity: .8;
+}
 .wizard-preview-wrap .cv-readiness__panel {
   position: relative;
   inset: auto;
