@@ -15,7 +15,7 @@ old_header = """      <header className="container nav no-print wizard-builder-n
         <div className="toolbar toolbar-top">
           {userId && <Link className="btn btn-secondary" href="/documents">My documents</Link>}
           <button className="btn btn-secondary" onClick={() => setData(normalizeCv(sampleNurseCv))}>Try nursing sample</button>
-          <button className="btn btn-secondary" onClick={() => window.location.href = '/templates'}>New CV</button>
+          <button className="btn btn-secondary" onClick={() => window.location.href = withBasePath('/templates')}>New CV</button>
           <button className="btn btn-primary" onClick={() => saveToAccount(true)}>{documentId ? 'Save version' : 'Save to account'}</button>
         </div>
       </header>"""
@@ -45,7 +45,7 @@ new_header = """      <header className="container nav no-print wizard-builder-n
               ))}
             </div>
           </details>
-          <button type="button" className="btn btn-secondary sirati-builder-action sirati-builder-new" onClick={() => window.location.href = '/templates'}>New CV</button>
+          <button type="button" className="btn btn-secondary sirati-builder-action sirati-builder-new" onClick={() => window.location.href = withBasePath('/templates')}>New CV</button>
           <button type="button" className="btn btn-primary sirati-builder-action sirati-builder-save" onClick={() => saveToAccount(true)}>{documentId ? 'Save version' : 'Save CV'}</button>
         </div>
       </header>"""
