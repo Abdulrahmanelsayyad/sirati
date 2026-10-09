@@ -81,7 +81,7 @@ test('renderer fails closed instead of silently corrupting Arabic, photos or oth
 test('PDF escaping and safe pagination for long immutable content', () => {
   const long = { ...snapshot, snapshot_data: {
     ...snapshot.snapshot_data,
-    profile: ('Handles (complex) \\ tasks safely. ').repeat(90),
+    profile: ('Handles (complex) \\ tasks safely. ').repeat(170),
   }};
   const pdf = renderCompactAtsSnapshotPdf(long).toString('ascii');
   assert.match(pdf, /Handles \\(complex\\) \\\\ tasks safely/);
