@@ -82,7 +82,7 @@ export default function SmartContentSuggestions({ data, setData, language }: Pro
       const field = Array.from(document.querySelectorAll<HTMLElement>('.wizard-panel .field, .field'))
         .find(el => {
           const label = el.querySelector('label');
-          return !!el.querySelector('textarea') && !!label && /^(skills|المهارات)\b|^المهارات/u.test((label.textContent || '').trim());
+          return el.getClientRects().length > 0 && !!el.querySelector('textarea') && !!label && /^(skills|المهارات)\b|^المهارات/u.test((label.textContent || '').trim());
         });
       if (!field) { setSlot(current => current ? null : current); return; }
       let host = field.querySelector<HTMLElement>(':scope > .sirati-content-slot');
