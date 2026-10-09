@@ -1,3 +1,4 @@
+import './pdf_prototype.test.mjs'; // Shared serializer regression on the same branch SHA.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleAuthorizedPdfPrototype } from '../netlify/functions/pdf-auth-prototype.mjs';
