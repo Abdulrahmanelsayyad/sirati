@@ -1,0 +1,50 @@
+name: Sirati PDF Order RLS (isolated PostgreSQL)
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "supabase/migrations/**"
+      - "qa/pdf_order*"
+      - ".github/workflows/pdf-order-security.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-security:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: sirati_ci_synthetic_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run zero-cost synthetic PostgreSQL authorization tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --filter ancestor=postgres:17 --format '{{.ID}}' | head -n 1)"
+          if [ -z "$db_container" ]; then
+            echo "PostgreSQL service not found" >&2
+            exit 1
+          fi
+          echo "Loading synthetic fixture. No production database or customer accounts used."
+          docker exec -i "$db_container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < qa/pdf_order_postgres_fixture.sql
+          echo "Applying exactly the proposed #26 migration to isolated PostgreSQL."
+          docker exec -i "$db_container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < supabase/migrations/20261008144500_guard_customer_pdf_order_insert.sql
+          echo "Testing RLS as authenticated A/B and privileged service reviewer."
+          docker exec -i "$db_container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < qa/pdf_order_postgres_stage.sql
+          echo "Synthetic PostgreSQL permission tests passed (not live Supabase E2E)."
