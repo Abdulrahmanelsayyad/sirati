@@ -99,7 +99,8 @@ const trackLibrary: Record<string, Track[]> = {
 };
 function tracksFor(job: string): Track[] {
   const career = careers.find(item => item.match.test(job)) || general;
-  return trackLibrary[career.name.en] || [{
+  const domain = career.name.en.includes('nursing') ? 'nursing' : career.name.en;
+  return trackLibrary[domain] || [{
     id:'role',en:'Role-specific focus',ar:'تخصص المسمى الوظيفي',
     focusEn:career === general ? 'core responsibilities associated with the stated role' : career.focus.en,
     focusAr:career === general ? 'المهام الأساسية المرتبطة بالمسمى المذكور' : career.focus.ar
