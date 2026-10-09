@@ -239,3 +239,9 @@ css += r'''
 '''
 css_path.write_text(css, encoding="utf-8")
 print("Applied Premium Minimal V1: home copy, unified visual tokens, landing and Builder polish.")
+
+
+# The V2 layout is a separate, homepage-only pass over the reconstructed V1.
+# Keep it here to avoid interfering with open Builder/navigation PRs.
+import subprocess
+subprocess.run([sys.executable, str(Path(__file__).with_name("premium_editorial_v2.py")), str(root)], check=True)
