@@ -294,6 +294,7 @@ assert((await experiencePicker.innerText()).includes('Auto-detected from role'),
 assert.equal(await experiencePicker.locator('.experience-picker__selectors select').nth(0).inputValue(), 'icu', 'ICU specialty was not auto-detected');
 assert.equal(await experiencePicker.locator('.experience-picker__selectors select').nth(1).inputValue(), 'senior', 'Senior level was not auto-detected');
 assert.equal(await experiencePicker.locator('.experience-picker__categories button').count(), 6, 'Experience Pro category filters missing');
+assert.equal(await experiencePicker.locator('.experience-picker__career-selectors').count(), 0, 'nursing roles must retain nursing-specific selectors in Pro V3');
 await experiencePicker.getByRole('button', { name: 'Select recommended' }).click();
 const selectedExperienceOptions = experiencePicker.locator('.experience-picker__options input:checked');
 assert((await selectedExperienceOptions.count()) >= 2, 'recommended multi-select did not select enough experience options');
@@ -379,17 +380,50 @@ await page.locator('#qa-accountant-description-field .sirati-description-assista
 const accountantPicker = page.locator('.experience-picker');
 assert((await accountantPicker.innerText()).includes('Analyzed ledger reconciliations'), 'advanced accounting examples were not detected');
 assert((await accountantPicker.innerText()).includes('Prepared and reconciled financial records'), 'original safe examples should remain accessible');
-assert.equal(await accountantPicker.locator('.experience-picker__selectors select').count(), 0, 'nursing-only selectors must not appear for accountants');
+assert.equal(await accountantPicker.locator('.experience-picker__career-selectors select').count(), 2, 'non-nursing professionals must have specialization and experience-level controls');
+assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), '', 'broad Accountant should not auto-claim a specialization');
+assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'default professional career level should be appropriate');
+assert.equal(await accountantPicker.locator('.experience-picker__selectors select').count(), 2, 'non-nursing roles must not show nursing-specific selectors');
 const accountingBullet = (await accountantPicker.locator('.experience-picker__options article label span').first().innerText()).trim();
 await accountantPicker.locator('.experience-picker__options article').first().getByRole('button', { name: '+ Add' }).click();
 assert((await page.locator('#qa-accountant-description').inputValue()).includes(accountingBullet), 'accounting example was not inserted');
 assert.equal(await page.locator('.experience-picker').count(), 0, 'single + Add should also close Smart CV after insertion');
+// Pro V3: senior accountant should auto-select the exact financial track and seniority.
+await page.locator('#qa-accountant-role').fill('Senior Financial Accountant');
+await page.locator('#qa-accountant-description').focus();
+await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
+assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), 'financial-accounting', 'financial accounting track not recognized');
+assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'senior', 'seniority not detected');
+assert((await accountantPicker.innerText()).includes('Investigated general-ledger variances'), 'financial role-specific snippets absent');
+assert((await accountantPicker.innerText()).includes('Reviewed complex work outputs'), 'senior-level options absent');
+assert(!(await accountantPicker.innerText()).includes('Coordinated workload assignments'), 'manager-only descriptions must not be suggested for senior role');
+await accountantPicker.locator('select[aria-label="Professional experience level"]').selectOption('beginner');
+assert((await accountantPicker.innerText()).includes('Applied documented procedures'), 'manually selected early-career level not reflected in suggestions');
+assert(!(await accountantPicker.innerText()).includes('Reviewed complex work outputs'), 'senior-level suggestions should not leak into early career');
+await accountantPicker.locator('.experience-picker__heading button').click();
+// Pro V3: frontend title must switch the career domain without reusing accounting.
+await page.locator('#qa-accountant-role').fill('Frontend Developer');
+await page.locator('#qa-accountant-description').focus();
+await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
+assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), 'frontend', 'frontend track not recognized');
+assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'manually selected previous-role level must reset on role change');
+assert((await accountantPicker.innerText()).includes('accessible interface specifications'), 'frontend snippets missing');
+assert(!(await accountantPicker.innerText()).includes('general-ledger variances'), 'accounting-specific snippets leaked to developer');
+await accountantPicker.locator('.experience-picker__heading button').click();
+// A broad software title may choose a precise specialization manually.
+await page.locator('#qa-accountant-role').fill('Software Developer');
+await page.locator('#qa-accountant-description').focus();
+await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
+assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), '', 'broad software role must not auto-claim a track');
+await accountantPicker.locator('select[aria-label="Career specialization"]').selectOption('backend');
+assert((await accountantPicker.innerText()).includes('Designed API contracts'), 'manual backend specialization not reflected');
+await accountantPicker.locator('.experience-picker__heading button').click();
 await page.locator('#qa-accountant-role').fill('Unlisted specialty role');
 await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert((await page.locator('.experience-picker').innerText()).includes('Organized assigned tasks'), 'unknown job titles need safe fallback examples');
 await page.evaluate(() => document.getElementById('qa-accountant-description-field')?.remove());
-log('role-specific accountant suggestions, generic fallback and hidden standalone nursing UI');
+log('Pro V3 detailed career tracks, professional levels, manual specialization, fallback and no nursing leakage');
 
 // An explicit Continue changes the Builder step and reveals its beginning.
 await page.evaluate(() => {
@@ -623,6 +657,8 @@ const mobileCareerPanel = page.locator('.experience-picker');
 const mobileCareerRect = await mobileCareerPanel.evaluate(el => el.getBoundingClientRect());
 assert(mobileCareerRect.left >= -2 && mobileCareerRect.right <= 392, 'contextual mobile panel overflows');
 assert((await mobileCareerPanel.innerText()).includes('Qualified opportunities'), 'advanced sales suggestions should load on mobile');
+assert.equal(await mobileCareerPanel.locator('select[aria-label="Career specialization"]').inputValue(), 'retail-sales', 'Sales Representative specialization not detected on mobile');
+assert.equal(await mobileCareerPanel.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'mobile experience level missing');
 assert((await mobileCareerPanel.innerText()).includes('Identified customer requirements'), 'original sales suggestions should remain available');
 await page.evaluate(() => document.getElementById('qa-mobile-career-field')?.remove());
 log('mobile role-specific descriptions stay inline and within viewport');
