@@ -47,6 +47,53 @@ async function optionValues(locator) {
   return await locator.locator('option').evaluateAll((options) => options.map((option) => option.value));
 }
 
+// Free career tools are public, offline-template based and don't require an account.
+await page.goto(base + '/career-tools/', { waitUntil: 'networkidle' });
+assert.equal(await page.locator('.career-page').count(), 1, 'free career tools route missing');
+assert.equal(await page.locator('.career-tab').count(), 3, 'expected three distinct tools');
+const generated = page.getByTestId('career-output');
+const generateButton = page.getByRole('button', { name: 'Generate editable draft' });
+assert(await generateButton.isDisabled(), 'empty inputs must not fabricate a letter');
+await page.locator('[data-field="name"]').fill('QA Person');
+await page.locator('[data-field="role"]').fill('Emergency Nurse');
+await page.locator('[data-field="company"]').fill('QA Hospital');
+await page.locator('[data-field="facts"]').fill('I assessed real patients and documented handovers');
+await page.locator('[data-field="skills"]').fill('Triage, patient safety');
+await generateButton.click();
+let output = await generated.inputValue();
+for (const fact of ['QA Person', 'Emergency Nurse', 'QA Hospital', 'documented handovers']) {
+  assert(output.includes(fact), 'cover letter omitted user fact: ' + fact);
+}
+await generated.fill('Manually edited letter');
+assert.equal(await generated.inputValue(), 'Manually edited letter', 'result must remain user editable');
+const downloadPromise = page.waitForEvent('download');
+await page.getByRole('button', { name: 'Download TXT' }).click();
+const download = await downloadPromise;
+assert.equal(download.suggestedFilename(), 'sirati-letter-en.txt', 'text download should use clear filename');
+log('Cover Letter: only user facts, editable, downloadable, free');
+
+await page.getByRole('button', { name: 'LinkedIn profile' }).click();
+await generateButton.click();
+output = await generated.inputValue();
+assert(output.includes('HEADLINE:') && output.includes('Emergency Nurse') && output.includes('documented handovers'),
+  'LinkedIn summary should reuse only supplied facts');
+await page.getByRole('button', { name: 'Interview prep' }).click();
+await generateButton.click();
+output = await generated.inputValue();
+assert(output.includes('Situation, Task, Action, Result') && output.includes('Emergency Nurse'),
+  'Interview practice should explain the STAR method');
+await page.getByRole('button', { name: 'Switch language' }).click();
+await page.getByRole('button', { name: 'إنشاء مسودة قابلة للتعديل' }).click();
+assert((await generated.inputValue()).includes('تدريب مقابلة'), 'Arabic interview content missing');
+for (const width of [360, 390, 1440]) {
+  await page.setViewportSize({ width, height: 844 });
+  const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  assert(over <= 2, 'career tools overflow at ' + width + 'px: ' + over);
+  assert(await generated.isVisible(), 'career draft must remain visible at ' + width + 'px');
+}
+log('Career toolkit: LinkedIn, interviews, Arabic & 360/390px accessibility smoke');
+await page.setViewportSize({ width: 1440, height: 1000 });
+
 await page.goto(base + '/templates/', { waitUntil: 'networkidle' });
 const cards = page.locator('.template-choice');
 assert.equal(await cards.count(), 8);
