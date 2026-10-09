@@ -19,8 +19,8 @@ const page = await context.newPage();
 // Premium Minimal V1: verify the actual rendered landing page before other E2E.
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 assert.equal(await page.locator('.marketing-page').count(), 1, 'Sirati landing page missing');
-assert((await page.locator('.marketing-hero h1').innerText()).includes('Your experience.'),
-  'Premium Minimal headline was not applied');
+assert((await page.locator('.marketing-hero h1').innerText()).includes('A CV that looks'),
+  'Premium Editorial V2 headline was not applied');
 const brandColor = await page.locator('.marketing-page').evaluate(el =>
   getComputedStyle(el).getPropertyValue('--pm-green').trim()
 );
