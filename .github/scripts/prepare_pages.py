@@ -193,3 +193,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("free_access_v1.py"
 
 # Zero-cost public career tools, separated from the existing CV Builder.
 subprocess.run([sys.executable, str(Path(__file__).with_name("free_career_toolkit.py")), str(root)], check=True)
+
+# Discovery UX: show these shipped tools in the signed-in My Documents view.
+subprocess.run([sys.executable, str(Path(__file__).with_name("account_career_shortcut.py")), str(root)], check=True)
