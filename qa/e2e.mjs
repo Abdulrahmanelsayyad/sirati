@@ -69,6 +69,41 @@ const lead = await page.locator('.marketing-hero .hero-lead').evaluate(el => ({
 assert.equal(lead.color,'rgb(237, 244, 237)','faded mobile hero lead must use high-contrast text');
 assert.equal(lead.opacity,'1','hero lead must not be transparent');
 
+// Sitewide UX: fast, responsive navigation must not float over page content.
+const topBar = page.getByRole('navigation',{name:'Primary site navigation · التنقل الرئيسي'});
+assert.equal(await topBar.count(),1,'one global primary navigation expected');
+assert((await topBar.locator('.sirati-topbar-brand').getAttribute('href') || '').endsWith('/sirati/'),
+  'Sirati brand must link to the correctly based homepage');
+assert((await topBar.locator('.sirati-topbar-link').count())===3,
+  'direct CV, Career Tools, and My Documents links are required');
+assert((await topBar.locator('.sirati-topbar-link').nth(0).getAttribute('href') || '').includes('/templates'),
+  'CV shortcut should open templates');
+assert((await topBar.locator('.sirati-topbar-link').nth(1).getAttribute('href') || '').includes('/career-tools'),
+  'Career Tools shortcut should use the live route');
+for(const width of [320,360,390,768,1440]) {
+  await page.setViewportSize({width,height:844});
+  const nav = await topBar.evaluate(el=>{
+    const box=el.getBoundingClientRect();
+    return {left:box.left,right:box.right,height:box.height,position:getComputedStyle(el).position};
+  });
+  assert(nav.left>=-1 && nav.right<=width+1 && nav.height<85,
+    'topbar clips or crowds the mobile viewport at '+width+': '+JSON.stringify(nav));
+  assert.equal(nav.position,'sticky','sitewide bar must be in page layout, not a floating blocker');
+  const overflow = await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  assert(overflow<=2,'sitewide navigation causes horizontal overflow at '+width);
+}
+await page.setViewportSize({width:390,height:844});
+await page.evaluate(()=>window.scrollTo(0,250));
+await page.waitForTimeout(110);
+const navTop = await topBar.evaluate(el=>el.getBoundingClientRect().top);
+assert(Math.abs(navTop)<=2,'sitewide navigation should remain reachable after scrolling');
+await page.evaluate(()=>window.scrollTo(0,0));
+await page.setViewportSize({width:1440,height:1000});
+const menuSource = fs.readFileSync('components/SiratiSiteMenu.tsx','utf8');
+assert(menuSource.includes('input:not([disabled])'),
+  'keyboard focus trap must include drawer search input, not only buttons and links');
+log('Sitewide navigation: keyboard support, sticky without overlay, working quick links, 320/360/390/768/1440');
+
 const opener = page.getByRole('button',{name:'Open Sirati menu'});
 for (const width of [320,360,390,768,1440]) {
   await page.setViewportSize({width,height:844});
@@ -499,6 +534,35 @@ await page.getByRole('button', { name: 'Continue to CV details →' }).click();
 await page.waitForLoadState('networkidle');
 assert(page.url().includes('/builder'));
 log('template flow reaches builder');
+// The original bug: fixed hamburger covered the Builder heading on narrow screens.
+await page.setViewportSize({width:390,height:844});
+await page.evaluate(()=>window.scrollTo(0,0));
+await page.waitForTimeout(110);
+const builderHeaderFit = await page.evaluate(()=>{
+  const nav=document.querySelector('.sirati-site-topbar');
+  const trigger=document.querySelector('.sirati-menu-trigger');
+  const step=document.querySelector('.wizard-panel-top');
+  if(!nav||!trigger||!step) return null;
+  const navRect=nav.getBoundingClientRect();
+  const heading=step.getBoundingClientRect();
+  const btn=trigger.getBoundingClientRect();
+  return {position:getComputedStyle(trigger).position,navBottom:navRect.bottom,
+    headingTop:heading.top,buttonRight:btn.right,viewport:innerWidth,scroll:document.documentElement.scrollWidth};
+});
+assert(builderHeaderFit && builderHeaderFit.position==='static',
+  'menu trigger must be in normal layout on Builder, not covering the section heading');
+assert(builderHeaderFit.scroll<=builderHeaderFit.viewport+2,
+  'sitewide Builder navigation causes horizontal overflow');
+assert(builderHeaderFit.headingTop>=builderHeaderFit.navBottom-2,
+  'Builder header starts behind the global sticky navigation: '+JSON.stringify(builderHeaderFit));
+await topBar.getByRole('button',{name:'Open Sirati menu'}).click();
+assert(await page.getByRole('dialog',{name:'Sirati features and customer account'}).isVisible(),
+  'global menu must work during CV editing');
+await page.keyboard.press('Escape');
+await page.setViewportSize({width:1440,height:1000});
+log('Builder: menu button no longer overlaps editable step heading, 390px route keyboard check');
+
+
 
 const panelZIndex = Number(await page.locator('.wizard-panel').evaluate((el) => getComputedStyle(el).zIndex));
 const previewZIndex = Number(await page.locator('.wizard-preview-wrap').evaluate((el) => getComputedStyle(el).zIndex));
