@@ -1,5 +1,6 @@
 import './pdf_prototype.test.mjs'; // Run auth guards and snapshot/A4 renderer tests on the exact same commit.
 import test from 'node:test';
+import { handleOfficialFrozenPdf } from '../netlify/functions/pdf-official-staging.mjs';
 import assert from 'node:assert/strict';
 import { handleAuthorizedPdfPrototype } from '../netlify/functions/pdf-auth-prototype.mjs';
 
@@ -131,4 +132,164 @@ test('approved owned order produces ONLY fixed synthetic demo, never customer CV
   assert.doesNotMatch(pdf, /REAL CUSTOMER/);
   assert.deepEqual(calls.map(c => c.path),
     ['/auth/v1/user', '/rest/v1/cv_documents', '/rest/v1/pdf_orders']);
+});
+
+
+// #41 official staging endpoint: mocked DB/auth. No customer/real payment/network.
+const frozenEnv = {
+  ...env, BRANCH: 'feat/issue-41-synthetic-server-pdf-poc',
+  SIRATI_OFFICIAL_PDF_STAGING_ENABLED: 'true',
+  SIRATI_STAGING_SERVER_KEY: 'sb_secret_fake_offline_unit_test_only_12345',
+};
+const frozen = {
+  order_id: ORDER, owner_user_id: USER, source_document_id: DOC,
+  source_revision: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  expected_revision: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  snapshot_schema_version: 1,
+  snapshot_template: 'compact-ats', snapshot_language: 'en',
+  snapshot_data: { fullName: 'FROZEN ALICE', title: 'Registered Nurse',
+    email: 'alice@example.invalid', profile: 'Approved original CV snapshot.' },
+};
+const officialRequest = (payload = { orderId: ORDER }, token = 'mock.JWT.token',
+                         method = 'POST') => new Request('https://local.test/.netlify/functions/pdf-official-staging', {
+  method, headers: token ? { Authorization: 'Bearer ' + token } : {},
+  ...(method === 'POST' ? { body: typeof payload === 'string' ? payload : JSON.stringify(payload) } : {}),
+});
+function frozenFetcher({
+  authStatus = 200, userId = USER, returned = frozen, rpcStatus = 200,
+  networkError = '', oversize = false,
+} = {}) {
+  const calls = [];
+  const fetcher = async (url, options) => {
+    const path = new URL(url).pathname;
+    calls.push({ path, ...options });
+    assert.ok(url.startsWith(STAGING));
+    assert.equal(options.redirect, 'error');
+    assert.ok(options.signal);
+    if (path === networkError) throw new Error('Simulated upstream outage');
+    if (path === '/auth/v1/user') {
+      assert.equal(options.method, 'GET');
+      assert.equal(options.headers.apikey, KEY);
+      assert.equal(options.headers.Authorization, 'Bearer mock.JWT.token');
+      return Response.json(authStatus === 200 ? { id: userId } : { error: 'invalid' },
+        { status: authStatus });
+    }
+    if (path === '/rest/v1/rpc/sirati_pdf_snapshot_for_server') {
+      assert.equal(options.method, 'POST');
+      assert.equal(options.headers.apikey, frozenEnv.SIRATI_STAGING_SERVER_KEY);
+      assert.equal(options.headers.Authorization,
+        'Bearer ' + frozenEnv.SIRATI_STAGING_SERVER_KEY);
+      assert.deepEqual(JSON.parse(options.body), { p_order_id: ORDER, p_user_id: userId });
+      return oversize ? new Response('x'.repeat(200000)) :
+        Response.json(returned, { status: rpcStatus });
+    }
+    throw new Error('Unexpected external call: ' + path);
+  };
+  return { calls, fetcher };
+}
+async function official(body, cfg = {}) {
+  const { fetcher, calls } = frozenFetcher(cfg);
+  const reply = await handleOfficialFrozenPdf(officialRequest(body), {
+    env: frozenEnv, fetcher,
+  });
+  return { reply, calls };
+}
+test('official route is branch/staging/secret-guarded and disabled by default', async () => {
+  for (const patch of [
+    { SIRATI_OFFICIAL_PDF_STAGING_ENABLED: undefined }, { BRANCH: 'main' },
+    { NEXT_PUBLIC_SUPABASE_URL: PROD }, { SIRATI_STAGING_SERVER_KEY: undefined },
+    { SIRATI_STAGING_SERVER_KEY: KEY },
+  ]) {
+    let requests = 0;
+    const response = await handleOfficialFrozenPdf(officialRequest(), {
+      env: { ...frozenEnv, ...patch },
+      fetcher: () => { requests++; throw new Error('No upstream allowed'); },
+    });
+    assert.equal(response.status, 404); assert.equal(requests, 0);
+  }
+});
+test('official route rejects GET, unauthenticated and oversized/malformed input', async () => {
+  let fetchCount = 0;
+  const opts = { env: frozenEnv, fetcher: () => { fetchCount++; throw new Error('No upstream'); } };
+  assert.equal((await handleOfficialFrozenPdf(officialRequest('', '', 'GET'), opts)).status, 405);
+  assert.equal((await handleOfficialFrozenPdf(officialRequest({}, ''), opts)).status, 401);
+  for (const invalid of [
+    {}, { documentId: DOC, orderId: ORDER }, { orderId: FOREIGN },
+    '{"orderId":null}', '{not json}', 'x'.repeat(300),
+  ]) {
+    // FOREIGN is a valid UUID: a foreign order must reach authorization, not 400.
+    if (invalid?.orderId === FOREIGN) continue;
+    assert.equal((await handleOfficialFrozenPdf(officialRequest(invalid), opts)).status, 400);
+  }
+  assert.equal(fetchCount, 0);
+});
+test('official route verifies JWT before privileged snapshot RPC, fails closed', async () => {
+  for (const config of [
+    { authStatus: 401, expected: 401 }, { userId: 'not-uuid', expected: 401 },
+    { networkError: '/auth/v1/user', expected: 503 },
+  ]) {
+    const { expected, ...mock } = config;
+    const { reply, calls } = await official(undefined, mock);
+    assert.equal(reply.status, expected);
+    assert.deepEqual(calls.map(c => c.path), ['/auth/v1/user']);
+  }
+});
+test('approved immutable owned order returns official PDF, never current CV', async () => {
+  const { reply, calls } = await official();
+  assert.equal(reply.status, 200);
+  assert.equal(reply.headers.get('content-type'), 'application/pdf');
+  assert.match(reply.headers.get('cache-control'), /no-store/);
+  assert.match(reply.headers.get('content-disposition'), /attachment/);
+  const pdf = Buffer.from(await reply.arrayBuffer()).toString('ascii');
+  assert.match(pdf, /FROZEN ALICE/);
+  assert.doesNotMatch(pdf, /JANE SAMPLE|MUTABLE CURRENT/);
+  assert.deepEqual(calls.map(c => c.path), [
+    '/auth/v1/user', '/rest/v1/rpc/sirati_pdf_snapshot_for_server',
+  ]);
+  const again = await official();
+  assert.equal(Buffer.compare(Buffer.from(pdf, 'ascii'),
+    Buffer.from(await again.reply.arrayBuffer())), 0);
+});
+test('no snapshot, other user, revision mismatch or legacy unbound never yields PDF', async () => {
+  for (const s of [
+    null,
+    { ...frozen, owner_user_id: FOREIGN },
+    { ...frozen, order_id: FOREIGN },
+    { ...frozen, source_document_id: 'nope' },
+    { ...frozen, source_revision: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' },
+    { ...frozen, expected_revision: null },
+    { ...frozen, snapshot_schema_version: 2 },
+  ]) {
+    const { reply } = await official(undefined, { returned: s });
+    assert.equal(reply.status, 403);
+    assert.notEqual(reply.headers.get('content-type'), 'application/pdf');
+  }
+});
+test('pending/rejected/unapproved/cross-user orders are not returned by privileged RPC', async () => {
+  for (const returned of [null, null, null]) {
+    const { reply } = await official(undefined, { returned });
+    assert.equal(reply.status, 403);
+  }
+});
+test('unsupported Arabic or any other template fail closed without PDF', async () => {
+  for (const patch of [
+    { snapshot_language: 'ar' },
+    { snapshot_template: 'profile-sidebar' },
+    { snapshot_data: { ...frozen.snapshot_data, fullName: 'علي' } },
+    { snapshot_data: { ...frozen.snapshot_data, avatar: 'data:image/png;base64,abc' } },
+  ]) {
+    const { reply } = await official(undefined, { returned: { ...frozen, ...patch } });
+    assert.equal(reply.status, 422);
+    assert.notEqual(reply.headers.get('content-type'), 'application/pdf');
+  }
+});
+test('snapshot RPC network/error/oversized result rejects and never returns PDF', async () => {
+  for (const mock of [
+    { networkError: '/rest/v1/rpc/sirati_pdf_snapshot_for_server' },
+    { rpcStatus: 500 }, { oversize: true },
+  ]) {
+    const { reply } = await official(undefined, mock);
+    assert.equal(reply.status, 503);
+    assert.notEqual(reply.headers.get('content-type'), 'application/pdf');
+  }
 });
