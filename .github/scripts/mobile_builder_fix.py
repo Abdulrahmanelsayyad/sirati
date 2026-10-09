@@ -189,9 +189,15 @@ if focus_marker not in css:
   body:has(.wizard-builder-page) .builder-guide {
     display: none;
   }
-  /* Keep the Continue footer clear of focused fields and the soft keyboard. */
+  /* The footer must NEVER disappear while typing. Mobile users need manual
+     Continue/Back in every Builder section now that Auto-Advance is retired.
+     Switch from the sticky layout to normal document flow while an input is
+     focused: the buttons remain discoverable without covering the keyboard. */
   body:has(.wizard-builder-page :is(input, textarea, select):focus) .wizard-footer-nav {
-    display: none;
+    position: static;
+    inset: auto;
+    bottom: auto;
+    margin-top: 12px;
   }
 }
 '''

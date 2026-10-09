@@ -624,8 +624,9 @@ assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
 assert(await page.locator('.wizard-progress-meta').isVisible(),
   'section progress must remain visible on mobile');
 
-// A focused editable field must never be covered by the floating guide.
-// When focus leaves the editor the guide should return automatically.
+// With Auto-Advance removed, the manual navigation must remain in the page
+// on all steps even while a mobile field is focused. It flows BELOW the editor
+// while the keyboard is active rather than disappearing.
 const guidedNav = page.locator('.builder-guide');
 const editorFooterNav = page.locator('.wizard-footer-nav');
 const firstMobileEditor = page.locator('.wizard-section-card input:visible, .wizard-section-card textarea:visible').first();
@@ -639,15 +640,17 @@ await page.evaluate(() => {
 await editorFooterNav.waitFor({ state: 'visible', timeout: 10000 });
 assert.equal(await guidedNav.isVisible(), false, 'duplicate guide must not appear over mobile CV editor');
 await firstMobileEditor.focus();
-assert.equal(await editorFooterNav.isVisible(), false, 'Continue footer covers a focused mobile field');
+assert(await editorFooterNav.isVisible(), 'Continue footer must stay visible when mobile input is focused');
+assert.equal(await editorFooterNav.evaluate(el => getComputedStyle(el).position), 'static',
+  'focused mobile footer must flow below the editor instead of overlaying the keyboard');
 await firstMobileEditor.evaluate(el => el.blur());
-assert(await editorFooterNav.isVisible(), 'Continue footer must return after editing');
+assert(await editorFooterNav.isVisible(), 'Continue footer must stay visible after editing');
 
 // Capture genuine generated Builder screens at narrow phone widths.
 // Images contain synthetic QA data, never live customer content.
 await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-rest.png', animations: 'disabled' });
 await firstMobileEditor.focus();
-assert.equal(await editorFooterNav.isVisible(), false, 'focused mobile form must hide Continue footer');
+assert(await editorFooterNav.isVisible(), 'focused mobile form must retain manual Continue and Back');
 await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-focused.png', animations: 'disabled' });
 await firstMobileEditor.evaluate(el => el.blur());
 await page.setViewportSize({ width: 320, height: 700 });
@@ -657,7 +660,37 @@ const smallOverflow = await page.evaluate(() => document.documentElement.scrollW
 assert(smallOverflow <= 2, '320px builder overflow=' + smallOverflow);
 await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-320-rest.png', animations: 'disabled' });
 await page.setViewportSize({ width: 390, height: 844 });
-log('mobile focus mode: visual snapshots at 320px, 390px focused/unfocused');
+log('mobile focus mode: visible manual footer snapshots at 320px, 390px focused/unfocused');
+
+// Regression for missing Continue/Back on selected CV sections.
+// Use the existing section navigator on desktop to reach all 9 sections, then
+// verify navigation is not hidden by either an unfocused or focused mobile editor.
+assert.equal(await page.locator('.cv-substep').count(), 9, 'expected all nine Builder sections');
+for (let stepNumber = 0; stepNumber < 9; stepNumber++) {
+  await page.setViewportSize({width:1440, height:1000});
+  await page.locator('.cv-substep').nth(stepNumber).click();
+  await page.setViewportSize({width:390,height:844});
+  const nav = page.locator('.wizard-footer-nav');
+  assert(await nav.isVisible(), 'manual navigation missing on mobile Section '+(stepNumber+1));
+  const navButtons = nav.locator('button');
+  assert(await navButtons.count() >= 1, 'no manual navigation buttons in Section '+(stepNumber+1));
+  assert(await nav.getByRole('button', {name:/Back/i}).isVisible(),
+    'Back button missing on mobile Section '+(stepNumber+1));
+  if(stepNumber < 8) {
+    assert(await nav.getByRole('button', {name:/Continue|Next/i}).isVisible(),
+      'Continue button missing on mobile Section '+(stepNumber+1));
+  }
+  const editor = page.locator('.wizard-section-card input:visible, .wizard-section-card textarea:visible, .wizard-section-card select:visible').first();
+  if(await editor.count()) {
+    await editor.focus();
+    assert(await nav.isVisible(), 'manual navigation disappeared on input focus at Section '+(stepNumber+1));
+    await editor.evaluate(el=>el.blur());
+  }
+  const overflowAtStep = await page.evaluate(() => document.documentElement.scrollWidth-window.innerWidth);
+  assert(overflowAtStep <= 2, 'mobile navigation overflow at Section '+(stepNumber+1)+': '+overflowAtStep);
+}
+await page.setViewportSize({width:390,height:844});
+log('Continue/Back remain visible across all nine mobile Builder sections, including focused inputs');
 
 let mobileTemplateSelect = null;
 const mobileSelects = page.locator('select');
@@ -916,8 +949,8 @@ assert((await currentStep()).includes('Section 2 of 9'), 'manual Back must remai
 log('Manual Continue and Back still change steps; completion alone does not');
 
 await page.setViewportSize({width:390,height:844});
-// Mobile focus mode deliberately hides the desktop wizard footer; check the
-// actual regression (no surprise step transition) rather than that hidden element.
+// The editor now preserves manual navigation even while focused; completing a
+// mobile field must not restore the removed Auto-Advance behavior.
 assert.equal(await page.locator('.sirati-auto-advance-control').count(), 0, 'Auto-Advance toggle must remain removed on mobile');
 await profileEditor.fill('A completed summary can be reviewed manually on mobile without moving to a different CV section.');
 await profileEditor.blur();
