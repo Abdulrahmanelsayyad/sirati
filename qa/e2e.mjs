@@ -617,6 +617,60 @@ await page.reload({ waitUntil: 'networkidle' });
 assert((await page.locator('.cv-sheet').innerText()).includes(realSuggestion), 'inserted experience must survive reload in preview');
 log('real Experience insertion updates React state, preview and saved CV');
 
+// Smart Content extends—not duplicates—the existing Experience Pro workflow.
+// Use a synthetic editable Skills field while updating the same real CV Builder state.
+await page.evaluate(() => {
+  const skills = document.createElement('div');
+  skills.className = 'field';
+  skills.id = 'qa-smart-skills-field';
+  skills.innerHTML = '<label>Skills</label><textarea id="qa-smart-skills"></textarea>';
+  document.body.appendChild(skills);
+});
+const smartContentTrigger = page.locator('#qa-smart-skills-field .sirati-content-trigger');
+await smartContentTrigger.waitFor();
+assert.equal(await page.locator('.sirati-content-panel').count(), 0, 'Smart Content must remain opt-in');
+await smartContentTrigger.click();
+const smartContentPanel = page.locator('#qa-smart-skills-field .sirati-content-panel');
+assert((await smartContentPanel.innerText()).includes('Emergency Nurse'), 'Suggestions must use Builder Professional Title');
+assert((await smartContentPanel.innerText()).includes('Patient triage'), 'Nursing skills must match the job title');
+assert((await smartContentPanel.innerText()).includes('Experience Pro'), 'Descriptions should reuse existing Experience Pro');
+const skillsBefore = await page.locator('.cv-sheet').first().innerText();
+const displayedSkills = await smartContentPanel.locator('.sirati-content-options label span').allTextContents();
+const freshSkill = displayedSkills.find(text => !skillsBefore.includes(text));
+assert(freshSkill, 'Fixture needs a genuinely new suggested skill to test live insertion');
+await smartContentPanel.locator('.sirati-content-options label').filter({hasText:freshSkill}).click();
+assert(await smartContentPanel.getByRole('button', {name:'Add selected skills'}).isDisabled(),
+  'Must require factual confirmation before insertion');
+await smartContentPanel.getByRole('checkbox', {name:'I confirm this content truthfully reflects my work.'}).check();
+await smartContentPanel.getByRole('button', {name:'Add selected skills'}).click();
+await page.waitForFunction(text => document.querySelector('.cv-sheet')?.textContent?.includes(text), freshSkill);
+assert.equal(await page.locator('.sirati-content-panel').count(), 0, 'Skills panel should close after insertion');
+log('Smart Content: role-matched skills are opt-in, confirmed and added to real CV state');
+await smartContentTrigger.click();
+await smartContentPanel.getByRole('button', {name:'Achievements'}).click();
+const addAchievement = smartContentPanel.getByRole('button', {name:'Add edited achievement'});
+await smartContentPanel.locator('.sirati-content-achievements > button').first().click();
+await smartContentPanel.getByRole('checkbox', {name:'I confirm this content truthfully reflects my work.'}).check();
+assert(await addAchievement.isDisabled(), 'Unreplaced evidence placeholders must not be inserted');
+const proof = 'QA synthetic example: contributed to a documented unit handover improvement through checklist review.';
+await smartContentPanel.getByRole('textbox', {name:'Edit achievement'}).fill(proof);
+assert(await addAchievement.isDisabled(), 'Changing achievement text requires fresh confirmation');
+await smartContentPanel.getByRole('checkbox', {name:'I confirm this content truthfully reflects my work.'}).check();
+await addAchievement.click();
+await page.waitForFunction(text => document.querySelector('.cv-sheet')?.textContent?.includes(text), proof);
+await page.setViewportSize({width:390,height:844});
+await smartContentTrigger.click();
+const smartOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+assert(smartOverflow <= 2, 'Smart Content overflows 390px mobile viewport: ' + smartOverflow);
+await smartContentPanel.getByRole('button', {name:'Close content suggestions'}).click();
+await page.setViewportSize({width:1440,height:1000});
+await page.evaluate(() => document.getElementById('qa-smart-skills-field')?.remove());
+await page.reload({waitUntil:'networkidle'});
+assert((await page.locator('.cv-sheet').innerText()).includes(proof), 'Edited achievement must persist through CV save/reload');
+assert((await page.locator('.cv-sheet').innerText()).includes(freshSkill), 'Selected skill must persist through CV save/reload');
+log('Smart Content: achievement placeholder guard, manual edits, duplicate-free state, mobile and save/reload PASS');
+
+
 let templateSelect = null;
 const selects = page.locator('select');
 for (let i = 0; i < await selects.count(); i++) {
