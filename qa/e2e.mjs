@@ -52,6 +52,33 @@ for (const width of [320, 390, 1440]) {
 }
 await page.setViewportSize({ width: 1440, height: 1000 });
 console.log('PASS: Premium Minimal rendered homepage, brand token, and 320/390/1440 responsive hero');
+
+// Career Studio brand must no longer position Sirati as just a CV builder.
+const studioMark = page.locator('.marketing-hero .sirati-career-studio-mark');
+assert.equal(await studioMark.count(), 1, 'one Career Studio brand mark expected in hero');
+assert(await studioMark.locator('svg').isVisible(), 'rising-path SVG icon must be visible');
+assert.equal(await studioMark.locator('svg path').count(), 3, 'custom career arrow icon artwork missing');
+const markText = await studioMark.innerText();
+for (const category of ['Career Studio', 'Cover Letter', 'LinkedIn', 'Interview']) {
+  assert(markText.includes(category), 'brand positioning missing ' + category);
+}
+assert(!markText.includes('Professional CV builder'), 'legacy CV-only hero label must be retired');
+const studioIntro = await page.locator('.marketing-hero .hero-lead').innerText();
+assert(studioIntro.includes('cover letters') && studioIntro.includes('LinkedIn'),
+  'intro must reflect full free career toolkit');
+for (const width of [320,360,390,1440]) {
+  await page.setViewportSize({width,height:844});
+  assert(await studioMark.isVisible(), 'Career Studio icon hidden at '+width+'px');
+  const bounds = await studioMark.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    return {left:r.left,right:r.right,viewport:innerWidth};
+  });
+  assert(bounds.left >= -2 && bounds.right <= bounds.viewport + 2,
+    'Career Studio mark clips at '+width+'px: '+JSON.stringify(bounds));
+}
+await page.setViewportSize({width:1440,height:1000});
+log('Career Studio rising-path icon, inclusive messaging and 320/360/390/1440 mobile layout');
+
 // V3 visual identity — actual computed styles on the final, browser-rendered page.
 const heroSignature = await page.locator('.marketing-hero').evaluate(el => {
   const cs = getComputedStyle(el);
