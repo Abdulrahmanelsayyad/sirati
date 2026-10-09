@@ -42,10 +42,12 @@ for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
     if start < 0 or end < 0 or code.count("// SIRATI_PRIVACY_SIGNOUT_START") != 1:
         raise SystemExit(f"Privacy sign-out guard missing or duplicated: {relative}")
     block = code[start:end]
-    client_match = re.search(r"await ([A-Za-z_$][\w$]*)\.auth\.getSession\(\)", block)
-    if not client_match:
+    client_match = re.search(r"const draftAuthClient = ([A-Za-z_$][\w$]*(?:\(\))?);", block)
+    if not client_match or "await draftAuthClient.auth.getSession()" not in block:
         raise SystemExit(f"Missing active session lookup: {relative}")
-    client_name = client_match.group(1)
+    client_expr = client_match.group(1)
+    client_name = client_expr[:-2] if client_expr.endswith("()") else client_expr
+    client_arg = "() => auth" if client_expr.endswith("()") else "auth"
     if "localStorage.clear(" in block or "sirati.cv.v1" in block:
         raise SystemExit(f"Unsafe broad/legacy draft deletion in {relative}")
     js = """
@@ -68,7 +70,7 @@ async function check({allowed=true, logoutFails=false, hasDraft=true}) {
     getSession:async()=>({data:{session:{user:{id:'A'}}}}),
     signOut:async()=>{signedOut++;return {error:logoutFails?Error('synthetic'):null};}
   }};
-  await handler(auth,window);
+  await handler(AUTH_ARG,window);
   return {cache,signedOut,confirmed,alerts};
 }
 (async()=>{
@@ -84,6 +86,6 @@ async function check({allowed=true, logoutFails=false, hasDraft=true}) {
   assert.equal(s.confirmed,0);assert.equal(s.signedOut,1);
   console.log('PASS: synthetic sign-out cancellation, scoped purge, failure retention, legacy preservation');
 })().catch(e=>{console.error(e);process.exitCode=1;});
-""".replace("CLIENT", json.dumps(client_name)).replace("SNIPPET", json.dumps(block))
+""".replace("CLIENT", json.dumps(client_name)).replace("SNIPPET", json.dumps(block)).replace("AUTH_ARG", client_arg)
     subprocess.run(["node", "-e", js], check=True)
 print("PASS: generated sign-out safety invariants (real A/B still NOT RUN)")
