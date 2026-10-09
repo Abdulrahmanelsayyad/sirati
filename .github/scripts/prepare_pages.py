@@ -214,3 +214,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v4.py
 
 # V5 enriches only the generated V4 Summary picker, no auth/backend changes.
 subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v5.py')), str(root)], check=True)
+
+# V6 Pro Max: local job fit and pre-insertion editor; never touches persistence.
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v6.py')), str(root)], check=True)
