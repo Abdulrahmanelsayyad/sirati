@@ -100,6 +100,20 @@ assert(Math.abs(navTop)<=2,'sitewide navigation should remain reachable after sc
 await page.evaluate(()=>window.scrollTo(0,0));
 await page.setViewportSize({width:1440,height:1000});
 const menuSource = fs.readFileSync('components/SiratiSiteMenu.tsx','utf8');
+// Sign-out is account-only: ensure it ends this browser session and handles failure.
+assert(menuSource.includes("supabase.auth.signOut({ scope: 'local' })"),
+  'account menu must sign out this browser session');
+assert(menuSource.includes("window.location.assign(withBasePath('/'))"),
+  'successful sign-out must navigate to the base-path-aware home page');
+assert(menuSource.includes('className="sirati-menu-signout"') &&
+  menuSource.includes('disabled={signingOut}') &&
+  menuSource.includes('onClick={handleSignOut}'),
+  'signed-in drawer must expose a guarded, accessible logout action');
+assert(menuSource.includes('role="alert">{signOutError}'),
+  'logout failure must be communicated to the user');
+assert(fs.readFileSync('app/globals.css','utf8').includes('.sirati-menu-signout:focus-visible'),
+  'logout button must provide visible keyboard focus');
+log('Signed-in drawer: local sign-out action, loading, errors, home navigation and focus');
 assert(menuSource.includes('input:not([disabled])'),
   'keyboard focus trap must include drawer search input, not only buttons and links');
 log('Sitewide navigation: keyboard support, sticky without overlay, working quick links, 320/360/390/768/1440');
