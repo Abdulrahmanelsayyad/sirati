@@ -414,6 +414,15 @@ assert((await realSummaryPanel.locator('.sirati-summary-context').innerText()).i
 assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 3, 'real Summary must auto-offer 3 templates');
 const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choice__text').first().innerText()).trim();
 await realSummaryPanel.locator('.sirati-summary-choice').first().click();
+const afterSmartChoice = await page.evaluate((selected) => ({
+  progress: document.querySelector('.wizard-progress-meta')?.textContent?.trim(),
+  summaryMounted: Boolean(Array.from(document.querySelectorAll('.field textarea')).find((x) => /summary|ملخص/i.test(x.closest('.field')?.textContent || ''))),
+  previewUpdated: Boolean(document.querySelector('.cv-sheet')?.textContent?.includes(selected)),
+  visibleCardText: document.querySelector('.wizard-section-card')?.textContent?.slice(0,180),
+  focus: document.activeElement?.tagName
+}), realSummaryChoice);
+log('SMART SUMMARY POST-CLICK DIAGNOSTIC ' + JSON.stringify(afterSmartChoice));
+assert(afterSmartChoice.summaryMounted, 'Summary field disappeared after choosing a template: ' + JSON.stringify(afterSmartChoice));
 assert.equal(await realSummary.inputValue(), realSummaryChoice, 'Summary selection should update controlled field');
 await page.waitForFunction(text => document.querySelector('.cv-sheet')?.textContent?.includes(text), realSummaryChoice);
 log('Professional Title templates update real Personal Summary, React preview and saved CV');
