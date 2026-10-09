@@ -94,6 +94,35 @@ assert(fs.readFileSync('app/layout.tsx','utf8').includes('<SiratiSiteMenu />'),
 assert(fs.existsSync('app/profile/page.tsx'),'account profile route must exist');
 log('Career-wide homepage, contrast, all-feature sidebar, escape close, 320/360/390/768/1440');
 
+// Feature Finder V2 — clear, reversible navigation filtering in both languages.
+await page.setViewportSize({width:390,height:844});
+await opener.click();
+const featureDialog = page.getByRole('dialog',{name:'Sirati features and customer account'});
+const featureSearch = featureDialog.getByRole('searchbox',{name:'البحث عن أداة · Search features'});
+assert(await featureSearch.isVisible(),'feature search missing from the sidebar');
+await featureSearch.fill('LinkedIn');
+let visibleFeatures = await featureDialog.locator('.sirati-menu-item').allInnerTexts();
+assert.equal(visibleFeatures.length,1,'LinkedIn should filter down to one feature');
+assert(visibleFeatures[0].includes('LinkedIn'),'LinkedIn feature filter is incorrect');
+assert((await featureDialog.locator('.sirati-menu-item').first().getAttribute('href') || '').includes('tool=linkedin'),
+  'filtered LinkedIn link should open its actual tool');
+await featureSearch.fill('خطاب');
+visibleFeatures = await featureDialog.locator('.sirati-menu-item').allInnerTexts();
+assert.equal(visibleFeatures.length,1,'Arabic title should filter to one Cover Letter feature');
+assert(visibleFeatures[0].includes('Cover Letter Pro'),'Arabic search filtered wrong tool');
+await featureSearch.fill('this-feature-does-not-exist-987');
+assert.equal(await featureDialog.locator('.sirati-menu-item').count(),0,'nonexistent feature query must remove all feature results');
+assert(await featureDialog.getByText('لا توجد أدوات مطابقة').isVisible(),'empty state message missing');
+await featureDialog.getByRole('button',{name:'إظهار كل الأدوات · Show all'}).click();
+assert.equal(await featureSearch.inputValue(),'','Show all must reset the query');
+assert((await featureDialog.locator('.sirati-menu-item').count())>=8,'clearing query must restore the menu');
+await page.keyboard.press('Escape');
+assert.equal(await featureDialog.count(),0,'Escape must still dismiss the searched menu');
+assert(await opener.evaluate(el => el === document.activeElement),'closing the menu must restore keyboard focus');
+log('Sidebar V2: Arabic/English filtering, direct links, empty state, reset and focus restoration');
+await page.setViewportSize({width:1440,height:1000});
+
+
 
 
 // Career Studio brand must no longer position Sirati as just a CV builder.
