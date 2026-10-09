@@ -186,9 +186,35 @@ css += r'''
 .sirati-content-tabs {display:flex;flex-wrap:wrap;gap:8px;}
 .sirati-content-tabs button {padding:8px 14px;min-height:40px;border:1px solid #cbd5e1;background:white;border-radius:9px;}
 .sirati-content-tabs button[aria-pressed="true"] {background:#e1f3ec;color:#145a50;border-color:#639c85;font-weight:700;}
-.sirati-content-options {display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px;}
-.sirati-content-options label {display:flex;gap:9px;align-items:center;border:1px solid #e0e6e8;border-radius:9px;padding:9px;overflow-wrap:anywhere;cursor:pointer;}
-.sirati-content-options input {flex:none;accent-color:#187461;}
+/* Explicitly override broad .wizard-section-card .field label/input rules.
+   Native checkbox sizing and horizontal labels must not inherit full-width text input styles. */
+.wizard-section-card .field .sirati-content-options {
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));
+  gap:9px;min-width:0;max-width:100%;width:100%;
+}
+.wizard-section-card .field .sirati-content-options > label {
+  display:flex;flex-direction:row;align-items:center;justify-content:flex-start;
+  gap:10px;min-width:0;width:100%;max-width:100%;min-height:46px;
+  margin:0;padding:10px 12px;border:1px solid #e0e6e8;border-radius:9px;
+  background:#fff;cursor:pointer;box-sizing:border-box;
+  grid-template-columns:none;
+}
+.wizard-section-card .field .sirati-content-options > label > span {
+  display:block;flex:1 1 0;min-width:0;width:auto;max-width:100%;
+  white-space:normal;word-break:normal;overflow-wrap:break-word;
+  writing-mode:horizontal-tb;line-height:1.4;
+}
+.wizard-section-card .field .sirati-content-options input[type="checkbox"],
+.wizard-section-card .field .sirati-content-confirm input[type="checkbox"] {
+  appearance:auto;-webkit-appearance:checkbox;
+  display:block;flex:0 0 19px;width:19px;height:19px;min-width:19px;max-width:19px;
+  min-height:19px;max-height:19px;margin:0;padding:0;
+  border:0;border-radius:3px;box-shadow:none;accent-color:#187461;
+}
+.wizard-section-card .field .sirati-content-confirm {
+  display:flex;flex-direction:row;align-items:flex-start;gap:10px;
+  min-width:0;max-width:100%;margin:0;
+}
 .sirati-content-achievements {display:grid;gap:9px;min-width:0;}
 .sirati-content-achievements > button {text-align:start;padding:10px;border:1px solid #d7e3df;background:#f6f9f8;border-radius:9px;overflow-wrap:anywhere;}
 .sirati-content-achievements label {display:grid;gap:5px;font-weight:650;}
@@ -199,7 +225,11 @@ css += r'''
 .sirati-content-confirm input {flex:none;}
 .sirati-content-add {min-height:44px;padding:9px 14px;color:white;background:#17564d;border:1px solid #17564d;border-radius:10px;font-weight:700;}
 .sirati-content-add:disabled {opacity:.48;cursor:not-allowed;}
-@media(max-width:390px){.sirati-content-options {grid-template-columns:1fr;}.sirati-content-panel {padding:10px;}}
+@media(max-width:600px) {
+  .wizard-section-card .field .sirati-content-options {grid-template-columns:minmax(0,1fr);}
+  .wizard-section-card .field .sirati-content-options > label {padding:10px;min-height:46px;}
+  .sirati-content-panel {padding:11px;}
+}
 @media print {.sirati-content-slot {display:none!important;}}
 '''
 css_path.write_text(css, encoding="utf-8")
