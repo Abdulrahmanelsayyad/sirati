@@ -223,3 +223,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('sitewide_navigatio
 
 # UX phase 2: manual Builder form/preview navigation and responsive input usability.
 subprocess.run([sys.executable, str(Path(__file__).with_name('ux_cv_editor_forms_v2.py')), str(root)], check=True)
+
+# Keep Career Tools text per tab/language during this open session (in memory only).
+subprocess.run([sys.executable, str(Path(__file__).with_name('career_draft_preservation_ux.py')), str(root)], check=True)
