@@ -629,6 +629,30 @@ assert(await page.locator('.wizard-progress-meta').isVisible(),
 // while the keyboard is active rather than disappearing.
 const guidedNav = page.locator('.builder-guide');
 const editorFooterNav = page.locator('.wizard-footer-nav');
+async function assertCompactMobileNav(nav, context) {
+  const metrics = await nav.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const parent = el.parentElement?.getBoundingClientRect();
+    const buttons = Array.from(el.querySelectorAll('button')).map(button => {
+      const b = button.getBoundingClientRect();
+      return {width: b.width, height: b.height, visible: button.getClientRects().length>0};
+    });
+    return {width:r.width, left:r.left, right:r.right, bottom:r.bottom,
+      parentRight:parent?.right, position:getComputedStyle(el).position,
+      viewport:window.innerWidth, overflow:document.documentElement.scrollWidth-window.innerWidth,
+      buttons};
+  });
+  assert(metrics.width <= 240 && metrics.width >= 165,
+    context + ' must use a compact ~236px navigation cluster: ' + JSON.stringify(metrics));
+  assert(metrics.position === 'static', context + ' footer must NOT overlay editable CV content');
+  assert(metrics.right <= metrics.viewport + 2 && metrics.left >= -2,
+    context + ' footer must stay within the mobile screen');
+  assert(metrics.parentRight - metrics.right <= 24 && metrics.parentRight >= metrics.right - 2,
+    context + ' compact buttons must align to physical right of their form container');
+  assert(metrics.buttons.every(button => button.visible && button.height >= 44 && button.width <= 126),
+    context + ' buttons must be compact but retain at least a 44px tap height');
+  assert(metrics.overflow <= 2, context + ' must not cause mobile horizontal overflow');
+}
 const firstMobileEditor = page.locator('.wizard-section-card input:visible, .wizard-section-card textarea:visible').first();
 assert(await firstMobileEditor.count(), 'expected an editable CV field on mobile');
 // The editor autofocuses its first field. Blur that initial focus to assert
@@ -638,9 +662,11 @@ await page.evaluate(() => {
   if (active instanceof HTMLElement) active.blur();
 });
 await editorFooterNav.waitFor({ state: 'visible', timeout: 10000 });
+await assertCompactMobileNav(editorFooterNav, 'unfocused 390px');
 assert.equal(await guidedNav.isVisible(), false, 'duplicate guide must not appear over mobile CV editor');
 await firstMobileEditor.focus();
 assert(await editorFooterNav.isVisible(), 'Continue footer must stay visible when mobile input is focused');
+await assertCompactMobileNav(editorFooterNav, 'focused 390px');
 assert.equal(await editorFooterNav.evaluate(el => getComputedStyle(el).position), 'static',
   'focused mobile footer must flow below the editor instead of overlaying the keyboard');
 await firstMobileEditor.evaluate(el => el.blur());
@@ -658,6 +684,7 @@ assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
   'duplicate onboarding must remain hidden at 320px');
 const smallOverflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 assert(smallOverflow <= 2, '320px builder overflow=' + smallOverflow);
+await assertCompactMobileNav(editorFooterNav, 'unfocused 320px');
 await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-320-rest.png', animations: 'disabled' });
 await page.setViewportSize({ width: 390, height: 844 });
 log('mobile focus mode: visible manual footer snapshots at 320px, 390px focused/unfocused');
@@ -672,6 +699,7 @@ for (let stepNumber = 0; stepNumber < 9; stepNumber++) {
   await page.setViewportSize({width:390,height:844});
   const nav = page.locator('.wizard-footer-nav');
   assert(await nav.isVisible(), 'manual navigation missing on mobile Section '+(stepNumber+1));
+  await assertCompactMobileNav(nav, 'Section '+(stepNumber+1)+' unfocused');
   const navButtons = nav.locator('button');
   assert(await navButtons.count() >= 1, 'no manual navigation buttons in Section '+(stepNumber+1));
   assert(await nav.getByRole('button', {name:/Back/i}).isVisible(),
@@ -684,6 +712,7 @@ for (let stepNumber = 0; stepNumber < 9; stepNumber++) {
   if(await editor.count()) {
     await editor.focus();
     assert(await nav.isVisible(), 'manual navigation disappeared on input focus at Section '+(stepNumber+1));
+    await assertCompactMobileNav(nav, 'Section '+(stepNumber+1)+' focused');
     await editor.evaluate(el=>el.blur());
   }
   const overflowAtStep = await page.evaluate(() => document.documentElement.scrollWidth-window.innerWidth);
