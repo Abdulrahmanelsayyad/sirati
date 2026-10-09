@@ -45,12 +45,23 @@ function isSummary(target: EventTarget | null): target is HTMLTextAreaElement {
   return /personal summary|professional summary|\bsummary\b|\bprofile\b|\babout me\b|ملخص|نبذة|نبذه/i.test(text)
     && !/description|responsibilit|achievement|المسؤوليات|الإنجازات|الوصف الوظيفي/i.test(text);
 }
-function storedRole() {
-  for (const field of Array.from(document.querySelectorAll<HTMLElement>('.field'))) {
-    const label = field.querySelector('label')?.textContent?.toLowerCase().trim() || '';
-    if (!/^(role|job title|professional title|position|المسمى الوظيفي|الوظيفة|المهنة|المسمى)$/.test(label)) continue;
-    const input = field.querySelector<HTMLInputElement>('input');
-    if (input?.value.trim()) return input.value.trim().slice(0, 90);
+function isProfessionalTitleInput(node: EventTarget | null): node is HTMLInputElement {
+  if (!(node instanceof HTMLInputElement) || node.type === 'hidden') return false;
+  const field = node.closest('.field');
+  if (!field) return false;
+  const labels = [
+    node.labels?.[0]?.textContent,
+    field.querySelector('label')?.textContent,
+    node.getAttribute('aria-label'),
+    node.getAttribute('name')
+  ].filter(Boolean).join(' ').toLowerCase();
+  // Professional title is the CV headline, NOT a Role from an experience entry.
+  return /professional\s*(?:title|headline)|المسمى\s*(?:الوظيفي|المهني)/i.test(labels);
+}
+function visibleProfessionalTitle() {
+  for (const input of Array.from(document.querySelectorAll<HTMLInputElement>('.field input'))) {
+    if (!isProfessionalTitleInput(input)) continue;
+    if (input.value.trim()) return input.value.trim().slice(0, 90);
   }
   return '';
 }
@@ -76,63 +87,134 @@ function makeSuggestions(job: string, lang: Lang) {
   ];
 }
 export default function PersonalSummaryPicker() {
-  const [enabled,setEnabled] = useState(false);
-  const [mount,setMount] = useState<HTMLElement | null>(null);
-  const [open,setOpen] = useState(false);
-  const [role,setRole] = useState('');
-  const [lang,setLang] = useState<Lang>('en');
-  const [chosen,setChosen] = useState(0);
+  const [mount, setMount] = useState<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [role, setRole] = useState('');
+  const [lang, setLang] = useState<Lang>('en');
   const target = useRef<HTMLTextAreaElement | null>(null);
+  const titleRef = useRef('');
+
   useEffect(() => {
-    if (!window.location.pathname.includes('/builder')) return;
-    setEnabled(true);
-    const onFocus = (event: FocusEvent) => {
-      if ((event.target as HTMLElement | null)?.closest?.('.sirati-summary-assistant')) return;
-      if (!isSummary(event.target)) return;
-      const field = event.target.closest('.field') || event.target.parentElement;
-      if (!field) return;
-      let host = field.querySelector<HTMLElement>(':scope > .sirati-summary-assistant');
-      if (!host) { host = document.createElement('div'); host.className = 'sirati-summary-assistant'; field.appendChild(host); }
-      if (target.current !== event.target) setOpen(false);
-      target.current = event.target;
-      setMount(host);
-      setLang(cvLanguage());
-      const detected = storedRole();
-      if (detected) setRole(detected);
+    // This component lives in the root layout. Forget one user's title on navigation.
+    const sync = () => {
+      if (!window.location.pathname.includes('/builder')) {
+        if (titleRef.current) titleRef.current = '';
+        if (target.current) {
+          target.current = null; setMount(null); setRole(''); setOpen(false);
+        }
+        return;
+      }
+      const currentTitle = visibleProfessionalTitle();
+      if (currentTitle && currentTitle !== titleRef.current) {
+        titleRef.current = currentTitle;
+        setRole(currentTitle);
+      }
+      const summary = Array.from(document.querySelectorAll<HTMLTextAreaElement>('.field textarea')).find(isSummary);
+      if (!summary) {
+        if (target.current) {
+          target.current = null;
+          setMount(null);
+          setOpen(false);
+        }
+        return;
+      }
+      if (target.current !== summary) {
+        const field = summary.closest('.field') || summary.parentElement;
+        if (!field) return;
+        let host = field.querySelector<HTMLElement>(':scope > .sirati-summary-assistant');
+        if (!host) {
+          host = document.createElement('div');
+          host.className = 'sirati-summary-assistant';
+          field.appendChild(host);
+        }
+        target.current = summary;
+        setMount(host);
+        setLang(cvLanguage());
+        // Show ready-to-choose templates directly in the Summary step.
+        setOpen(Boolean(currentTitle || titleRef.current));
+        setRole(currentTitle || titleRef.current);
+      }
     };
-    document.addEventListener('focusin',onFocus,true);
-    return () => document.removeEventListener('focusin',onFocus,true);
-  },[]);
-  const options = useMemo(() => role.trim() ? makeSuggestions(role.trim(),lang) : [],[role,lang]);
-  if (!enabled || !mount || !target.current) return null;
-  const t = lang === 'ar' ? {trigger:'اختيار ملخص مهني جاهز',title:'ملخص مهني حسب الوظيفة',role:'المسمى الوظيفي',placeholder:'مثال: محاسب أو ممرض طوارئ أو مهندس',help:'اختَر الملخص الأنسب وعدّله ليناسب خبرتك الفعلية.',empty:'اكتب المسمى الوظيفي لإظهار 3 ملخصات مقترحة.',use:'استخدم هذا الملخص',close:'إغلاق',confirm:'يوجد ملخص مكتوب بالفعل. هل تريد استبداله بالملخص المختار؟',safety:'هذه نماذج قابلة للتعديل، ولا تُعد إثباتًا لخبرة أو شهادة.'}
-  : {trigger:'Choose a ready-made personal summary',title:'Personal summary for your job',role:'Job title',placeholder:'e.g. Accountant, Nurse or Engineer',help:'Select a starting point, then edit it to reflect your real experience.',empty:'Enter a job title to view 3 suggested summaries.',use:'Use this summary',close:'Close',confirm:'Replace the personal summary you have already written?',safety:'These are editable examples, not verified skills, credentials or achievements.'};
-  const apply = () => {
-    if (!target.current || !options[chosen]) return;
-    const current = target.current.value.trim();
-    if (current === options[chosen]) {setOpen(false); return;}
-    if (current && !window.confirm(t.confirm)) return;
-    putSummary(target.current,options[chosen]);
+    const onInput = (event: Event) => {
+      if (isProfessionalTitleInput(event.target)) {
+        const title = event.target.value.trim().slice(0, 90);
+        titleRef.current = title;
+        setRole(title);
+        if (target.current) setOpen(Boolean(title));
+      }
+    };
+    const onFocus = (event: FocusEvent) => {
+      if (isSummary(event.target)) sync();
+    };
+    document.addEventListener('input', onInput, true);
+    document.addEventListener('change', onInput, true);
+    document.addEventListener('focusin', onFocus, true);
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {childList:true, subtree:true});
+    sync();
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('input', onInput, true);
+      document.removeEventListener('change', onInput, true);
+      document.removeEventListener('focusin', onFocus, true);
+    };
+  }, []);
+
+  const options = useMemo(() => role.trim() ? makeSuggestions(role.trim(), lang) : [], [role, lang]);
+  if (!mount || !target.current) return null;
+  const t = lang === 'ar'
+    ? {
+      trigger:'عرض الملخصات المقترحة', title:'اختر الملخص المهني المناسب', role:'المسمى الوظيفي',
+      help:'اختر نموذجًا جاهزًا، ثم عدّل الكلمات لتطابق خبراتك الحقيقية.',
+      empty:'أدخل المسمى الوظيفي في بياناتك الأساسية أولًا لإظهار الملخصات المناسبة.',
+      choose:'اختيار هذا الملخص', close:'إخفاء الاقتراحات',
+      confirm:'يوجد ملخص مكتوب بالفعل. هل تريد استبداله بالنموذج المختار؟',
+      safety:'اقتراحات جاهزة قابلة للتعديل، وليست إثباتًا لخبرات أو شهادات.',
+      styles:['مختصر ومباشر','احترافي','مركز على المهارات']
+    }
+    : {
+      trigger:'Show suggested summaries', title:'Choose your professional summary', role:'Professional title',
+      help:'Choose one ready-to-edit template that reflects your actual experience.',
+      empty:'Enter your Professional Title in the profile details first to see matching summaries.',
+      choose:'Use this summary', close:'Hide suggestions',
+      confirm:'Replace the personal summary you have already written?',
+      safety:'Editable starting points, not verified experience or credentials.',
+      styles:['Concise','Professional','Skills focused']
+    };
+
+  const apply = (value: string) => {
+    if (!target.current) return;
+    const existing = target.current.value.trim();
+    if (existing === value) {setOpen(false); return;}
+    if (existing && !window.confirm(t.confirm)) return;
+    putSummary(target.current, value);
     setOpen(false);
   };
+
   return createPortal(!open
-    ? <button type="button" className="sirati-summary-trigger" onClick={() => {setLang(cvLanguage());setOpen(true);}}>{t.trigger}</button>
+    ? <button type="button" className="sirati-summary-trigger"
+        onClick={() => {setLang(cvLanguage()); setOpen(true);}}>{t.trigger}</button>
     : <section className="sirati-summary-panel" dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-label={t.title}>
-        <div className="sirati-summary-head"><strong>{t.title}</strong><button type="button" aria-label={t.close} onClick={() => setOpen(false)}>×</button></div>
-        <p>{t.help}</p>
-        <label className="sirati-summary-role">{t.role}
-          <input value={role} maxLength={90} onChange={e => {setRole(e.target.value);setChosen(0);}} placeholder={t.placeholder}/>
-        </label>
-        {options.length ? <div className="sirati-summary-choices">{options.map((text,i) =>
-          <label key={i} className={chosen===i ? 'is-selected' : ''}>
-            <input type="radio" name="sirati-summary-choice" checked={chosen===i} onChange={() => setChosen(i)}/>
-            <span>{text}</span>
-          </label>
-        )}</div> : <p role="status">{t.empty}</p>}
-        <div className="sirati-summary-actions">
-          <button type="button" disabled={!options.length} onClick={apply}>{t.use}</button>
-          <button type="button" onClick={() => setOpen(false)}>{t.close}</button>
+        <div className="sirati-summary-head">
+          <div>
+            <small className="sirati-summary-context">{t.role}: <b>{role || '—'}</b></small>
+            <strong>{t.title}</strong>
+          </div>
+          <button type="button" aria-label={t.close} onClick={() => setOpen(false)}>×</button>
         </div>
+        <p>{t.help}</p>
+        {options.length
+          ? <div className="sirati-summary-choices">
+              {options.map((text,i) =>
+                <button type="button" key={i} className="sirati-summary-choice"
+                  onClick={() => apply(text)} aria-label={t.choose + ' ' + (i+1)}>
+                  <span className="sirati-summary-choice__style">{i+1}. {t.styles[i]}</span>
+                  <span className="sirati-summary-choice__text">{text}</span>
+                  <span className="sirati-summary-choice__action">{t.choose} →</span>
+                </button>
+              )}
+            </div>
+          : <p role="status">{t.empty}</p>}
         <small>{t.safety}</small>
       </section>, mount);
 }
@@ -172,5 +254,25 @@ with (root / "app" / "globals.css").open("a",encoding="utf-8") as f:
 .sirati-summary-actions button:disabled {opacity:.5;cursor:not-allowed}
 .sirati-summary-panel small {color:#64748b;line-height:1.5}
 @media(max-width:760px) {.sirati-summary-trigger {width:100%;justify-content:center}.sirati-summary-panel {padding:12px}}
+
+/* Compact, directly selectable summary cards, rendered only in the active field. */
+.sirati-summary-head > div {display:grid;gap:5px;min-width:0}
+.sirati-summary-context {font-size:12px;color:#1d4ed8;overflow-wrap:anywhere}
+.sirati-summary-choices {display:grid;gap:8px}
+.sirati-summary-choices .sirati-summary-choice {
+  width:100%;display:grid;gap:7px;padding:12px;text-align:start;
+  background:#f8fafc;color:#0f172a;border:1px solid #e2e8f0;
+  border-radius:10px;font:inherit;cursor:pointer;white-space:normal;
+}
+.sirati-summary-choice:hover,.sirati-summary-choice:focus-visible {border-color:#2563eb;background:#eff6ff;outline-offset:2px}
+.sirati-summary-choice__style {font-size:12px;font-weight:800;color:#1d4ed8}
+.sirati-summary-choice__text {font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+.sirati-summary-choice__action {font-size:12px;font-weight:700;color:#1d4ed8}
+.sirati-summary-panel .sirati-summary-head strong {font-size:15px}
+@media(max-width:760px) {
+  .sirati-summary-panel {padding:11px;gap:9px}
+  .sirati-summary-choices .sirati-summary-choice {padding:11px}
+}
+
 ''')
 print("Applied optional role-aware personal summaries.")
