@@ -227,6 +227,22 @@ assert(fs.readFileSync('app/globals.css','utf8').includes('Sirati Signature UI V
 log('Signature V3: Career Tools brand consistency and source integrity');
 assert.equal(await page.locator('.career-tab').count(), 3, 'expected three distinct tools');
 
+// UX Phase 2: consistent accessible career form controls without sideways mobile scroll.
+await page.setViewportSize({width:390,height:844});
+const careerFields = await page.locator('.career-form input').first().evaluate(el => ({
+  height:el.getBoundingClientRect().height,
+  width:el.getBoundingClientRect().width,
+  fontSize:parseFloat(getComputedStyle(el).fontSize),
+  overflow:document.documentElement.scrollWidth-innerWidth
+}));
+assert(careerFields.height>=44 && careerFields.fontSize>=16 && careerFields.overflow<=2,
+  'mobile Career Tools inputs must be touch-sized and avoid iOS zoom/overflow: '+JSON.stringify(careerFields));
+assert((await page.locator('.career-tab').first().boundingBox()).height>=44,
+  'Career Tools tabs must meet 44px touch target');
+await page.setViewportSize({width:1440,height:1000});
+log('UX Phase2: Career Tools fields and tabs readable at 390px without horizontal scrolling');
+
+
 const navTests = [
   ['linkedin','LinkedIn profile'], ['interview','Interview prep'], ['letter','Cover letter']
 ];
@@ -561,6 +577,42 @@ assert(await page.getByRole('dialog',{name:'Sirati features and customer account
 await page.keyboard.press('Escape');
 await page.setViewportSize({width:1440,height:1000});
 log('Builder: menu button no longer overlaps editable step heading, 390px route keyboard check');
+
+// UX Phase 2: jump between Builder form and the live preview without data mutation.
+await page.setViewportSize({width:390,height:844});
+const formJump = page.getByRole('button',{name:'Jump to CV form'});
+const previewJump = page.getByRole('button',{name:'Jump to CV preview'});
+assert(await formJump.isVisible() && await previewJump.isVisible(),
+  'Builder should expose Edit and Preview navigation in the global toolbar');
+assert.equal(await page.locator('.sirati-topbar-shortcuts').count(),0,
+  'Builder workflow navigation must replace, not duplicate, generic shortcuts');
+const beforeJump = await page.evaluate(()=>window.scrollY);
+await previewJump.click();
+await page.waitForFunction(()=>{
+  const r=document.querySelector('.wizard-preview-wrap')?.getBoundingClientRect();
+  return !!r && r.bottom>86 && r.top<innerHeight;
+});
+const previewScroll = await page.evaluate(()=>window.scrollY);
+assert(previewScroll>beforeJump+70,'Preview shortcut must move to the real CV preview');
+await formJump.click();
+await page.waitForFunction(()=>{
+  const r=document.querySelector('.wizard-panel')?.getBoundingClientRect();
+  return !!r && r.bottom>86 && r.top<innerHeight;
+});
+const afterFormJump = await page.evaluate(()=>window.scrollY);
+assert(afterFormJump < previewScroll,'Edit shortcut should return to the editable form');
+const mobileBuilderInput = page.locator('.wizard-section-card input:visible').first();
+assert(await mobileBuilderInput.count()>=1,'Builder needs a visible editable field');
+const tapMetric = await mobileBuilderInput.evaluate(el=>({
+  height:el.getBoundingClientRect().height,
+  fontSize:parseFloat(getComputedStyle(el).fontSize),
+  overflow:document.documentElement.scrollWidth-innerWidth
+}));
+assert(tapMetric.height>=44 && tapMetric.fontSize>=16 && tapMetric.overflow<=2,
+  'Builder must have readable 44px fields without horizontal overflow: '+JSON.stringify(tapMetric));
+await page.setViewportSize({width:1440,height:1000});
+log('UX Phase2: manual form/preview jumps and accessible 390px Builder inputs');
+
 
 
 
