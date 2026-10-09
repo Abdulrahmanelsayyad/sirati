@@ -159,7 +159,7 @@ source = source.replace("import CvReadinessCheck from '@/components/CvReadinessC
     "import CvReadinessCheck from '@/components/CvReadinessCheck';\n" + imp, 1)
 # Mount directly inside the actual controlled Skills field of step 8.
 # No DOM scraping or global observer, and the component unmounts with its step.
-anchor = re.compile(r'(?P<start><div className="field"><label>Skills</label><textarea[^\\n]*?/>)(?P<end></div>)')
+anchor = re.compile(r'(?P<start><div className="field"><label>Skills</label><textarea[^\n]*?/>)(?P<end></div>)')
 matches = list(anchor.finditer(source))
 if len(matches) != 1:
     raise RuntimeError("Expected one controlled Builder Skills textarea")
