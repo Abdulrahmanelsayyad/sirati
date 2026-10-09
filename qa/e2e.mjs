@@ -33,8 +33,8 @@ const page = await context.newPage();
 // Premium Minimal V1: verify the actual rendered landing page before other E2E.
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 assert.equal(await page.locator('.marketing-page').count(), 1, 'Sirati landing page missing');
-assert((await page.locator('.marketing-hero h1').innerText()).includes('A CV that looks'),
-  'Premium Editorial V2 headline was not applied');
+assert((await page.locator('.marketing-hero h1').innerText()).includes('Your career.'),
+  'Career-wide headline was not applied');
 const brandColor = await page.locator('.marketing-page').evaluate(el =>
   getComputedStyle(el).getPropertyValue('--pm-green').trim()
 );
@@ -52,6 +52,49 @@ for (const width of [320, 390, 1440]) {
 }
 await page.setViewportSize({ width: 1440, height: 1000 });
 console.log('PASS: Premium Minimal rendered homepage, brand token, and 320/390/1440 responsive hero');
+
+// Career-wide homepage replaces the CV-only call to action and fixes lead contrast.
+const heroTitle = await page.locator('.marketing-hero h1').innerText();
+assert(heroTitle.includes('Your career.') && heroTitle.includes('Beautifully presented.'),
+  'Sirati must introduce all career services, not only CVs');
+assert(!(await page.locator('.marketing-header').innerText()).includes('Build my CV'),
+  'CV-only header CTA must not remain');
+assert((await page.locator('.marketing-hero .hero-actions a').first().innerText()).includes('Career Studio'),
+  'primary hero CTA must open Career Studio');
+assert((await page.locator('.marketing-hero .hero-actions a').first().getAttribute('href')||'').includes('career-tools'),
+  'Career Studio hero route is missing');
+const lead = await page.locator('.marketing-hero .hero-lead').evaluate(el => ({
+  color:getComputedStyle(el).color,opacity:getComputedStyle(el).opacity,
+}));
+assert.equal(lead.color,'rgb(237, 244, 237)','faded mobile hero lead must use high-contrast text');
+assert.equal(lead.opacity,'1','hero lead must not be transparent');
+
+const opener = page.getByRole('button',{name:'Open Sirati menu'});
+for (const width of [320,360,390,768,1440]) {
+  await page.setViewportSize({width,height:844});
+  assert(await opener.isVisible(),'mobile/global menu opener invisible at '+width);
+  await opener.click();
+  const drawer = page.getByRole('dialog',{name:'Sirati features and customer account'});
+  assert(await drawer.isVisible(),'features drawer missing at '+width);
+  for (const feature of ['CV Builder','32 CV templates','Smart CV','CV Quality',
+                         'Cover Letter Pro','Headline & About assistant','Interview preparation','My Documents']) {
+    assert((await drawer.innerText()).includes(feature),'missing actual feature: '+feature);
+  }
+  assert((await drawer.locator('a[href*="career-tools"]').count())>=3,'career tools deep links missing');
+  const dimensions = await drawer.boundingBox();
+  assert(dimensions && dimensions.width<=width+1,'sidebar overflows at '+width);
+  await page.keyboard.press('Escape');
+  assert.equal(await drawer.count(),0,'Escape must dismiss drawer');
+  const over = await page.evaluate(() => document.documentElement.scrollWidth-innerWidth);
+  assert(over<=2,'homepage overflows with side navigation at '+width+'px');
+}
+await page.setViewportSize({width:1440,height:1000});
+assert(fs.readFileSync('app/layout.tsx','utf8').includes('<SiratiSiteMenu />'),
+  'global menu is not mounted on all public and authenticated routes');
+assert(fs.existsSync('app/profile/page.tsx'),'account profile route must exist');
+log('Career-wide homepage, contrast, all-feature sidebar, escape close, 320/360/390/768/1440');
+
+
 
 // Career Studio brand must no longer position Sirati as just a CV builder.
 const studioMark = page.locator('.marketing-hero .sirati-career-studio-mark');
@@ -119,6 +162,24 @@ assert(fs.readFileSync('app/globals.css','utf8').includes('Sirati Signature UI V
   'Signature UI V3 should appear exactly at end of reconstructed styling');
 log('Signature V3: Career Tools brand consistency and source integrity');
 assert.equal(await page.locator('.career-tab').count(), 3, 'expected three distinct tools');
+
+const navTests = [
+  ['linkedin','LinkedIn profile'], ['interview','Interview prep'], ['letter','Cover letter']
+];
+for (const [tool,label] of navTests) {
+  await page.goto(base + '/career-tools/?tool='+tool,{waitUntil:'networkidle'});
+  const active = page.locator('.career-tab[aria-pressed="true"]');
+  assert((await active.innerText()).includes(label),
+    'career deep link must select '+tool+' directly');
+}
+await page.goto(base+'/profile/',{waitUntil:'networkidle'});
+assert(await page.locator('.sirati-profile-page').isVisible(),'account profile route missing');
+const profileText = await page.locator('.sirati-profile-page').innerText();
+assert(profileText.includes('الملف الشخصي'),'profile heading missing');
+assert(!profileText.includes('QA Person'),'unauthenticated profile must not expose CV demo user');
+log('Career Studio tool deep-links, and unauthenticated profile isolation');
+await page.goto(base+'/career-tools/',{waitUntil:'networkidle'});
+
 const generated = page.getByTestId('career-output');
 const generateButton = page.getByRole('button', { name: 'Generate editable draft' });
 assert(await generateButton.isDisabled(), 'empty inputs must not fabricate a letter');
