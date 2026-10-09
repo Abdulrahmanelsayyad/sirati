@@ -52,6 +52,24 @@ for (const width of [320, 390, 1440]) {
 }
 await page.setViewportSize({ width: 1440, height: 1000 });
 console.log('PASS: Premium Minimal rendered homepage, brand token, and 320/390/1440 responsive hero');
+// V3 visual identity — actual computed styles on the final, browser-rendered page.
+const heroSignature = await page.locator('.marketing-hero').evaluate(el => {
+  const cs = getComputedStyle(el);
+  const title = el.querySelector('h1');
+  return { bg: cs.backgroundImage, radius: cs.borderRadius, title: title ? getComputedStyle(title).color : '' };
+});
+assert(heroSignature.bg.includes('linear-gradient'), 'Signature dark hero gradient is missing');
+assert.equal(heroSignature.title, 'rgb(255, 254, 250)', 'Signature hero heading must have readable light contrast');
+assert(parseFloat(heroSignature.radius) >= 19, 'Signature hero must have custom premium card geometry');
+for (const width of [360, 390, 1440]) {
+  await page.setViewportSize({width,height:844});
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  assert(overflow <= 2, 'Signature landing overflows at '+width+'px: '+overflow);
+  assert(await page.locator('.marketing-hero .hero-actions .btn').first().isVisible(),
+    'Signature hero action must be visible at '+width+'px');
+}
+await page.setViewportSize({width:1440,height:1000});
+log('Signature V3: accessible contrasting hero and 360/390/1440 no-horizontal-overflow');
 
 function log(name) {
   console.log('PASS:', name);
@@ -64,6 +82,15 @@ async function optionValues(locator) {
 // Free career tools are public, offline-template based and don't require an account.
 await page.goto(base + '/career-tools/', { waitUntil: 'networkidle' });
 assert.equal(await page.locator('.career-page').count(), 1, 'free career tools route missing');
+const careerSignature = await page.locator('.career-hero').evaluate(el => {
+  const c = getComputedStyle(el); return { bg:c.backgroundImage, color:c.color, radius:c.borderRadius };
+});
+assert(careerSignature.bg.includes('linear-gradient') && careerSignature.color === 'rgb(255, 254, 250)',
+  'Signature Career Tools dark branded introduction was not applied');
+assert(parseFloat(careerSignature.radius) >= 18, 'Career header premium geometry missing');
+assert(fs.readFileSync('app/globals.css','utf8').includes('Sirati Signature UI V3'),
+  'Signature UI V3 should appear exactly at end of reconstructed styling');
+log('Signature V3: Career Tools brand consistency and source integrity');
 assert.equal(await page.locator('.career-tab').count(), 3, 'expected three distinct tools');
 const generated = page.getByTestId('career-output');
 const generateButton = page.getByRole('button', { name: 'Generate editable draft' });
