@@ -84,7 +84,7 @@ test('PDF escaping and safe pagination for long immutable content', () => {
     profile: ('Handles (complex) \\ tasks safely. ').repeat(170),
   }};
   const pdf = renderCompactAtsSnapshotPdf(long).toString('ascii');
-  assert.match(pdf, /Handles \\(complex\\) \\\\ tasks safely/);
+  assert.ok(pdf.includes(String.raw`Handles \(complex\) \\ tasks safely`));
   assert.match(pdf, /\/Count [2-8] /);
   assert.match(pdf, /startxref\n\d+\n%%EOF/);
 });
