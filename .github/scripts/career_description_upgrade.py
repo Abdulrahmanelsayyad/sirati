@@ -236,6 +236,132 @@ const ADVANCED_NURSING_BULLETS: Record<string, CareerText[]> = {
   ]
 };
 
+
+type CareerTrack = { id: string; career: string; pattern: RegExp; label: CareerText; bullets: CareerText[] };
+const CAREER_TRACKS: CareerTrack[] = [
+  { id: "financial-accounting", career: "accounting", pattern: /financial accountant|general ledger|\bgl accountant\b|محاسب مالي|محاسب عام/i, label: { en: "Financial accounting", ar: "المحاسبة المالية" }, bullets: [
+    { en: "Investigated general-ledger variances, reconciled supporting schedules and documented correction requests for month-end close.", ar: "فحص فروقات دفتر الأستاذ العام ومطابقة الجداول الداعمة وتوثيق طلبات التصحيح ضمن إقفال الشهر." },
+    { en: "Prepared account reconciliations and traceable supporting schedules to support financial statement review.", ar: "إعداد تسويات الحسابات والجداول الداعمة القابلة للتتبع لدعم مراجعة القوائم المالية." }
+  ] },
+  { id: "tax-accounting", career: "accounting", pattern: /tax accountant|tax specialist|محاسب ضرائب|أخصائي ضرائب|ضرايب/i, label: { en: "Tax accounting", ar: "المحاسبة الضريبية" }, bullets: [
+    { en: "Reconciled tax-related ledger balances with source transactions and documented reporting discrepancies.", ar: "مطابقة أرصدة الحسابات الضريبية مع المعاملات الأصلية وتوثيق فروقات التقارير." },
+    { en: "Organized supporting tax schedules and monitored submission requirements under applicable procedures.", ar: "تنظيم الجداول الضريبية الداعمة ومتابعة متطلبات تقديم الإقرارات وفق الإجراءات المعمول بها." }
+  ] },
+  { id: "audit", career: "accounting", pattern: /auditor|internal audit|external audit|مراجع مالي|مدقق|مراجع حسابات/i, label: { en: "Audit and controls", ar: "التدقيق والرقابة" }, bullets: [
+    { en: "Mapped control procedures to supporting evidence and recorded findings for risk-based follow-up.", ar: "ربط إجراءات الرقابة بالمستندات الداعمة وتوثيق الملاحظات للمتابعة المبنية على المخاطر." },
+    { en: "Reviewed transaction samples and documented exceptions, control owners and corrective-action follow-up.", ar: "مراجعة عينات المعاملات وتوثيق الاستثناءات ومسؤولي الرقابة ومتابعة الإجراءات التصحيحية." }
+  ] },
+  { id: "frontend", career: "software", pattern: /front.?end|react developer|angular developer|vue developer|مطور واجهات|واجهات أمامية|فرونت اند/i, label: { en: "Frontend development", ar: "تطوير الواجهات" }, bullets: [
+    { en: "Translated accessible interface specifications into reusable frontend components with responsive-state checks.", ar: "تحويل مواصفات الواجهات الداعمة لإمكانية الوصول إلى مكونات قابلة لإعادة الاستخدام مع فحص تجاوب الشاشات." },
+    { en: "Validated form behavior, loading and error states, and keyboard interactions through targeted browser tests.", ar: "التحقق من سلوك النماذج وحالات التحميل والأخطاء والتفاعل عبر لوحة المفاتيح باختبارات المتصفح الموجهة." }
+  ] },
+  { id: "backend", career: "software", pattern: /back.?end|api developer|server.?side|مطور باك اند|تطوير خلفي|برمجيات خلفية/i, label: { en: "Backend development", ar: "تطوير الأنظمة الخلفية" }, bullets: [
+    { en: "Designed API contracts with input validation, clear error handling and documented access boundaries.", ar: "تصميم عقود واجهات البرمجة مع التحقق من المدخلات ومعالجة واضحة للأخطاء وتوثيق حدود الوصول." },
+    { en: "Investigated service failures using structured logs and repeatable tests before validating regression fixes.", ar: "فحص أعطال الخدمات باستخدام السجلات المنظمة والاختبارات القابلة للإعادة قبل التحقق من إصلاحات منع تكرار الخطأ." }
+  ] },
+  { id: "fullstack", career: "software", pattern: /full.?stack|فول ستاك|تطوير متكامل/i, label: { en: "Full-stack development", ar: "التطوير المتكامل" }, bullets: [
+    { en: "Coordinated frontend workflows with backend API contracts and verified end-to-end failure handling.", ar: "ربط مسارات الواجهة بعقود واجهات البرمجة والتحقق من معالجة الإخفاقات عبر رحلة المستخدم كاملة." },
+    { en: "Implemented and reviewed application changes across UI, service and data boundaries with targeted regression checks.", ar: "تنفيذ ومراجعة تغييرات التطبيق عبر الواجهة والخدمات والبيانات مع فحوص منع تكرار الأخطاء." }
+  ] },
+  { id: "civil", career: "engineering", pattern: /civil engineer|site engineer|structural engineer|مهندس مدني|مهندس موقع|مهندس إنشائي/i, label: { en: "Civil and site engineering", ar: "الهندسة المدنية والمواقع" }, bullets: [
+    { en: "Reviewed site drawings and material submittals against approved specifications and raised technical clarifications.", ar: "مراجعة رسومات الموقع واعتمادات المواد مقابل المواصفات المعتمدة ورفع الاستفسارات الفنية." },
+    { en: "Tracked inspection findings and coordinated corrective actions for construction nonconformities.", ar: "متابعة نتائج الفحوص وتنسيق الإجراءات التصحيحية لحالات عدم المطابقة في أعمال الإنشاء." }
+  ] },
+  { id: "electrical", career: "engineering", pattern: /electrical engineer|power engineer|مهندس كهرباء|مهندس كهربائي/i, label: { en: "Electrical engineering", ar: "الهندسة الكهربائية" }, bullets: [
+    { en: "Reviewed electrical schematics, equipment schedules and interface requirements for implementation readiness.", ar: "مراجعة المخططات الكهربائية وجداول المعدات ومتطلبات الربط للتحقق من جاهزية التنفيذ." },
+    { en: "Documented inspection and test observations against approved electrical safety procedures.", ar: "توثيق ملاحظات الفحص والاختبار وفق إجراءات السلامة الكهربائية المعتمدة." }
+  ] },
+  { id: "mechanical", career: "engineering", pattern: /mechanical engineer|hvac engineer|مهندس ميكانيكا|مهندس تكييف|مهندس ميكانيكي/i, label: { en: "Mechanical engineering", ar: "الهندسة الميكانيكية" }, bullets: [
+    { en: "Reviewed mechanical equipment specifications and installation interfaces against project requirements.", ar: "مراجعة مواصفات المعدات الميكانيكية وواجهات التركيب وفق متطلبات المشروع." },
+    { en: "Recorded commissioning observations, technical deviations and outstanding corrective items for handover.", ar: "توثيق ملاحظات التشغيل التجريبي والانحرافات الفنية والبنود التصحيحية المعلقة للتسليم." }
+  ] },
+  { id: "math-teaching", career: "teaching", pattern: /math teacher|mathematics teacher|مدرس رياضيات|معلم رياضيات/i, label: { en: "Mathematics teaching", ar: "تدريس الرياضيات" }, bullets: [
+    { en: "Designed scaffolded mathematics tasks that connect problem-solving strategies with curriculum outcomes.", ar: "إعداد مهام رياضية متدرجة تربط استراتيجيات حل المسائل بمخرجات المنهج." },
+    { en: "Analyzed formative assessment errors to tailor follow-up practice for specific mathematical misconceptions.", ar: "تحليل أخطاء التقييم البنائي لتكييف التدريبات اللاحقة وفق المفاهيم الرياضية غير المكتملة." }
+  ] },
+  { id: "b2b-sales", career: "sales", pattern: /\bb2b\b|business development|enterprise sales|مبيعات شركات|تطوير أعمال/i, label: { en: "B2B and enterprise sales", ar: "مبيعات الشركات" }, bullets: [
+    { en: "Qualified B2B opportunities by documenting stakeholder priorities, decision criteria and procurement dependencies.", ar: "تأهيل فرص مبيعات الشركات بتوثيق أولويات أصحاب القرار ومعايير الشراء والاعتماديات التعاقدية." },
+    { en: "Maintained opportunity plans with customer use cases, follow-up actions and structured proposal handovers.", ar: "إدارة خطط الفرص وفق حالات استخدام العملاء وخطوات المتابعة وتسليمات العروض المنظمة." }
+  ] },
+  { id: "retail-sales", career: "sales", pattern: /retail sales|sales representative|store sales|مندوب مبيعات|بائع تجزئة|مبيعات تجزئة/i, label: { en: "Retail and field sales", ar: "مبيعات التجزئة والميدان" }, bullets: [
+    { en: "Matched product recommendations to customer requirements while documenting objections and agreed next steps.", ar: "مواءمة توصيات المنتجات مع احتياجات العملاء وتوثيق الاعتراضات والخطوات المتفق عليها." },
+    { en: "Coordinated order follow-ups and communicated stock or delivery constraints with service teams.", ar: "تنسيق متابعة الطلبات وإبلاغ فرق الخدمة بقيود المخزون أو التسليم." }
+  ] },
+  { id: "seo", career: "marketing", pattern: /\bseo\b|search engine optim|تحسين محركات البحث|أخصائي سيو|سيو/i, label: { en: "Search engine optimization", ar: "تحسين محركات البحث" }, bullets: [
+    { en: "Mapped search intent to content topics and documented on-page optimization priorities for relevant pages.", ar: "ربط نوايا البحث بموضوعات المحتوى وتوثيق أولويات تحسين الصفحات ذات الصلة." },
+    { en: "Reviewed indexing, metadata and internal-linking issues and proposed testable technical SEO improvements.", ar: "مراجعة مشكلات الفهرسة والبيانات الوصفية والربط الداخلي واقتراح تحسينات تقنية قابلة للاختبار." }
+  ] },
+  { id: "paid-media", career: "marketing", pattern: /performance market|paid media|ppc specialist|media buyer|إعلانات ممولة|مشتري إعلانات/i, label: { en: "Paid media", ar: "الإعلانات الرقمية المدفوعة" }, bullets: [
+    { en: "Organized campaign structures around audience segments, creative variations and clearly defined conversion events.", ar: "تنظيم الحملات حول شرائح الجمهور وتنوع المواد الإبداعية وأحداث التحويل المحددة بوضوح." },
+    { en: "Reviewed funnel metrics and documented hypotheses for campaign targeting and landing-page improvements.", ar: "مراجعة مؤشرات مسار التحويل وتوثيق فرضيات تحسين الاستهداف وصفحات الهبوط." }
+  ] },
+  { id: "recruitment", career: "hr", pattern: /recruiter|talent acquisition|recruitment specialist|أخصائي توظيف|مسؤول توظيف/i, label: { en: "Recruitment", ar: "الاستقطاب والتوظيف" }, bullets: [
+    { en: "Prepared structured candidate-screening notes against role requirements and maintained traceable interview handovers.", ar: "إعداد ملاحظات فرز منظمة للمرشحين مقابل متطلبات الوظيفة والحفاظ على تسليمات مقابلات قابلة للتتبع." },
+    { en: "Coordinated candidate communication, interview scheduling and recruitment-stage documentation.", ar: "تنسيق التواصل مع المرشحين ومواعيد المقابلات وتوثيق مراحل التوظيف." }
+  ] },
+  { id: "tech-support", career: "customer-service", pattern: /technical support|it support|help desk|دعم فني|مساعدة تقنية/i, label: { en: "Technical support", ar: "الدعم الفني" }, bullets: [
+    { en: "Triaged support requests using impact, reproducibility and affected services to prioritize escalation.", ar: "تصنيف طلبات الدعم حسب التأثير وقابلية تكرار العطل والخدمات المتأثرة لتحديد أولوية التصعيد." },
+    { en: "Documented troubleshooting steps, evidence and resolution handovers in the service ticket record.", ar: "توثيق خطوات استكشاف الأخطاء والأدلة وتسليمات الحل في سجل طلب الخدمة." }
+  ] },
+  { id: "procurement", career: "logistics", pattern: /procurement|purchasing officer|buyer|مشتريات|أخصائي توريد/i, label: { en: "Procurement", ar: "المشتريات" }, bullets: [
+    { en: "Compared supplier quotations against technical requirements, delivery constraints and approval criteria.", ar: "مقارنة عروض الموردين وفق المتطلبات الفنية وقيود التسليم ومعايير الاعتماد." },
+    { en: "Tracked purchase-order exceptions and coordinated document-complete handovers with receiving teams.", ar: "متابعة استثناءات أوامر الشراء وتنسيق التسليم بالمستندات المكتملة مع فرق الاستلام." }
+  ] },
+  { id: "warehouse", career: "logistics", pattern: /warehouse|inventory control|stock controller|مخازن|مستودع|مراقب مخزون/i, label: { en: "Warehouse and inventory", ar: "المستودعات والمخزون" }, bullets: [
+    { en: "Reconciled receipt and dispatch records with inventory movements and documented stock discrepancies.", ar: "مطابقة سجلات الاستلام والصرف مع حركة المخزون وتوثيق الفروقات." },
+    { en: "Reviewed storage locations and picking records to support traceability and timely exception escalation.", ar: "مراجعة مواقع التخزين وسجلات التجهيز لدعم التتبع والتصعيد المبكر للاستثناءات." }
+  ] },
+  { id: "product-design", career: "design", pattern: /\bui.?ux\b|ux designer|product designer|مصمم تجربة مستخدم|مصمم واجهات/i, label: { en: "Product and UX design", ar: "تصميم تجربة المستخدم" }, bullets: [
+    { en: "Converted user-journey findings into prioritized interaction flows, annotated wireframes and prototype requirements.", ar: "تحويل نتائج رحلات المستخدم إلى تدفقات تفاعل ذات أولوية ورسومات أولية مشروحة ومتطلبات للنماذج التفاعلية." },
+    { en: "Evaluated accessible interaction patterns and responsive component states during design-to-development handover.", ar: "تقييم أنماط التفاعل الداعمة لإمكانية الوصول وحالات المكونات المتجاوبة أثناء التسليم للتطوير." }
+  ] },
+  { id: "clinical-pharmacy", career: "pharmacy", pattern: /clinical pharmacist|صيدلي إكلينيكي|صيدلي سريري/i, label: { en: "Clinical pharmacy", ar: "الصيدلة الإكلينيكية" }, bullets: [
+    { en: "Reviewed medication histories and potential therapy discrepancies within authorized clinical pharmacy responsibilities.", ar: "مراجعة التاريخ الدوائي والفروقات العلاجية المحتملة ضمن المسؤوليات المصرح بها للصيدلة الإكلينيكية." },
+    { en: "Documented medication-related recommendations and follow-up communications through the appropriate care team.", ar: "توثيق التوصيات الدوائية واتصالات المتابعة عبر فريق الرعاية المختص." }
+  ] },
+  { id: "laboratory-quality", career: "laboratory", pattern: /lab quality|quality control analyst|laboratory qc|جودة مختبر|ضبط جودة معمل/i, label: { en: "Laboratory quality assurance", ar: "جودة المختبرات" }, bullets: [
+    { en: "Reviewed laboratory control results against acceptance criteria and documented out-of-range investigations.", ar: "مراجعة نتائج ضبط الجودة بالمختبر مقابل معايير القبول وتوثيق فحص النتائج الخارجة عن النطاق." },
+    { en: "Maintained traceable corrective-action records and verified procedural follow-up for analytical exceptions.", ar: "الاحتفاظ بسجلات قابلة للتتبع للإجراءات التصحيحية والتحقق من المتابعة الإجرائية للاستثناءات التحليلية." }
+  ] },
+  { id: "contracts", career: "legal", pattern: /contract lawyer|contract specialist|contracts counsel|محامي عقود|أخصائي عقود/i, label: { en: "Contract review", ar: "مراجعة العقود" }, bullets: [
+    { en: "Reviewed contractual clauses for consistency with agreed terms and documented issues requiring legal clarification.", ar: "مراجعة بنود العقود للتحقق من الاتساق مع الشروط المتفق عليها وتوثيق المسائل التي تتطلب توضيحًا قانونيًا." },
+    { en: "Maintained structured clause comparisons and version-controlled negotiation records for authorized review.", ar: "إدارة مقارنات منظمة للبنود وسجلات تفاوض مضبوطة الإصدارات للمراجعة المصرح بها." }
+  ] }
+];
+const PROFESSIONAL_LEVEL_OPTIONS: Array<{ id: NursingLevel; label: CareerText }> = [
+  { id: 'beginner', label: { en: 'Early career', ar: 'بداية المسار المهني' } },
+  { id: 'experienced', label: { en: 'Professional', ar: 'مستوى مهني' } },
+  { id: 'senior', label: { en: 'Senior / Specialist', ar: 'أقدم / متخصص' } },
+  { id: 'supervisor', label: { en: 'Manager / Lead', ar: 'إدارة / قيادة' } }
+];
+const PROFESSIONAL_LEVEL_BULLETS: Record<NursingLevel, Array<CareerText & { category: Exclude<Category, 'all'> }>> = {
+  beginner: [
+    { en: 'Applied documented procedures to assigned tasks and escalated exceptions for timely review.', ar: 'تطبيق الإجراءات الموثقة على المهام المكلف بها وتصعيد الاستثناءات للمراجعة في الوقت المناسب.', category: 'clinical' },
+    { en: 'Maintained clear task records and followed up on assigned actions with the relevant team.', ar: 'الاحتفاظ بسجلات واضحة للمهام ومتابعة الإجراءات المكلف بها مع الفريق المعني.', category: 'documentation' }
+  ],
+  experienced: [
+    { en: 'Prioritized concurrent responsibilities against agreed requirements and communicated emerging delivery risks.', ar: 'ترتيب المسؤوليات المتزامنة وفق المتطلبات المتفق عليها وإبلاغ مخاطر التنفيذ المستجدة.', category: 'clinical' },
+    { en: 'Investigated work exceptions and coordinated documented follow-up with relevant stakeholders.', ar: 'فحص استثناءات العمل وتنسيق المتابعة الموثقة مع الجهات المعنية.', category: 'teamwork' }
+  ],
+  senior: [
+    { en: 'Reviewed complex work outputs for quality and provided actionable feedback to colleagues.', ar: 'مراجعة مخرجات العمل المعقدة من حيث الجودة وتقديم ملاحظات عملية للزملاء.', category: 'leadership' },
+    { en: 'Identified process dependencies and coordinated cross-team solutions for recurring operational issues.', ar: 'تحديد اعتماديات العمليات وتنسيق الحلول بين الفرق للمشكلات التشغيلية المتكررة.', category: 'teamwork' }
+  ],
+  supervisor: [
+    { en: 'Coordinated workload assignments against team capacity, delivery deadlines and operational priorities.', ar: 'تنسيق توزيع أعباء العمل وفق طاقة الفريق ومواعيد التسليم والأولويات التشغيلية.', category: 'leadership' },
+    { en: 'Reviewed escalations, assigned corrective-action owners and monitored outstanding operational risks.', ar: 'مراجعة حالات التصعيد وتحديد المسؤولين عن الإجراءات التصحيحية ومتابعة المخاطر التشغيلية المعلقة.', category: 'leadership' }
+  ]
+};
+function inferProfessionalLevel(role: string): NursingLevel {
+  if (/\b(manager|director|head|supervisor|team lead)\b|مدير|مشرف|رئيس قسم|قائد فريق/i.test(role)) return 'supervisor';
+  if (/\b(senior|principal|lead specialist)\b|كبير|أول|خبير|سينيور/i.test(role)) return 'senior';
+  if (/\b(junior|intern|trainee|graduate|entry.level)\b|متدرب|حديث التخرج|مبتدئ|مساعد/i.test(role)) return 'beginner';
+  return 'experienced';
+}
+function detectCareerTrack(role: string, careerId: string) {
+  return CAREER_TRACKS.find((track) => track.career === careerId && track.pattern.test(role));
+}
+
 const FALLBACK: Career = {
   id: 'general', pattern: /./, label: { en: 'General work experience', ar: 'خبرة عمل عامة' },
   bullets: [
@@ -315,6 +441,85 @@ replace("    clinical: { en: 'Clinical care', ar: 'الرعاية السريري
         "    clinical: { en: 'Job duties', ar: 'المهام الوظيفية' },")
 replace("    setVersion((value) => value + 1);\n    target.focus();\n  };",
         "    setVersion((value) => value + 1);\n    setOpen(false); // Close Smart CV only after selected examples are inserted.\n    target.focus();\n  };")
+
+
+# Pro V3: context-aware career tracks and experience levels for non-nursing roles.
+replace("  const [slot, setSlot] = useState<HTMLElement | null>(null);",
+        """  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [professionalLevel, setProfessionalLevel] = useState<NursingLevel>('experienced');
+  const [careerTrackId, setCareerTrackId] = useState('');
+  const trackRoleRef = useRef<string | null>(null);
+  const levelOverrideRoleRef = useRef<string | null>(null);""")
+
+replace("      setDetectedRole(role);",
+        """      setDetectedRole(role);
+      if (trackRoleRef.current !== role) {
+        trackRoleRef.current = role;
+        const roleCareer = careerFor(role);
+        setCareerTrackId(detectCareerTrack(role, roleCareer.id)?.id || '');
+      }
+      if (levelOverrideRoleRef.current !== role) {
+        levelOverrideRoleRef.current = null;
+        setProfessionalLevel(inferProfessionalLevel(role));
+      }""")
+
+replace("  const career = useMemo(() => careerFor(detectedRole), [detectedRole]);",
+        """  const career = useMemo(() => careerFor(detectedRole), [detectedRole]);
+  const careerTrack = useMemo(() => CAREER_TRACKS.find((track) => track.career === career.id && track.id === careerTrackId), [career, careerTrackId]);
+  const careerTrackChoices = useMemo(() => CAREER_TRACKS.filter((track) => track.career === career.id), [career]);""")
+
+replace("    const specialtyItems: Suggestion[] = (nursingRole ? [...(ADVANCED_NURSING_BULLETS[specialty.id] || []), ...specialty.bullets] : [...(ADVANCED_CAREER_BULLETS[career.id] || []), ...career.bullets]).map((item, index) => ({",
+        "    const specialtyItems: Suggestion[] = (nursingRole ? [...(ADVANCED_NURSING_BULLETS[specialty.id] || []), ...specialty.bullets] : [...(careerTrack?.bullets || []), ...(ADVANCED_CAREER_BULLETS[career.id] || []), ...career.bullets]).map((item, index) => ({")
+
+replace("      id: 'career-' + (nursingRole ? specialty.id : career.id) + '-' + index,",
+        "      id: 'career-' + (nursingRole ? specialty.id : careerTrack?.id || career.id) + '-' + index,")
+
+replace("    const levelItems: Suggestion[] = (nursingRole ? LEVEL_EXTRAS[level] : []).map((item, index) => ({",
+        "    const levelItems: Suggestion[] = (nursingRole ? LEVEL_EXTRAS[level] : PROFESSIONAL_LEVEL_BULLETS[professionalLevel]).map((item, index) => ({")
+
+replace("      id: 'level-' + level + '-' + index,",
+        "      id: 'level-' + (nursingRole ? level : professionalLevel) + '-' + index,")
+
+replace("  }, [specialty, career, nursingRole, level, language]);",
+        "  }, [specialty, career, nursingRole, careerTrack, professionalLevel, level, language]);")
+
+replace("  const selectedItems = suggestions.filter((item) => selected.includes(item.id));",
+        """  const selectedItems = suggestions.filter((item) => selected.includes(item.id));""")
+
+replace("      <label className=\"experience-picker__search\">",
+        """      {!nursingRole && <div className="experience-picker__selectors experience-picker__career-selectors">
+        <label>
+          <span>{copy.specialty}</span>
+          <select aria-label="Career specialization" value={careerTrackId}
+            onChange={(event) => {
+              setCareerTrackId(event.target.value);
+              setSelected([]);
+              setCategory('all');
+              setQuery('');
+            }}>
+            <option value="">{career.label[language]} — {language === 'ar' ? 'عام' : 'general'}</option>
+            {careerTrackChoices.map((track) => (
+              <option key={track.id} value={track.id}>{track.label[language]}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{copy.level}</span>
+          <select aria-label="Professional experience level" value={professionalLevel}
+            onChange={(event) => {
+              const choice = event.target.value as NursingLevel;
+              setProfessionalLevel(choice);
+              levelOverrideRoleRef.current = detectedRole;
+              setSelected([]);
+            }}>
+            {PROFESSIONAL_LEVEL_OPTIONS.map((item) => (
+              <option key={item.id} value={item.id}>{item.label[language]}</option>
+            ))}
+          </select>
+        </label>
+      </div>}
+
+      <label className="experience-picker__search">""")
 
 component.write_text(text, encoding="utf-8")
 
