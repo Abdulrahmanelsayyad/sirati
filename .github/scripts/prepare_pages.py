@@ -181,3 +181,5 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("premium_minimal_v1
 
 # Opt-in template gallery after all base builders, previews and visual overrides.
 subprocess.run([sys.executable, str(Path(__file__).with_name("template_library_v1.py")), str(root)], check=True)
+# One genuinely new document structure, built after the 32-style template library.
+subprocess.run([sys.executable, str(Path(__file__).with_name("executive_letterhead_template.py")), str(root)], check=True)
