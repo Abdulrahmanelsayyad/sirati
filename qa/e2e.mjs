@@ -617,7 +617,22 @@ await firstMobileEditor.focus();
 assert.equal(await guidedNav.isVisible(), false, 'floating guide covers a focused mobile field');
 await firstMobileEditor.evaluate(el => el.blur());
 assert(await guidedNav.isVisible(), 'floating guide must return after editing');
-log('mobile focus mode: no duplicate onboarding, editor remains unobstructed');
+
+// Capture genuine generated Builder screens at narrow phone widths.
+// Images contain synthetic QA data, never live customer content.
+await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-rest.png', animations: 'disabled' });
+await firstMobileEditor.focus();
+assert.equal(await guidedNav.isVisible(), false, 'focused mobile form must hide floating guide');
+await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-focused.png', animations: 'disabled' });
+await firstMobileEditor.evaluate(el => el.blur());
+await page.setViewportSize({ width: 320, height: 700 });
+assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
+  'duplicate onboarding must remain hidden at 320px');
+const smallOverflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+assert(smallOverflow <= 2, '320px builder overflow=' + smallOverflow);
+await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-320-rest.png', animations: 'disabled' });
+await page.setViewportSize({ width: 390, height: 844 });
+log('mobile focus mode: visual snapshots at 320px, 390px focused/unfocused');
 
 let mobileTemplateSelect = null;
 const mobileSelects = page.locator('select');
