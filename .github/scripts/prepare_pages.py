@@ -211,3 +211,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("sidebar_feature_fi
 
 # Role-specific, opt-in Smart CV Pro V4: UI-only and facts-first.
 subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v4.py')), str(root)], check=True)
+
+# V5 enriches only the generated V4 Summary picker, no auth/backend changes.
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v5.py')), str(root)], check=True)
