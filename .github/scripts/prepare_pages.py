@@ -202,3 +202,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("signature_ui_v3.py
 
 # Career Studio brand replaces CV-only visual identity after the existing UI layers.
 subprocess.run([sys.executable, str(Path(__file__).with_name("career_studio_brand.py")), str(root)], check=True)
+
+# Full career platform navigation and self-service customer profile after all UI hooks.
+subprocess.run([sys.executable, str(Path(__file__).with_name("career_platform_navigation.py")), str(root)], check=True)
