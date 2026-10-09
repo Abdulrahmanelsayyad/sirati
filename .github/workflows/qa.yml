@@ -84,3 +84,11 @@ jobs:
           name: gold-sidebar-visual-qa
           path: /tmp/sirati-qa-pdfs/gold-sidebar-*.png
           if-no-files-found: ignore
+
+      - name: Upload mobile Builder focus-mode screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-builder-visual-qa
+          path: /tmp/sirati-qa-pdfs/mobile-builder-*.png
+          if-no-files-found: ignore
