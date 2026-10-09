@@ -114,18 +114,20 @@ export default function SiratiSiteMenu() {
 
   useEffect(() => {
     let mounted = true;
-    let authEventSeen = false;
+    let accountChangeSequence = 0;
     if (!isSupabaseConfigured()) { setLoading(false); return; }
     const supabase = createClient();
     if (!supabase) { setLoading(false); return; }
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      authEventSeen = true;
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted || event === 'INITIAL_SESSION') return;
+      accountChangeSequence++;
       setUser(session?.user ?? null);
       setLoading(false);
     });
+    const initialSequence = accountChangeSequence;
+    // Verify the current account instead of trusting a cached initial session.
     supabase.auth.getUser().then(({ data }) => {
-      if (mounted && !authEventSeen) {
+      if (mounted && accountChangeSequence === initialSequence) {
         setUser(data.user ?? null);
         setLoading(false);
       }
@@ -238,21 +240,24 @@ export default function ProfilePage() {
   useEffect(() => {
     const supabase = createClient();
     let alive = true;
+    let accountChangeSequence = 0;
     if (!supabase) { setReady(true); return; }
-    supabase.auth.getUser().then(({ data }) => {
-      if (!alive) return;
-      const u = data.user ?? null;
-      setUser(u);
-      setName(typeof u?.user_metadata?.full_name === 'string' ? u.user_metadata.full_name : '');
-      setReady(true);
-    }).catch(() => { if (alive) setReady(true); });
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!alive || (event !== 'SIGNED_OUT' && event !== 'SIGNED_IN')) return;
+      accountChangeSequence++;
       const u = session?.user ?? null;
       setUser(u);
       setName(typeof u?.user_metadata?.full_name === 'string' ? u.user_metadata.full_name : '');
       setReady(true);
     });
+    const initialSequence = accountChangeSequence;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!alive || accountChangeSequence !== initialSequence) return;
+      const u = data.user ?? null;
+      setUser(u);
+      setName(typeof u?.user_metadata?.full_name === 'string' ? u.user_metadata.full_name : '');
+      setReady(true);
+    }).catch(() => { if (alive) setReady(true); });
     return () => { alive = false; listener.subscription.unsubscribe(); };
   }, []);
   async function saveProfile(event: React.FormEvent) {
@@ -262,6 +267,10 @@ export default function ProfilePage() {
     if (!supabase) return;
     setSaving(true); setMessage('');
     try {
+      const { data: fresh, error: refreshError } = await supabase.auth.getUser();
+      if (refreshError || !fresh.user || fresh.user.id !== user.id) {
+        throw new Error('Your session changed. Please reload the profile before saving.');
+      }
       const { data, error } = await supabase.auth.updateUser({ data: { full_name: name.trim().slice(0,100) } });
       if (error) throw error;
       setUser(data.user);
