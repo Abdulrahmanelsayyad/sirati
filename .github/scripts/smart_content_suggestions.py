@@ -13,7 +13,6 @@ root = Path(sys.argv[1]).resolve()
 component = root / "components" / "SmartContentSuggestions.tsx"
 component.write_text(r''' 'use client';
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { createPortal } from 'react-dom';
 import type { CvData, CvLanguage } from '@/lib/types';
 
 type Local = { en: string; ar: string };
@@ -64,7 +63,6 @@ const GENERIC: Pack = {
 };
 type Props = { data: CvData; setData: Dispatch<SetStateAction<CvData>>; language: CvLanguage };
 export default function SmartContentSuggestions({ data, setData, language }: Props) {
-  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'skills'|'achievement'>('skills');
   const [selected, setSelected] = useState<number[]>([]);
@@ -76,29 +74,6 @@ export default function SmartContentSuggestions({ data, setData, language }: Pro
   const pack = useMemo(() => PACKS.find(p => p.match.test(role)) || GENERIC, [role]);
   const suggestions = pack.skills.map(s => s[ar ? 'ar' : 'en']);
   useEffect(() => { setSelected([]); setDraft(''); setConfirmed(false); }, [role, language]);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.location.pathname.includes('/builder')) return;
-    const scan = () => {
-      const field = Array.from(document.querySelectorAll<HTMLElement>('.wizard-panel .field, .field'))
-        .find(el => {
-          const label = el.querySelector('label');
-          return el.getClientRects().length > 0 && !!el.querySelector('textarea') && !!label && /^(skills|المهارات)\b|^المهارات/u.test((label.textContent || '').trim());
-        });
-      if (!field) { setSlot(current => current ? null : current); return; }
-      let host = field.querySelector<HTMLElement>(':scope > .sirati-content-slot');
-      if (!host) {
-        host = document.createElement('div');
-        host.className = 'sirati-content-slot';
-        field.appendChild(host);
-      }
-      setSlot(current => current === host ? current : host);
-    };
-    scan();
-    const observer = new MutationObserver(scan);
-    observer.observe(document.body, {childList:true, subtree:true});
-    return () => observer.disconnect();
-  }, []);
-  if (!slot) return null;
   const chooseAchievement = (index:number) => {setDraft(pack.achievements[index][ar ? 'ar':'en']);setConfirmed(false);};
   const insertSkills = () => {
     if (!confirmed || !selected.length || !role) return;
@@ -126,7 +101,7 @@ export default function SmartContentSuggestions({ data, setData, language }: Pro
     })}));
     setDraft('');setConfirmed(false);setOpen(false);
   };
-  return createPortal(<div className="sirati-content" dir={ar?'rtl':'ltr'}>
+  return (<div className="sirati-content" dir={ar?'rtl':'ltr'}>
     <button type="button" className="sirati-content-trigger" aria-expanded={open}
       onClick={()=>setOpen(v=>!v)}>
       {ar?'✨ اقتراحات محتوى ذكية':'✨ Smart Content Suggestions'}
@@ -169,7 +144,7 @@ export default function SmartContentSuggestions({ data, setData, language }: Pro
         </button>
       </>}
     </section>}
-  </div>,slot);
+  </div>);
 }
 ''', encoding='utf-8')
 
@@ -182,11 +157,16 @@ if "import CvReadinessCheck from '@/components/CvReadinessCheck';\n" not in sour
     raise RuntimeError("Expected data-driven Builder CV Quality import is missing")
 source = source.replace("import CvReadinessCheck from '@/components/CvReadinessCheck';\n",
     "import CvReadinessCheck from '@/components/CvReadinessCheck';\n" + imp, 1)
-# Mount in Builder's React tree, but portal only into the active Skills field.
-anchor = "<CvReadinessCheck data={data} language={language} />"
-if source.count(anchor) != 1:
-    raise RuntimeError("Expected single preview Quality widget anchor")
-source = source.replace(anchor, anchor + "\n          <SmartContentSuggestions data={data} setData={setData} language={language} />", 1)
+# Mount directly inside the actual controlled Skills field of step 8.
+# No DOM scraping or global observer, and the component unmounts with its step.
+anchor = re.compile(r'(?P<start><div className="field"><label>Skills</label><textarea[^\\n]*?/>)(?P<end></div>)')
+matches = list(anchor.finditer(source))
+if len(matches) != 1:
+    raise RuntimeError("Expected one controlled Builder Skills textarea")
+match = matches[0]
+source = source[:match.start()] + match.group('start') + (
+    "\n                <SmartContentSuggestions data={data} setData={setData} language={language} />"
+) + match.group('end') + source[match.end():]
 builder.write_text(source, encoding="utf-8")
 
 css_path = root / "app" / "globals.css"
