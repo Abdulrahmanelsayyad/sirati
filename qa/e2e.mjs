@@ -655,11 +655,46 @@ assert(!v5SummaryTexts[0].includes('Cost Accounting Manager'),
   'V5 must not misrepresent target job as the current professional title');
 assert(v5SummaryTexts[1].startsWith('Documented achievement supplied: Prepared 12'),
   'evidence-led draft must lead with a real user-entered achievement');
+
+// V6 Pro Max: job posting requirements are never silently promoted into facts.
+const posting = summaryPanel.locator('.sirati-summary-v6-job');
+await posting.locator('summary').click();
+await posting.getByRole('textbox',{name:'Summary job description'})
+  .fill('Cost Accounting Manager job: SAP, Excel, SQL, Power BI');
+const jobInsight = summaryPanel.locator('.sirati-summary-v6-match');
+assert((await jobInsight.innerText()).includes('SAP') && (await jobInsight.innerText()).includes('Excel'),
+  'V6 should find matched user-provided skills in target posting');
+assert((await jobInsight.innerText()).includes('SQL') && (await jobInsight.innerText()).includes('Power BI'),
+  'V6 should show requirements absent from user-entered facts');
+const atsDraft = await summaryPanel.locator('.sirati-summary-choice__text').first().innerText();
+assert(atsDraft.includes('User-listed skills relevant to the job ad: SAP, Excel'),
+  'V6 ATS draft must reference only supported, overlapping skill terms');
+assert(!atsDraft.includes('SQL') && !atsDraft.includes('Power BI'),
+  'V6 must not promote a job ad requirement into claimed experience');
+const editButtons = summaryPanel.locator('.sirati-summary-v6-edit-btn');
+assert.equal(await editButtons.count(),3,'V6 needs an editable action for each summary');
+await editButtons.first().click();
+const editableDraft = summaryPanel.getByRole('textbox',{name:'Edit summary draft'});
+await editableDraft.fill('Verified manual summary: SAP, Excel and cost analysis.');
+assert.equal(await qaSummary.inputValue(),'','editing V6 draft must not modify CV until selected');
+await summaryPanel.getByRole('button',{name:'Cancel editing'}).click();
+assert.equal(await editableDraft.count(),0,'Cancel must close editor without modifying CV');
+
 const pickedSummary = (await summaryPanel.locator('.sirati-summary-choice__text').nth(1).innerText()).trim();
 await summaryPanel.locator('.sirati-summary-choice').nth(1).click();
 assert.equal(await qaSummary.inputValue(),pickedSummary,
   'one-click selection must insert exactly the chosen summary');
 assert.equal(await summaryPanel.count(),0,'V4 summary panel must auto-close after Select');
+await summaryTrigger.click();
+await summaryPanel.locator('.sirati-summary-v6-edit-btn').last().click();
+const editedText = 'Verified custom summary describing SAP and Excel.';
+await summaryPanel.getByRole('textbox',{name:'Edit summary draft'}).fill(editedText);
+page.once('dialog', dialog => dialog.accept());
+await summaryPanel.getByRole('button',{name:'Use edited summary'}).click();
+assert.equal(await qaSummary.inputValue(),editedText,
+  'V6 edited summary must insert into the controlled CV field after consent');
+assert.equal(await summaryPanel.count(),0,'V6 editing should close the popup on insertion');
+
 
 await qaSummary.fill('My manually verified personal summary');
 await summaryTrigger.click();
@@ -717,6 +752,8 @@ assert((await summaryPanel.innerText()).includes('محاسبة التكاليف'
   'Arabic specialization label should render in RTL');
 assert((await summaryPanel.innerText()).includes('توزيع التكاليف'),
   'Arabic suggestion must be specific to cost accounting');
+assert((await summaryPanel.innerText()).includes('مقارنة إعلان الوظيفة'),
+  'V6 must expose job-fit feature in Arabic');
 assert((await summaryPanel.locator('.sirati-summary-choice__style').allInnerTexts())[2].includes('اتجاه مهني'),
   'V5 needs Arabic labels for the new career direction draft');
 assert(await summaryPanel.getByRole('textbox',{name:'Summary target job'}).isVisible(),
