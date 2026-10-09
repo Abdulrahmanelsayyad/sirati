@@ -16,6 +16,29 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
 
+// Premium Minimal V1: verify the actual rendered landing page before other E2E.
+await page.goto(base + '/', { waitUntil: 'networkidle' });
+assert.equal(await page.locator('.marketing-page').count(), 1, 'Sirati landing page missing');
+assert((await page.locator('.marketing-hero h1').innerText()).includes('Your experience.'),
+  'Premium Minimal headline was not applied');
+const brandColor = await page.locator('.marketing-page').evaluate(el =>
+  getComputedStyle(el).getPropertyValue('--pm-green').trim()
+);
+assert.equal(brandColor, '#184237', 'unified Premium Minimal color token missing');
+for (const width of [320, 390, 1440]) {
+  await page.setViewportSize({ width, height: 844 });
+  const bounds = await page.locator('.marketing-hero').evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: window.innerWidth };
+  });
+  assert(bounds.left >= -2 && bounds.right <= bounds.viewport + 2,
+    'Premium landing hero overflows at ' + width + 'px: ' + JSON.stringify(bounds));
+  assert(await page.locator('.marketing-hero .hero-actions a').first().isVisible(),
+    'Main CV creation CTA must remain visible at ' + width + 'px');
+}
+await page.setViewportSize({ width: 1440, height: 1000 });
+console.log('PASS: Premium Minimal rendered homepage, brand token, and 320/390/1440 responsive hero');
+
 function log(name) {
   console.log('PASS:', name);
 }
