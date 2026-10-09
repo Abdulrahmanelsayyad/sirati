@@ -587,7 +587,7 @@ assert(readinessText.includes('not an ATS score or a hiring guarantee'), 'CV Qua
 log('CV Quality Center shows essentials plus actionable content-quality checks');
 await readinessTrigger.click();
 
-// Smart CV: Professional Title shows three ready-to-select Summary templates.
+// Smart CV Pro V4: precise, opt-in, safe role-specific suggestions.
 await page.evaluate(() => {
   const title = document.createElement('div');
   title.className = 'field';
@@ -601,32 +601,113 @@ await page.evaluate(() => {
 });
 const qaSummary = page.locator('#qa-personal-summary');
 const summaryPanel = page.locator('#qa-personal-summary-field .sirati-summary-panel');
+const summaryTrigger = page.locator('#qa-personal-summary-field .sirati-summary-trigger');
+await summaryTrigger.waitFor();
+assert.equal(await summaryPanel.count(),0,
+  'Pro V4 should be closed by default instead of blocking the Summary field');
+assert((await summaryTrigger.innerText()).includes('Get specific suggestions'),
+  'new contextual Smart CV trigger label missing');
+assert.equal(await qaSummary.inputValue(), '', 'summary should remain editable and empty before selection');
+await summaryTrigger.click();
 await summaryPanel.waitFor();
-assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(), 3, 'three Summary choices must appear without an extra click');
-assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Accountant'), 'must reuse Professional Title');
-assert.equal(await summaryPanel.locator('.sirati-summary-role input').count(), 0, 'must not ask for title a second time');
-assert((await summaryPanel.innerText()).includes('accurate financial records'), 'accountant-specific suggestions missing');
-assert.equal(await qaSummary.inputValue(), '', 'suggestions must never insert without selection');
+assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),3,
+  'V4 should offer three editable role-specific summaries');
+assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Accountant'),
+  'V4 must use entered Professional Title');
+assert.equal(await summaryPanel.locator('.sirati-summary-role input').count(),0,
+  'V4 should not ask for Professional Title twice');
+const speciality = summaryPanel.getByRole('combobox',{name:'Summary specialization'});
+const level = summaryPanel.getByRole('combobox',{name:'Summary experience level'});
+assert.equal(await speciality.inputValue(),'financial','Accountant should default to financial accounting');
+assert((await summaryPanel.innerText()).includes('ledger reconciliations'),
+  'Accountant financial specialty should be specific instead of general');
+await speciality.selectOption('cost');
+assert((await summaryPanel.innerText()).includes('cost allocation'),
+  'Cost Accounting must have distinct, specialized wording');
+await level.selectOption('senior');
+assert((await summaryPanel.innerText()).includes('senior-level'),
+  'Pro V4 must follow explicitly selected experience level');
+await summaryPanel.locator('.sirati-summary-pro-facts summary').click();
+await summaryPanel.getByRole('textbox',{name:'Summary actual skills'}).fill('SAP ERP, Excel');
+await summaryPanel.getByRole('textbox',{name:'Summary actual achievement'}).fill('Prepared 12 accurate monthly reporting packages');
+const optionsText = await summaryPanel.locator('.sirati-summary-choices').innerText();
+assert(optionsText.includes('SAP ERP, Excel') && optionsText.includes('12 accurate monthly reporting packages'),
+  'V4 should include only user-entered real skills and achievements');
+assert(!optionsText.includes('99%') && !optionsText.includes('10 years'),
+  'V4 must never invent quantified achievements or years');
 const pickedSummary = (await summaryPanel.locator('.sirati-summary-choice__text').nth(1).innerText()).trim();
 await summaryPanel.locator('.sirati-summary-choice').nth(1).click();
-assert.equal(await qaSummary.inputValue(), pickedSummary, 'one-click choice should insert into Summary');
-await qaSummary.fill('My existing personally written summary.');
-await page.locator('#qa-personal-summary-field .sirati-summary-trigger').click();
-page.once('dialog', dialog => dialog.dismiss());
+assert.equal(await qaSummary.inputValue(),pickedSummary,
+  'one-click selection must insert exactly the chosen summary');
+assert.equal(await summaryPanel.count(),0,'V4 summary panel must auto-close after Select');
+
+await qaSummary.fill('My manually verified personal summary');
+await summaryTrigger.click();
+page.once('dialog',dialog=>dialog.dismiss());
 await summaryPanel.locator('.sirati-summary-choice').first().click();
-assert.equal(await qaSummary.inputValue(), 'My existing personally written summary.', 'declined replacement must preserve manual summary');
-await page.locator('#qa-summary-role').fill('Software Developer');
-await page.waitForFunction(() => document.querySelector('.sirati-summary-panel')?.textContent?.includes('maintainable software'));
-assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Software Developer'), 'Professional Title changes must update choices');
-await summaryPanel.getByRole('button', { name: 'Hide suggestions' }).click();
+assert.equal(await qaSummary.inputValue(),'My manually verified personal summary',
+  'declining overwrite must preserve customer-written summary');
+await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
+assert.equal(await summaryPanel.count(),0,'close button should dismiss Smart CV panel');
+
+await page.locator('#qa-summary-role').fill('Frontend Developer');
+assert.equal(await summaryPanel.count(),0,'editing title should not reopen Smart CV automatically');
+await summaryTrigger.click();
+assert.equal(await speciality.inputValue(),'frontend','Frontend Developer should choose frontend specialization');
+assert((await summaryPanel.innerText()).includes('responsive interfaces'),
+  'Software Developer specialization should be role-specific');
+await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
+
+await page.locator('#qa-summary-role').fill('Senior ICU Nurse');
+await summaryTrigger.click();
+assert.equal(await speciality.inputValue(),'icu','Senior ICU Nurse should infer critical care specialty');
+assert.equal(await level.inputValue(),'senior','Senior in Job Title should infer senior level');
+assert((await summaryPanel.innerText()).includes('patient monitoring'),
+  'ICU Nurse should receive clinical role-specific summary examples');
+await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
+
 await page.locator('#qa-summary-role').fill('Unlisted Job Profession');
-await summaryPanel.waitFor();
-assert((await summaryPanel.innerText()).includes('organized work and clear communication'), 'unknown title should receive generic editable suggestions');
+await summaryTrigger.click();
+assert((await summaryPanel.innerText()).includes('core responsibilities associated with the stated role'),
+  'unknown professions need safe role-specific fallback without invented skills');
+await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
+
+await page.locator('#qa-summary-role').fill('');
+await summaryTrigger.click();
+assert((await summaryPanel.innerText()).includes('Enter your Professional Title'),
+  'when job title is missing V4 should explain prerequisite');
+assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),0,
+  'no job title means no fabricated summaries');
+await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
+
+await page.locator('#qa-summary-role').fill('Cost Accountant');
 await page.evaluate(() => {
+  document.documentElement.setAttribute('dir','rtl');
+  document.querySelector('.cv-sheet')?.setAttribute('dir','rtl');
+});
+await summaryTrigger.click();
+assert((await summaryPanel.innerText()).includes('محاسبة التكاليف'),
+  'Arabic specialization label should render in RTL');
+assert((await summaryPanel.innerText()).includes('توزيع التكاليف'),
+  'Arabic suggestion must be specific to cost accounting');
+for(const width of [360,390]) {
+  await page.setViewportSize({width,height:844});
+  const result = await summaryPanel.evaluate(el => {
+    const b=el.getBoundingClientRect();
+    return {left:b.left,right:b.right,viewport:innerWidth};
+  });
+  assert(result.left>=-2 && result.right<=result.viewport+2,
+    'Smart CV V4 panel overflows mobile '+width+'px: '+JSON.stringify(result));
+}
+await summaryPanel.getByRole('button',{name:'إخفاء الاقتراحات'}).click();
+await page.evaluate(() => {
+  document.documentElement.setAttribute('dir','ltr');
+  document.querySelector('.cv-sheet')?.setAttribute('dir','ltr');
   document.getElementById('qa-summary-role-field')?.remove();
   document.getElementById('qa-personal-summary-field')?.remove();
 });
-log('Smart CV auto-shows 3 role-matched Summary cards, safely selects and respects existing text');
+await page.setViewportSize({width:1440,height:1000});
+log('Smart CV Pro V4 opt-in summaries, financial/cost/frontend/ICU, seniority, actual facts, bilingual mobile and safe Select');
 
 await page.evaluate(() => {
   const field = document.createElement('div');
