@@ -594,6 +594,48 @@ log('clean PDF payment card mobile layout');
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
 
+// The inner 9-section progress stays visible while redundant outer onboarding
+// is suppressed on narrow screens, leaving more space for input fields.
+assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
+  'duplicate builder onboarding ribbon must not take mobile space');
+assert(await page.locator('.wizard-progress-meta').isVisible(),
+  'section progress must remain visible on mobile');
+
+// A focused editable field must never be covered by the floating guide.
+// When focus leaves the editor the guide should return automatically.
+const guidedNav = page.locator('.builder-guide');
+const editorFooterNav = page.locator('.wizard-footer-nav');
+const firstMobileEditor = page.locator('.wizard-section-card input:visible, .wizard-section-card textarea:visible').first();
+assert(await firstMobileEditor.count(), 'expected an editable CV field on mobile');
+// The editor autofocuses its first field. Blur that initial focus to assert
+// the guide's normal resting state before testing focus-driven dismissal.
+await page.evaluate(() => {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement) active.blur();
+});
+await editorFooterNav.waitFor({ state: 'visible', timeout: 10000 });
+assert.equal(await guidedNav.isVisible(), false, 'duplicate guide must not appear over mobile CV editor');
+await firstMobileEditor.focus();
+assert.equal(await editorFooterNav.isVisible(), false, 'Continue footer covers a focused mobile field');
+await firstMobileEditor.evaluate(el => el.blur());
+assert(await editorFooterNav.isVisible(), 'Continue footer must return after editing');
+
+// Capture genuine generated Builder screens at narrow phone widths.
+// Images contain synthetic QA data, never live customer content.
+await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-rest.png', animations: 'disabled' });
+await firstMobileEditor.focus();
+assert.equal(await editorFooterNav.isVisible(), false, 'focused mobile form must hide Continue footer');
+await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-focused.png', animations: 'disabled' });
+await firstMobileEditor.evaluate(el => el.blur());
+await page.setViewportSize({ width: 320, height: 700 });
+assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
+  'duplicate onboarding must remain hidden at 320px');
+const smallOverflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+assert(smallOverflow <= 2, '320px builder overflow=' + smallOverflow);
+await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-320-rest.png', animations: 'disabled' });
+await page.setViewportSize({ width: 390, height: 844 });
+log('mobile focus mode: visual snapshots at 320px, 390px focused/unfocused');
+
 let mobileTemplateSelect = null;
 const mobileSelects = page.locator('select');
 for (let i = 0; i < await mobileSelects.count(); i++) {

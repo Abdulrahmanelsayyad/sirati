@@ -152,3 +152,49 @@ if layer_marker not in css:
     css_path.write_text(css, encoding="utf-8")
 
 print("Applied mobile builder containment fix.")
+
+
+# Keep the user's active field unobstructed on narrow screens.
+# The CV builder already has its own 'Section X of 9' progress, so its
+# earlier onboarding ribbon is redundant once editing has started.
+focus_marker = "/* Sirati mobile editor focus mode */"
+if focus_marker not in css:
+    css += r'''
+
+/* Sirati mobile editor focus mode */
+@media (max-width: 640px) {
+  .wizard-builder-page .wizard-journey-wrap {
+    display: none;
+  }
+  .wizard-builder-page .wizard-builder-shell {
+    padding-top: 8px;
+  }
+  .wizard-builder-page .wizard-panel-top > div > p {
+    display: none;
+  }
+  .builder-guide {
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .builder-guide__content {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 7px;
+    padding: 6px 8px;
+  }
+  .builder-guide__nav {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* The CV editor already has its own section navigator.
+     Do not show the unrelated three-heading guide over it. */
+  body:has(.wizard-builder-page) .builder-guide {
+    display: none;
+  }
+  /* Keep the Continue footer clear of focused fields and the soft keyboard. */
+  body:has(.wizard-builder-page :is(input, textarea, select):focus) .wizard-footer-nav {
+    display: none;
+  }
+}
+'''
+    css_path.write_text(css, encoding="utf-8")
+
+print("Applied mobile Builder focus-mode spacing and keyboard-safe navigation.")
