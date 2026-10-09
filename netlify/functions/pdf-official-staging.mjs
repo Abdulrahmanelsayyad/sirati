@@ -63,6 +63,7 @@ export async function handleOfficialFrozenPdf(request, {
       env.NEXT_PUBLIC_SUPABASE_URL !== STAGING ||
       !env.SIRATI_STAGING_PUBLISHABLE_KEY?.startsWith('sb_publishable_') ||
       typeof env.SIRATI_STAGING_SERVER_KEY !== 'string' ||
+      !env.SIRATI_STAGING_SERVER_KEY.startsWith('sb_secret_') ||
       env.SIRATI_STAGING_SERVER_KEY.length < 24 ||
       env.SIRATI_STAGING_SERVER_KEY === env.SIRATI_STAGING_PUBLISHABLE_KEY) {
     return jsonError('Not found', 404);
@@ -106,12 +107,14 @@ export async function handleOfficialFrozenPdf(request, {
 
   let snapshot;
   try {
+    // sb_secret_* identifies this trusted server only through apikey.
+    // It is NOT a JWT and must never appear in Authorization: Bearer.
+    // p_user_id comes strictly from the preceding verified end-user JWT.
     const lookup = await fetchJson(
       fetcher, STAGING + '/rest/v1/rpc/sirati_pdf_snapshot_for_server', {
         method: 'POST',
         headers: {
           apikey: env.SIRATI_STAGING_SERVER_KEY,
-          Authorization: 'Bearer ' + env.SIRATI_STAGING_SERVER_KEY,
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
