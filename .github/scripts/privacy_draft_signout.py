@@ -18,8 +18,10 @@ for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
     source = path.read_text(encoding="utf-8")
     matches = list(signout_call.finditer(source))
     if len(matches) != 1:
+        # Diagnostics expose only static source-code call shapes, never CV data.
+        calls = [line.strip()[:180] for line in source.splitlines() if "signOut" in line]
         raise RuntimeError(
-            f"{relative}: expected exactly one awaited signOut() call, found {len(matches)}"
+            f"{relative}: expected exactly one awaited signOut() call, found {len(matches)}; candidates={calls[:5]!r}"
         )
     match = matches[0]
     indent, client = match.group("indent", "client")
