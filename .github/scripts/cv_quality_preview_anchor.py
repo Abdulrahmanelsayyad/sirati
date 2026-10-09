@@ -43,7 +43,7 @@ if quality_import not in builder_text:
 assert preview
 builder_text = (
     builder_text[:preview.end()]
-    + "\n          <CvReadinessCheck />"
+    + "\n          <CvReadinessCheck data={data} language={language} />"
     + builder_text[preview.end():]
 )
 builder.write_text(builder_text, encoding="utf-8")
