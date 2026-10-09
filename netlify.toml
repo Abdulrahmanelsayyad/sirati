@@ -1,0 +1,13 @@
+# Sirati QA staging ONLY. This file exists only on qa/staging-pdf-preview-37.
+# In Netlify's import screen choose this branch (NOT main).
+# Never use a paid plan, real customer data, or real payment references.
+[build]
+  command = "bash qa/render_staging_build.sh"
+  publish = "site-src/sirati-cv-source/out"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_PUBLIC_BASE_PATH = ""
+  NEXT_PUBLIC_SUPABASE_URL = "https://ykfxcxhozqqsvhtdyxho.supabase.co"
+  # Browser-publishable Supabase key; NOT a secret or service_role key.
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_WJRNf7gnhrggw8r-XB85gw_MmRvwkVt"

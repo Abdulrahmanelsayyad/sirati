@@ -1,0 +1,105 @@
+name: Sirati Staging PDF Preview (build only)
+
+# PR-only verification. Never uploads to GitHub Pages or changes production.
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/staging-pdf-preview.yml"
+      - "qa/staging_bundle_guard.py"
+      - "qa/staging_preview_smoke.mjs"
+      - "qa/e2e.mjs"
+      - ".github/scripts/**"
+      - "source.part*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-pdf-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  staging-preview:
+    name: Staging build, isolation guard and browser smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_BASE_PATH: /sirati
+      NEXT_PUBLIC_SUPABASE_URL: https://ykfxcxhozqqsvhtdyxho.supabase.co
+      # Supabase *publishable* browser key only. Never put service_role/secret keys here.
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_WJRNf7gnhrggw8r-XB85gw_MmRvwkVt
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:4173/sirati
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Reconstruct and prepare identical source pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat source.part1 source.part2 source.part3 source.part4a source.part4b source.part4c source.part5 source.part6 source.part7 | base64 -d > /tmp/sirati.zip
+          mkdir -p site-src
+          unzip -q /tmp/sirati.zip -d site-src
+          python3 .github/scripts/prepare_pages.py site-src/sirati-cv-source
+
+      - name: Install dependencies and build with staging only
+        working-directory: site-src/sirati-cv-source
+        run: |
+          npm install
+          npm run build
+
+      - name: Fail if preview points to production
+        run: python3 qa/staging_bundle_guard.py site-src/sirati-cv-source/out
+
+      - name: Install isolated browser smoke dependencies
+        working-directory: site-src/sirati-cv-source
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Serve staging build locally within runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p qa-root
+          ln -s "$GITHUB_WORKSPACE/site-src/sirati-cv-source/out" qa-root/sirati
+          python3 -m http.server 4173 --directory qa-root > /tmp/sirati-staging-http.log 2>&1 &
+          for n in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/sirati/templates/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/sirati-staging-http.log
+          exit 1
+
+      - name: Run staging login / preview bootstrap smoke
+        working-directory: site-src/sirati-cv-source
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/staging_preview_smoke.mjs" ./qa-staging.mjs
+          node ./qa-staging.mjs
+
+      - name: Upload NOT-DEPLOYED staging site artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirati-staging-pdf-preview
+          path: site-src/sirati-cv-source/out/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload safe debugging artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirati-staging-qa-debug
+          path: |
+            /tmp/sirati-staging-http.log
+            /tmp/sirati-qa-pdfs/*.png
+          if-no-files-found: ignore
+          retention-days: 3
