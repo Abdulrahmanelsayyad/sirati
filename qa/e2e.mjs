@@ -654,9 +654,60 @@ await addAchievement.click();
 await page.waitForFunction(v => document.querySelector('.cv-sheet')?.textContent?.includes(v), proof);
 await page.setViewportSize({width:390,height:844});
 await smartContentTrigger.click();
-const smartOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-assert(smartOverflow <= 2, 'Smart Content overflows 390px mobile viewport: ' + smartOverflow);
+await smartContentPanel.getByRole('button', {name:'Skills', exact:true}).click();
+// Regression for the screenshot: a broad .field input style previously inflated
+// native checkboxes to giant squares, squeezing text into a one-character column.
+const verifySmartSkillLayout = async (width, direction) => {
+  const measurements = await smartContentPanel.locator('.sirati-content-options > label').evaluateAll(labels =>
+    labels.map(label => {
+      const input = label.querySelector('input[type="checkbox"]');
+      const text = label.querySelector('span');
+      const box = label.getBoundingClientRect();
+      const cb = input?.getBoundingClientRect();
+      const content = text?.getBoundingClientRect();
+      return {
+        labelWidth:Math.round(box.width),
+        labelHeight:Math.round(box.height),
+        checkboxWidth:Math.round(cb?.width || 0),
+        checkboxHeight:Math.round(cb?.height || 0),
+        textWidth:Math.round(content?.width || 0),
+        textWritingMode:text ? getComputedStyle(text).writingMode : '',
+        direction:getComputedStyle(label).direction
+      };
+    }));
+  assert.equal(measurements.length, 5, 'Expected five actual Skills options');
+  for (const m of measurements) {
+    assert(m.checkboxWidth >= 16 && m.checkboxWidth <= 24,
+      width+'px '+direction+': giant checkbox width '+JSON.stringify(m));
+    assert(m.checkboxHeight >= 16 && m.checkboxHeight <= 24,
+      width+'px '+direction+': giant checkbox height '+JSON.stringify(m));
+    assert(m.textWidth >= 85,
+      width+'px '+direction+': text reduced to a vertical column '+JSON.stringify(m));
+    assert(m.labelHeight <= 100,
+      width+'px '+direction+': skill card is too tall '+JSON.stringify(m));
+    assert(m.textWritingMode === 'horizontal-tb',
+      width+'px '+direction+': non-horizontal text '+JSON.stringify(m));
+  }
+  const excessWidth = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  assert(excessWidth <= 2, width+'px '+direction+': horizontal document overflow '+excessWidth);
+  log('Smart Content mobile checkbox/text geometry PASS ('+width+'px, '+direction+')');
+};
+await verifySmartSkillLayout(390, 'ltr');
 await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-smart-content.png'});
+await page.setViewportSize({width:320,height:760});
+await verifySmartSkillLayout(320, 'ltr');
+await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-smart-content-320.png'});
+// Also verify Arabic direction using the existing Builder language switch.
+const smartLanguageSelect = page.locator('select').filter({has:page.locator('option[value="ar"]')}).filter({has:page.locator('option[value="en"]')}).first();
+assert(await smartLanguageSelect.count(), 'Builder language switch is missing');
+await smartLanguageSelect.selectOption('ar');
+await smartContentPanel.locator('.sirati-content-options > label').first().waitFor();
+await verifySmartSkillLayout(320, 'rtl');
+await page.setViewportSize({width:390,height:844});
+await verifySmartSkillLayout(390, 'rtl');
+await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-smart-content-rtl.png'});
+await smartLanguageSelect.selectOption('en');
+await smartContentPanel.locator('.sirati-content-options > label').first().waitFor();
 await smartContentPanel.getByRole('button', {name:'Close content suggestions'}).click();
 await page.setViewportSize({width:1440,height:1000});
 await page.locator('.cv-substep').nth(2).click();
