@@ -604,6 +604,7 @@ assert(await page.locator('.wizard-progress-meta').isVisible(),
 // A focused editable field must never be covered by the floating guide.
 // When focus leaves the editor the guide should return automatically.
 const guidedNav = page.locator('.builder-guide');
+const editorFooterNav = page.locator('.wizard-footer-nav');
 const firstMobileEditor = page.locator('.wizard-section-card input:visible, .wizard-section-card textarea:visible').first();
 assert(await firstMobileEditor.count(), 'expected an editable CV field on mobile');
 // The editor autofocuses its first field. Blur that initial focus to assert
@@ -612,17 +613,18 @@ await page.evaluate(() => {
   const active = document.activeElement;
   if (active instanceof HTMLElement) active.blur();
 });
-await guidedNav.waitFor({ state: 'visible', timeout: 10000 });
+await editorFooterNav.waitFor({ state: 'visible', timeout: 10000 });
+assert.equal(await guidedNav.isVisible(), false, 'duplicate guide must not appear over mobile CV editor');
 await firstMobileEditor.focus();
-assert.equal(await guidedNav.isVisible(), false, 'floating guide covers a focused mobile field');
+assert.equal(await editorFooterNav.isVisible(), false, 'Continue footer covers a focused mobile field');
 await firstMobileEditor.evaluate(el => el.blur());
-assert(await guidedNav.isVisible(), 'floating guide must return after editing');
+assert(await editorFooterNav.isVisible(), 'Continue footer must return after editing');
 
 // Capture genuine generated Builder screens at narrow phone widths.
 // Images contain synthetic QA data, never live customer content.
 await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-rest.png', animations: 'disabled' });
 await firstMobileEditor.focus();
-assert.equal(await guidedNav.isVisible(), false, 'focused mobile form must hide floating guide');
+assert.equal(await editorFooterNav.isVisible(), false, 'focused mobile form must hide Continue footer');
 await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-focused.png', animations: 'disabled' });
 await firstMobileEditor.evaluate(el => el.blur());
 await page.setViewportSize({ width: 320, height: 700 });
