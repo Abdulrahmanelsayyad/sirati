@@ -117,6 +117,125 @@ const CAREERS: Career[] = [
       { en: 'Prepared correspondence and documents under applicable procedures.', ar: 'إعداد المراسلات والمستندات وفق الإجراءات المطبقة.' },
       { en: 'Coordinated updates and deadlines with relevant parties.', ar: 'تنسيق المستجدات والمواعيد مع الأطراف المعنية.' }] },
 ];
+
+// Advanced optional experience examples; users must select only factual duties.
+const ADVANCED_CAREER_BULLETS: Record<string, CareerText[]> = {
+  "accounting": [
+    { en: "Analyzed ledger reconciliations, investigated posting exceptions and documented adjustments to support reliable month-end reporting.", ar: "تحليل تسويات دفاتر الأستاذ وفحص استثناءات القيود وتوثيق التسويات لدعم تقارير نهاية الشهر بصورة موثوقة." },
+    { en: "Reviewed accounts payable and receivable records against supporting evidence and flagged variances for timely resolution.", ar: "مراجعة سجلات الحسابات الدائنة والمدينة مقابل المستندات الداعمة وتحديد الفروقات لمعالجتها في الوقت المناسب." },
+    { en: "Prepared audit-ready schedules and explained expense or budget variances in collaboration with relevant departments.", ar: "إعداد جداول قابلة للمراجعة وتوضيح انحرافات المصروفات أو الميزانيات بالتعاون مع الإدارات المعنية." }
+  ],
+  "software": [
+    { en: "Translated documented requirements into maintainable features with defined acceptance criteria and focused regression coverage.", ar: "تحويل المتطلبات الموثقة إلى خصائص برمجية قابلة للصيانة بمعايير قبول محددة واختبارات موجهة لمنع تكرار الأخطاء." },
+    { en: "Diagnosed application defects using reproducible cases, logging and root-cause analysis before validating fixes.", ar: "تشخيص الأعطال البرمجية باستخدام خطوات إعادة إنتاج واضحة والسجلات وتحليل الأسباب الجذرية قبل التحقق من الإصلاحات." },
+    { en: "Reviewed code for edge cases, accessibility and compatibility while communicating technical trade-offs to stakeholders.", ar: "مراجعة الشفرة للحالات الطرفية وسهولة الوصول والتوافق مع توضيح المفاضلات التقنية لأصحاب المصلحة." }
+  ],
+  "engineering": [
+    { en: "Reviewed drawings, specifications and interface constraints to identify constructability questions and technical dependencies.", ar: "مراجعة الرسومات والمواصفات والقيود الفنية لتحديد استفسارات قابلية التنفيذ والاعتماديات التقنية." },
+    { en: "Coordinated technical submittals, inspections and clarification requests with project stakeholders against approved requirements.", ar: "تنسيق الاعتمادات الفنية والفحوص وطلبات التوضيح مع أطراف المشروع وفق المتطلبات المعتمدة." },
+    { en: "Documented nonconformities, tracked corrective actions and supported structured technical handovers.", ar: "توثيق حالات عدم المطابقة ومتابعة الإجراءات التصحيحية ودعم عمليات التسليم الفني المنظمة." }
+  ],
+  "teaching": [
+    { en: "Designed differentiated lesson sequences aligned with learning objectives and measurable assessment checkpoints.", ar: "تصميم خطط دروس متمايزة ترتبط بنواتج التعلم ونقاط تقييم قابلة للملاحظة." },
+    { en: "Used formative assessment evidence to identify learning gaps and adapt instruction or targeted practice.", ar: "استخدام أدلة التقييم البنائي لتحديد فجوات التعلم وتكييف الشرح أو التدريبات الموجهة." },
+    { en: "Provided actionable feedback on learner progress and coordinated suitable support with academic colleagues.", ar: "تقديم تغذية راجعة عملية حول تقدم المتعلمين والتنسيق مع الزملاء الأكاديميين بشأن الدعم المناسب." }
+  ],
+  "sales": [
+    { en: "Qualified opportunities through structured discovery of customer needs, buying constraints and decision criteria.", ar: "تأهيل فرص البيع من خلال استكشاف منظم لاحتياجات العملاء وقيود الشراء ومعايير اتخاذ القرار." },
+    { en: "Maintained CRM pipeline records with stakeholder context, next actions and documented follow-up commitments.", ar: "إدارة سجلات الفرص البيعية بنظام CRM مع توثيق أصحاب القرار والخطوات التالية والتزامات المتابعة." },
+    { en: "Aligned product recommendations with customer use cases and coordinated accurate handovers to service teams.", ar: "مواءمة توصيات المنتجات مع حالات استخدام العملاء والتنسيق لتسليمات دقيقة لفرق الخدمة." }
+  ],
+  "marketing": [
+    { en: "Created audience-specific campaign briefs linking positioning, channel choices and testable business objectives.", ar: "إعداد موجزات حملات موجهة لشرائح الجمهور تربط الرسائل التسويقية بالقنوات والأهداف القابلة للاختبار." },
+    { en: "Evaluated engagement and conversion patterns to propose actionable content and targeting experiments.", ar: "تقييم أنماط التفاعل والتحويل لاقتراح تجارب عملية لتحسين المحتوى والاستهداف." },
+    { en: "Coordinated editorial calendars and creative approvals while recording key campaign learnings.", ar: "تنسيق جداول النشر واعتماد المواد الإبداعية مع توثيق الدروس المستفادة من الحملات." }
+  ],
+  "hr": [
+    { en: "Screened candidate evidence against role-specific criteria and organized structured interview handovers.", ar: "فرز مؤهلات المرشحين وفق معايير كل وظيفة وتنظيم تسليمات المقابلات المهيكلة." },
+    { en: "Coordinated onboarding milestones, document verification and departmental handoffs under approved HR procedures.", ar: "تنسيق مراحل انضمام الموظفين والتحقق من المستندات والتسليمات بين الإدارات وفق إجراءات الموارد البشرية." },
+    { en: "Maintained confidential personnel records and escalated sensitive exceptions through authorized channels.", ar: "إدارة سجلات العاملين السرية وتصعيد الحالات الحساسة عبر القنوات المخولة." }
+  ],
+  "customer-service": [
+    { en: "Managed multi-step customer cases by documenting root concerns, actions taken and clear follow-up ownership.", ar: "إدارة حالات العملاء متعددة المراحل بتوثيق أصل المشكلة والإجراءات المتخذة ومسؤولية المتابعة بوضوح." },
+    { en: "Triaged complex service requests, provided context-rich escalations and monitored outstanding resolution actions.", ar: "تصنيف طلبات الخدمة المعقدة وإحالتها بسياق مكتمل ومتابعة إجراءات الحل المعلقة." },
+    { en: "Identified recurring support themes and communicated service improvement opportunities to relevant teams.", ar: "تحديد أنماط طلبات الدعم المتكررة وإبلاغ الفرق المعنية بفرص تحسين الخدمة." }
+  ],
+  "administration": [
+    { en: "Coordinated cross-functional schedules, approvals and action trackers across competing operational priorities.", ar: "تنسيق الجداول والموافقات وسجلات المهام بين الفرق مع مراعاة الأولويات التشغيلية المتزامنة." },
+    { en: "Prepared decision-focused meeting records with assigned owners, deadlines and follow-up requirements.", ar: "إعداد محاضر اجتماعات تركز على القرارات وتوضح المسؤوليات والمواعيد ومتطلبات المتابعة." },
+    { en: "Maintained document version control and confidential records according to approved access procedures.", ar: "ضبط إصدارات المستندات وإدارة السجلات السرية وفق إجراءات الصلاحيات المعتمدة." }
+  ],
+  "logistics": [
+    { en: "Reconciled physical inventory movements with system records and investigated traceable stock variances.", ar: "مطابقة حركة المخزون الفعلية بسجلات النظام وفحص الفروقات التي يمكن تتبعها." },
+    { en: "Coordinated inbound receiving, outbound dispatch and exception handling against shipment documents.", ar: "تنسيق الاستلامات والشحنات الصادرة ومعالجة الاستثناءات وفق مستندات الشحن." },
+    { en: "Monitored replenishment signals and escalated potential availability risks to planning stakeholders.", ar: "متابعة مؤشرات إعادة التوريد وتصعيد مخاطر التوافر المحتملة لفرق التخطيط المعنية." }
+  ],
+  "design": [
+    { en: "Translated user needs and project briefs into structured flows, interface concepts and reusable visual patterns.", ar: "تحويل احتياجات المستخدمين وموجزات المشاريع إلى تدفقات استخدام وأفكار واجهات وأنماط بصرية قابلة لإعادة الاستخدام." },
+    { en: "Reviewed prototypes for visual hierarchy, accessibility and responsive behavior before developer handover.", ar: "مراجعة النماذج الأولية من حيث التدرج البصري وسهولة الوصول والاستجابة للشاشات قبل التسليم للمطورين." },
+    { en: "Documented component states, interaction details and usability findings for iterative refinement.", ar: "توثيق حالات المكونات وتفاصيل التفاعل وملاحظات قابلية الاستخدام لدعم التحسين التدريجي." }
+  ],
+  "physician": [
+    { en: "Documented focused clinical assessments, differential considerations and escalation decisions within authorized practice.", ar: "توثيق التقييمات السريرية الموجهة والاحتمالات التشخيصية وقرارات التصعيد ضمن نطاق الممارسة المخول." },
+    { en: "Coordinated time-sensitive clinical priorities and structured patient handovers across multidisciplinary teams.", ar: "تنسيق الأولويات السريرية العاجلة وتسليم حالات المرضى بشكل منظم بين فرق التخصصات المختلفة." },
+    { en: "Interpreted investigation findings in patient context and recorded appropriate follow-up plans under local protocols.", ar: "تفسير نتائج الفحوص في سياق حالة المريض وتوثيق خطط المتابعة الملائمة وفق البروتوكولات المحلية." }
+  ],
+  "pharmacy": [
+    { en: "Reviewed medication orders for completeness and relevant safety checks within the permitted scope of practice.", ar: "مراجعة أوامر الأدوية من حيث الاكتمال وفحوص السلامة ذات الصلة ضمن نطاق الممارسة المسموح." },
+    { en: "Clarified prescription discrepancies with authorized clinicians and documented approved follow-up actions.", ar: "توضيح اختلافات الوصفات مع الممارسين المخولين وتوثيق إجراءات المتابعة المعتمدة." },
+    { en: "Monitored storage conditions, expiry risks and inventory exceptions to support safe medication workflows.", ar: "متابعة ظروف تخزين الأدوية ومخاطر الصلاحية واستثناءات المخزون لدعم عمليات دوائية آمنة." }
+  ],
+  "laboratory": [
+    { en: "Verified specimen identity and traceability across receipt, processing and pre-analytical quality checkpoints.", ar: "التحقق من هوية العينات وإمكانية تتبعها خلال الاستلام والتجهيز ومراحل جودة ما قبل التحليل." },
+    { en: "Reviewed quality-control anomalies and documented corrective steps under laboratory standard procedures.", ar: "مراجعة حالات ضبط الجودة غير المعتادة وتوثيق الإجراءات التصحيحية وفق إجراءات المختبر." },
+    { en: "Communicated critical or flagged findings through approved reporting pathways while maintaining accurate analytical records.", ar: "إبلاغ النتائج الحرجة أو التي تستدعي الانتباه عبر مسارات الإبلاغ المعتمدة مع الحفاظ على دقة السجلات التحليلية." }
+  ],
+  "hospitality": [
+    { en: "Coordinated guest requests across reception, housekeeping and service teams with clear handover accountability.", ar: "تنسيق طلبات النزلاء بين الاستقبال وخدمات الغرف وفرق الخدمة مع وضوح مسؤولية التسليم." },
+    { en: "Managed service-recovery requests within delegated authority and documented escalations for complex concerns.", ar: "معالجة طلبات استعادة رضا النزلاء ضمن الصلاحيات وتوثيق تصعيد الحالات المعقدة." },
+    { en: "Maintained shift handovers covering pending requests, priority changes and service-readiness risks.", ar: "تنظيم تسليمات الورديات بما يشمل الطلبات المعلقة وتغير الأولويات ومخاطر جاهزية الخدمة." }
+  ],
+  "legal": [
+    { en: "Organized case records into structured chronologies to support issue analysis and evidence review.", ar: "تنظيم سجلات القضايا في تسلسل زمني منظم لدعم تحليل المسائل ومراجعة الأدلة." },
+    { en: "Reviewed legal correspondence and supporting documents for consistency, procedural requirements and open actions.", ar: "مراجعة المراسلات القانونية والمستندات الداعمة من حيث الاتساق والمتطلبات الإجرائية والإجراءات المعلقة." },
+    { en: "Tracked filing deadlines and maintained confidential document versions for authorized case review.", ar: "متابعة المواعيد الإجرائية وضبط نسخ الوثائق السرية للمراجعة المصرح بها." }
+  ]
+};
+const ADVANCED_NURSING_BULLETS: Record<string, CareerText[]> = {
+  "emergency": [
+    { en: "Triaged patients using presenting acuity, recognized red-flag deterioration and escalated time-critical findings through the emergency response pathway.", ar: "فرز المرضى وفق حدة العرض، والتعرف على مؤشرات التدهور الخطرة وتصعيد النتائج العاجلة عبر مسار الاستجابة بالطوارئ." },
+    { en: "Coordinated resuscitation-area readiness, prioritized clinical handovers and documented key reassessment findings during high-acuity care.", ar: "تنسيق جاهزية منطقة الإنعاش وترتيب أولويات تسليم الحالات وتوثيق نتائج إعادة التقييم المهمة أثناء رعاية الحالات الحرجة." }
+  ],
+  "icu": [
+    { en: "Monitored trends in vital signs and organ-support observations, escalating clinically significant changes through the critical-care pathway.", ar: "متابعة اتجاهات العلامات الحيوية وملاحظات دعم الوظائف الحيوية مع تصعيد التغيرات السريرية المهمة عبر مسار الرعاية الحرجة." },
+    { en: "Delivered structured handovers covering device safety, treatment priorities and outstanding clinical concerns.", ar: "تنفيذ تسليمات منظمة تتناول سلامة الأجهزة وأولويات العلاج والمخاوف السريرية المعلقة." }
+  ],
+  "or": [
+    { en: "Applied perioperative verification and aseptic-practice checks across preparation, intraoperative care and handover.", ar: "تطبيق فحوص التحقق قبل الجراحة وإجراءات التعقيم خلال التحضير والرعاية أثناء العملية والتسليم." },
+    { en: "Coordinated instrument and count documentation and escalated discrepancies according to theatre safety policy.", ar: "تنسيق توثيق الأدوات والعد الجراحي وتصعيد الفروقات وفق سياسة سلامة غرفة العمليات." }
+  ],
+  "infection-control": [
+    { en: "Conducted infection-prevention observations and documented compliance gaps against approved transmission-based precautions.", ar: "إجراء ملاحظات مكافحة العدوى وتوثيق فجوات الالتزام وفق الاحتياطات المعتمدة المبنية على طرق الانتقال." },
+    { en: "Communicated audit findings and follow-up actions for hand hygiene, device care and environmental practices.", ar: "إبلاغ نتائج التدقيق وإجراءات المتابعة المتعلقة بنظافة اليدين ورعاية الأجهزة والممارسات البيئية." }
+  ],
+  "dialysis": [
+    { en: "Verified dialysis access and treatment-preparation checks, documenting changes requiring timely escalation.", ar: "التحقق من وصلة الغسيل الكلوي وفحوص التحضير للجلسة وتوثيق التغيرات التي تتطلب التصعيد في الوقت المناسب." },
+    { en: "Monitored treatment tolerance and communicated relevant observations during multidisciplinary renal-care handovers.", ar: "متابعة تحمل المريض للجلسة وإبلاغ الملاحظات المهمة أثناء تسليمات فريق رعاية الكلى." }
+  ],
+  "pediatric": [
+    { en: "Used age-appropriate observation and family communication to recognize and escalate changes in pediatric condition.", ar: "استخدام الملاحظة الملائمة للعمر والتواصل مع الأسرة للتعرف على تغيرات حالة الأطفال وتصعيدها." },
+    { en: "Verified weight-sensitive care information and documented safety checks according to pediatric protocols.", ar: "التحقق من بيانات الرعاية المرتبطة بالوزن وتوثيق فحوص السلامة وفق بروتوكولات الأطفال." }
+  ],
+  "medsurg": [
+    { en: "Prioritized ward care based on clinical acuity, medication timing and pending investigations, escalating deterioration.", ar: "ترتيب رعاية الأقسام وفق حدة الحالة ومواعيد الأدوية والفحوص المعلقة مع تصعيد علامات التدهور." },
+    { en: "Maintained structured shift handovers and reconciled outstanding care needs with the multidisciplinary team.", ar: "الالتزام بتسليمات منظمة للورديات ومراجعة احتياجات الرعاية المعلقة مع الفريق متعدد التخصصات." }
+  ],
+  "supervisor": [
+    { en: "Balanced staffing assignments against patient acuity, workload and available competencies while escalating coverage gaps.", ar: "موازنة توزيع الكوادر مع حدة الحالات وحجم العمل والكفاءات المتاحة وتصعيد فجوات التغطية." },
+    { en: "Reviewed documentation and safety incidents to coordinate follow-up actions and practical team coaching.", ar: "مراجعة التوثيق وحوادث السلامة لتنسيق إجراءات المتابعة والتوجيه العملي للفريق." }
+  ]
+};
+
 const FALLBACK: Career = {
   id: 'general', pattern: /./, label: { en: 'General work experience', ar: 'خبرة عمل عامة' },
   bullets: [
@@ -159,7 +278,7 @@ replace("  const specialty = useMemo(() => getSpecialty(specialtyId), [specialty
   const nursingRole = isNursingJob(detectedRole);
   const career = useMemo(() => careerFor(detectedRole), [detectedRole]);""")
 replace("    const specialtyItems: Suggestion[] = specialty.bullets.map((item, index) => ({",
-        "    const specialtyItems: Suggestion[] = (nursingRole ? specialty.bullets : career.bullets).map((item, index) => ({")
+        "    const specialtyItems: Suggestion[] = (nursingRole ? [...(ADVANCED_NURSING_BULLETS[specialty.id] || []), ...specialty.bullets] : [...(ADVANCED_CAREER_BULLETS[career.id] || []), ...career.bullets]).map((item, index) => ({")
 replace("      id: 'specialty-' + specialty.id + '-' + index,",
         "      id: 'career-' + (nursingRole ? specialty.id : career.id) + '-' + index,")
 replace("    const levelItems: Suggestion[] = LEVEL_EXTRAS[level].map((item, index) => ({",
@@ -194,6 +313,9 @@ replace("      </label>\n\n      <p className=\"experience-picker__manual\">",
 replace("    </aside>\n  );\n}", "    </aside>, slot\n  );\n}")
 replace("    clinical: { en: 'Clinical care', ar: 'الرعاية السريرية' },",
         "    clinical: { en: 'Job duties', ar: 'المهام الوظيفية' },")
+replace("    setVersion((value) => value + 1);\n    target.focus();\n  };",
+        "    setVersion((value) => value + 1);\n    setOpen(false); // Close Smart CV only after selected examples are inserted.\n    target.focus();\n  };")
+
 component.write_text(text, encoding="utf-8")
 
 css_path = root / "app" / "globals.css"
