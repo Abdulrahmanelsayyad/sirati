@@ -14,24 +14,45 @@ import { useState } from 'react';
 
 type Mode = 'letter' | 'linkedin' | 'interview';
 type Language = 'en' | 'ar';
+type LetterTone = 'concise' | 'formal' | 'focused';
 type Fields = { name: string; role: string; company: string; facts: string; skills: string };
 
-function draftFor(mode: Mode, lang: Language, f: Fields): string {
+function draftFor(mode: Mode, lang: Language, f: Fields, tone: LetterTone = 'concise', motivation = ''): string {
   const name = f.name.trim();
   const role = f.role.trim();
   const company = f.company.trim();
   const facts = f.facts.trim();
   const skills = f.skills.trim();
   if (mode === 'letter') {
-    return lang === 'ar'
-      ? ['السادة فريق التوظيف في ' + company + '،', '', 'أتقدم لشغل وظيفة ' + role + '.',
-          'من خبراتي الفعلية: ' + facts + '.', skills ? 'ومن المهارات التي أمتلكها: ' + skills + '.' : '',
-          'أتطلع إلى فرصة لمناقشة مدى ملاءمة خبراتي لمتطلبات الوظيفة.', '',
-          'مع خالص التحية،', name].filter(x => x !== '').join('\n')
-      : ['Dear Hiring Team at ' + company + ',', '', 'I am applying for the ' + role + ' position.',
-          'My relevant experience includes: ' + facts + '.', skills ? 'Skills I can bring include: ' + skills + '.' : '',
-          'I would welcome the opportunity to discuss how my experience relates to this role.', '',
-          'Sincerely,', name].filter(x => x !== '').join('\n');
+    // These are stylistic structures only; every factual statement comes from user input.
+    const closing = lang === 'ar' ? 'مع خالص التحية،' : 'Sincerely,';
+    const factLine = lang === 'ar' ? 'من خبراتي المرتبطة بهذه الوظيفة: ' : 'My relevant experience includes: ';
+    const skillLine = lang === 'ar' ? 'مهارات أمتلكها: ' : 'My skills include: ';
+    const motivationLine = lang === 'ar' ? 'ما يجذبني لهذه الفرصة: ' : 'What interests me about this opportunity: ';
+    const openings = lang === 'ar'
+      ? {
+          concise: 'أتقدم لشغل وظيفة ' + role + ' لدى ' + company + '.',
+          formal: 'يسعدني تقديم طلبي للنظر في ترشيحي لوظيفة ' + role + ' لدى ' + company + '.',
+          focused: 'أرغب في التقدم لوظيفة ' + role + ' لدى ' + company + '، مع إبراز الخبرات ذات الصلة بالوظيفة.'
+        }
+      : {
+          concise: 'I am applying for the ' + role + ' role at ' + company + '.',
+          formal: 'Please accept my application for the ' + role + ' position at ' + company + '.',
+          focused: 'I am interested in the ' + role + ' opportunity at ' + company + ' and would like to highlight my relevant experience.'
+        };
+    const ending = lang === 'ar'
+      ? (tone === 'formal' ? 'أشكركم على النظر في طلبي، وأتطلع إلى مناقشة مدى ملاءمة خبراتي للوظيفة.' : 'أتطلع إلى فرصة لمناقشة خبراتي ومدى ارتباطها بهذه الوظيفة.')
+      : (tone === 'formal' ? 'Thank you for considering my application. I would welcome an opportunity to discuss my qualifications.' : 'I would welcome the opportunity to discuss how my experience relates to this role.');
+    const punctuation = (value: string) => /[.!?؟]$/.test(value) ? value : value + (lang === 'ar' ? '۔' : '.');
+    return [
+      lang === 'ar' ? 'السادة فريق التوظيف في ' + company + '،' : 'Dear Hiring Team at ' + company + ',',
+      openings[tone],
+      factLine + punctuation(facts),
+      skills ? skillLine + punctuation(skills) : '',
+      motivation.trim() ? motivationLine + punctuation(motivation.trim()) : '',
+      ending,
+      closing + '\n' + name
+    ].filter(Boolean).join('\n\n');
   }
   if (mode === 'linkedin') {
     return lang === 'ar'
@@ -65,6 +86,8 @@ function draftFor(mode: Mode, lang: Language, f: Fields): string {
 export default function CareerToolsPage() {
   const [lang, setLang] = useState<Language>('en');
   const [mode, setMode] = useState<Mode>('letter');
+  const [letterTone, setLetterTone] = useState<LetterTone>('concise');
+  const [motivation, setMotivation] = useState('');
   const [fields, setFields] = useState<Fields>({ name: '', role: '', company: '', facts: '', skills: '' });
   const [draft, setDraft] = useState('');
   const [notice, setNotice] = useState('');
@@ -127,9 +150,22 @@ export default function CareerToolsPage() {
             <input data-field="company" maxLength={120} value={fields.company} onChange={e => update('company', e.target.value)} /></label>}
           {mode !== 'interview' && <label>{t('Your real experience / achievements', 'خبراتك أو إنجازاتك الحقيقية')} *
             <textarea data-field="facts" rows={5} maxLength={1600} value={fields.facts} onChange={e => update('facts', e.target.value)} placeholder={t('Describe work you actually did', 'اكتب ما قمت به فعلاً')} /></label>}
+          {mode === 'letter' && <>
+            <label>{t('Letter style', 'أسلوب الخطاب')}
+              <select data-field="letter-tone" value={letterTone} onChange={e => setLetterTone(e.target.value as LetterTone)}>
+                <option value="concise">{t('Concise', 'مختصر ومباشر')}</option>
+                <option value="formal">{t('Formal', 'رسمي')}</option>
+                <option value="focused">{t('Role-focused', 'مركز على الوظيفة')}</option>
+              </select>
+            </label>
+            <label>{t('Why this opportunity interests you (optional)', 'سبب اهتمامك بالوظيفة (اختياري)')}
+              <textarea data-field="motivation" rows={3} maxLength={500} value={motivation} onChange={e => setMotivation(e.target.value)} placeholder={t('Write your own reasons; Sirati will not invent them.', 'اكتب سبب اهتمامك الحقيقي؛ لن يخترع الموقع سببًا نيابةً عنك.')} />
+            </label>
+          </>}
+
           <label>{t(mode === 'interview' ? 'Background to practice with (optional)' : 'Verified skills (optional)', mode === 'interview' ? 'خبرات تريد التدريب عليها (اختياري)' : 'مهارات حقيقية (اختياري)')}
             <textarea data-field="skills" rows={3} maxLength={600} value={fields.skills} onChange={e => update('skills', e.target.value)} /></label>
-          <button type="button" className="btn btn-primary" disabled={!valid} onClick={() => { setDraft(draftFor(mode, lang, { ...fields, facts: mode === 'interview' ? fields.skills : fields.facts })); setNotice(''); }}>
+          <button type="button" className="btn btn-primary" disabled={!valid} onClick={() => { setDraft(draftFor(mode, lang, { ...fields, facts: mode === 'interview' ? fields.skills : fields.facts }, letterTone, motivation)); setNotice(''); }}>
             {t('Generate editable draft', 'إنشاء مسودة قابلة للتعديل')}</button>
         </section>
         <section className="career-card career-result" aria-label={t('Editable result', 'النتيجة')}>
@@ -140,8 +176,10 @@ export default function CareerToolsPage() {
           <div className="career-actions">
             <button type="button" className="btn btn-secondary" disabled={!draft} onClick={copyDraft}>{t('Copy text', 'نسخ النص')}</button>
             <button type="button" className="btn btn-secondary" disabled={!draft} onClick={downloadDraft}>{t('Download TXT', 'تنزيل ملف نصي')}</button>
+            {mode === 'letter' && <button type="button" className="btn btn-secondary" disabled={!draft} onClick={() => window.print()}>{t('Print / Save PDF', 'طباعة / حفظ PDF')}</button>}
           </div>
           <p role="status" aria-live="polite" className="career-feedback">{notice}</p>
+          {mode === 'letter' && <article className="career-print-sheet" dir={ar ? 'rtl' : 'ltr'}>{draft}</article>}
         </section>
       </div>
     </div>
@@ -178,4 +216,20 @@ css_path.write_text(css_path.read_text(encoding="utf-8") + r"""
 .career-feedback{min-height:1.5em;color:#184237}.career-page :is(button,input,textarea,a):focus-visible{outline:3px solid #439b75;outline-offset:3px}
 @media(max-width:760px){.career-top{padding:14px 16px;flex-wrap:wrap}.career-wrap{padding:18px 16px 52px}.career-grid{grid-template-columns:minmax(0,1fr)}.career-card{padding:18px}.career-tab{flex:1 1 auto}}
 """, encoding="utf-8")
+# A separate, letter-only print view: never print customer input controls or the site UI.
+# This doesn't affect the existing CV's A4 printing isolation or payment/security logic.
+css_path.write_text(css_path.read_text(encoding="utf-8") + r"""
+.career-form select{width:100%;box-sizing:border-box;border:1px solid #b8c9c1;background:#fff;border-radius:10px;padding:12px;margin-top:7px;font:inherit;color:#152923}
+.career-print-sheet{display:none}
+@media print {
+  .career-page{min-height:0;background:#fff!important;color:#151515!important}
+  .career-page .career-top,.career-page .career-hero,.career-page .career-tabs,.career-page .career-form{display:none!important}
+  .career-page .career-wrap{max-width:none;margin:0;padding:0}
+  .career-page .career-grid{display:block!important;margin:0!important}
+  .career-page .career-result{border:0!important;box-shadow:none!important;padding:0!important;background:#fff!important}
+  .career-page .career-result > :not(.career-print-sheet){display:none!important}
+  .career-page .career-print-sheet{display:block!important;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;font-family:Arial,"Noto Naskh Arabic",sans-serif;font-size:11pt;margin:0 auto;max-width:175mm;color:#111}
+}
+""", encoding="utf-8")
+
 print("PASS: generated free bilingual Career Toolkit, nav and responsive styles.")
