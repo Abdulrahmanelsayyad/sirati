@@ -217,3 +217,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v5.py
 
 # V6 Pro Max: local job fit and pre-insertion editor; never touches persistence.
 subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v6.py')), str(root)], check=True)
+
+# Cross-site navigation UX: visible shortcuts, route context and overlay-free mobile menu.
+subprocess.run([sys.executable, str(Path(__file__).with_name('sitewide_navigation_ux.py')), str(root)], check=True)
