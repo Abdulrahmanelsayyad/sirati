@@ -9,7 +9,7 @@ import sys
 
 root = Path(sys.argv[1]).resolve()
 signout_call = re.compile(
-    r"(?P<indent>^[ \t]*)await (?P<client>[A-Za-z_$][\w$]*)(?:\?)?\.auth\.signOut\(\);",
+    r"(?P<indent>^[ \t]*)await (?P<client>[A-Za-z_$][\w$]*(?:\(\))?)(?:\?)?\.auth\.signOut\(\);",
     re.MULTILINE,
 )
 
@@ -27,8 +27,9 @@ for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
     indent, client = match.group("indent", "client")
     lines = [
         "// SIRATI_PRIVACY_SIGNOUT_START",
-        f"if (!{client}) return;",
-        f"const {{ data: {{ session: draftSession }} }} = await {client}.auth.getSession();",
+        f"const draftAuthClient = {client};",
+        "if (!draftAuthClient) return;",
+        "const { data: { session: draftSession } } = await draftAuthClient.auth.getSession();",
         "const draftScopedKey = draftSession?.user?.id",
         "  ? 'sirati.cv.v2.' + draftSession.user.id : null;",
         "let hasDeviceDraft = false;",
@@ -38,7 +39,7 @@ for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
         "if (hasDeviceDraft && !window.confirm(",
         "  'A device-only CV draft may contain unsaved changes. Save your CV to My Documents before signing out. Continuing will clear this device draft, but will NOT delete cloud-saved CVs. Continue?'",
         ")) return;",
-        f"const {{ error: draftSignOutError }} = await {client}.auth.signOut();",
+        "const { error: draftSignOutError } = await draftAuthClient.auth.signOut();",
         "if (draftSignOutError) {",
         "  window.alert('Sign-out failed; your CV device draft has been kept. Please retry.');",
         "  return;",
