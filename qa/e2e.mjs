@@ -406,7 +406,7 @@ assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'nu
 log('guided builder continues without standalone Nursing library');
 
 // Verify real profile Professional Title flows to Summary without retyping it.
-const realSummary = page.locator('.field').filter({ hasText: /Personal summary|Professional summary|نبذة|ملخص/i }).locator('textarea').first();
+const realSummary = page.locator('.wizard-section-card textarea').first(); // stable even after suggestion panel closes
 assert.equal(await realSummary.count(), 1, 'actual Personal Summary field must exist');
 const realSummaryPanel = page.locator('.sirati-summary-panel');
 await realSummaryPanel.waitFor();
@@ -416,7 +416,7 @@ const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choic
 await realSummaryPanel.locator('.sirati-summary-choice').first().click();
 const afterSmartChoice = await page.evaluate((selected) => ({
   progress: document.querySelector('.wizard-progress-meta')?.textContent?.trim(),
-  summaryMounted: Boolean(Array.from(document.querySelectorAll('.field textarea')).find((x) => /summary|ملخص/i.test(x.closest('.field')?.textContent || ''))),
+  summaryMounted: Boolean(document.querySelector('.wizard-section-card textarea')),
   previewUpdated: Boolean(document.querySelector('.cv-sheet')?.textContent?.includes(selected)),
   visibleCardText: document.querySelector('.wizard-section-card')?.textContent?.slice(0,180),
   focus: document.activeElement?.tagName
