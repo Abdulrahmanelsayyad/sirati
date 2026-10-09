@@ -208,3 +208,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("career_platform_na
 
 # Discoverability improvement for the existing sidebar; no data model changes.
 subprocess.run([sys.executable, str(Path(__file__).with_name("sidebar_feature_finder_v2.py")), str(root)], check=True)
+
+# Role-specific, opt-in Smart CV Pro V4: UI-only and facts-first.
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v4.py')), str(root)], check=True)
