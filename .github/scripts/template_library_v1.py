@@ -126,7 +126,7 @@ source = replace_once(source,'className="template-carousel-toolbar"',
     'className={libraryView ? "template-carousel-toolbar template-library-active" : "template-carousel-toolbar"}')
 source = replace_once(source,'className="template-flow-grid template-carousel-track"',
     'className={libraryView ? "template-flow-grid template-carousel-track template-library-grid" : "template-flow-grid template-carousel-track"}')
-source = replace_once(source,'templateOptions.map((option) => (','visibleLibrary.map((option) => (')
+source = replace_once(source,'templateOptions.map(','visibleLibrary.map(')
 file.write_text(source, encoding='utf-8')
 
 file, css = get('app/globals.css')
