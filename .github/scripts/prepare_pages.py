@@ -190,3 +190,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("smart_content_sugg
 # Owner-approved all-free offering: applied after every Builder and homepage patch.
 # Does not alter legacy payment data, RLS, auth, or historic entitlement records.
 subprocess.run([sys.executable, str(Path(__file__).with_name("free_access_v1.py")), str(root)], check=True)
+
+# Zero-cost public career tools, separated from the existing CV Builder.
+subprocess.run([sys.executable, str(Path(__file__).with_name("free_career_toolkit.py")), str(root)], check=True)
