@@ -220,3 +220,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v6.py
 
 # Cross-site navigation UX: visible shortcuts, route context and overlay-free mobile menu.
 subprocess.run([sys.executable, str(Path(__file__).with_name('sitewide_navigation_ux.py')), str(root)], check=True)
+
+# UX phase 2: manual Builder form/preview navigation and responsive input usability.
+subprocess.run([sys.executable, str(Path(__file__).with_name('ux_cv_editor_forms_v2.py')), str(root)], check=True)
