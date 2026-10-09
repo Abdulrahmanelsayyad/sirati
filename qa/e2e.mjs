@@ -594,6 +594,25 @@ log('clean PDF payment card mobile layout');
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
 
+// The inner 9-section progress stays visible while redundant outer onboarding
+// is suppressed on narrow screens, leaving more space for input fields.
+assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
+  'duplicate builder onboarding ribbon must not take mobile space');
+assert(await page.locator('.wizard-progress-meta').isVisible(),
+  'section progress must remain visible on mobile');
+
+// A focused editable field must never be covered by the floating guide.
+// When focus leaves the editor the guide should return automatically.
+const guidedNav = page.locator('.builder-guide');
+await guidedNav.waitFor({ state: 'visible', timeout: 10000 });
+const firstMobileEditor = page.locator('.wizard-section-card input:visible, .wizard-section-card textarea:visible').first();
+assert(await firstMobileEditor.count(), 'expected an editable CV field on mobile');
+await firstMobileEditor.focus();
+assert.equal(await guidedNav.isVisible(), false, 'floating guide covers a focused mobile field');
+await firstMobileEditor.evaluate(el => el.blur());
+assert(await guidedNav.isVisible(), 'floating guide must return after editing');
+log('mobile focus mode: no duplicate onboarding, editor remains unobstructed');
+
 let mobileTemplateSelect = null;
 const mobileSelects = page.locator('select');
 for (let i = 0; i < await mobileSelects.count(); i++) {
