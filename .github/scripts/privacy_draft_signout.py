@@ -9,7 +9,7 @@ import sys
 
 root = Path(sys.argv[1]).resolve()
 signout_call = re.compile(
-    r"(?P<indent>^[ \t]*)await (?P<client>[A-Za-z_$][\w$]*)\.auth\.signOut\(\);",
+    r"(?P<indent>^[ \t]*)await (?P<client>[A-Za-z_$][\w$]*)(?:\?)?\.auth\.signOut\(\);",
     re.MULTILINE,
 )
 
@@ -27,6 +27,7 @@ for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
     indent, client = match.group("indent", "client")
     lines = [
         "// SIRATI_PRIVACY_SIGNOUT_START",
+        f"if (!{client}) return;",
         f"const {{ data: {{ session: draftSession }} }} = await {client}.auth.getSession();",
         "const draftScopedKey = draftSession?.user?.id",
         "  ? 'sirati.cv.v2.' + draftSession.user.id : null;",
