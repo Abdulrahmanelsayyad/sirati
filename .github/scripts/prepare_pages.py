@@ -199,3 +199,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("account_career_sho
 
 # Last-mile visual identity applied AFTER the homepage, Career Tools and account dashboard.
 subprocess.run([sys.executable, str(Path(__file__).with_name("signature_ui_v3.py")), str(root)], check=True)
+
+# Career Studio brand replaces CV-only visual identity after the existing UI layers.
+subprocess.run([sys.executable, str(Path(__file__).with_name("career_studio_brand.py")), str(root)], check=True)
