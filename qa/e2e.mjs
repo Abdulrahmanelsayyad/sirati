@@ -690,8 +690,13 @@ await page.locator('#qa-summary-role').fill('Unlisted Job Profession');
 await summaryTrigger.click();
 assert((await summaryPanel.innerText()).includes('core responsibilities associated with the stated role'),
   'unknown professions need safe role-specific fallback without invented skills');
-assert(!(await summaryPanel.innerText()).includes('Achievement supplied:'),
-  'unknown role must not fabricate achievements without input');
+await summaryPanel.locator('.sirati-summary-pro-facts summary').click();
+await summaryPanel.getByRole('textbox',{name:'Summary actual skills'}).fill('');
+await summaryPanel.getByRole('textbox',{name:'Summary actual achievement'}).fill('');
+assert(!(await summaryPanel.locator('.sirati-summary-choices').innerText()).includes('Achievement supplied:'),
+  'unknown role with no user evidence must not invent achievements');
+assert((await summaryPanel.locator('.sirati-summary-v5-sources').innerText()).includes('Add your verified skills'),
+  'V5 evidence guidance should return after clearing user-entered facts');
 await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
 
 await page.locator('#qa-summary-role').fill('');
