@@ -184,8 +184,13 @@ if focus_marker not in css:
     min-width: 44px;
     min-height: 44px;
   }
-  /* Editing/keyboard focus wins over the floating navigation. */
-  body:has(.wizard-builder-page :is(input, textarea, select):focus) .builder-guide {
+  /* The CV editor already has its own section navigator.
+     Do not show the unrelated three-heading guide over it. */
+  body:has(.wizard-builder-page) .builder-guide {
+    display: none;
+  }
+  /* Keep the Continue footer clear of focused fields and the soft keyboard. */
+  body:has(.wizard-builder-page :is(input, textarea, select):focus) .wizard-footer-nav {
     display: none;
   }
 }
