@@ -72,6 +72,36 @@ const download = await downloadPromise;
 assert.equal(download.suggestedFilename(), 'sirati-letter-en.txt', 'text download should use clear filename');
 log('Cover Letter: only user facts, editable, downloadable, free');
 
+// Letter Pro V2: styles change the structure, never supplied facts, and print only the letter.
+await page.locator('[data-field="letter-tone"]').selectOption('formal');
+await page.locator('[data-field="motivation"]').fill('I want to contribute to a patient safety focused team');
+await generateButton.click();
+const formalLetter = await generated.inputValue();
+assert(formalLetter.includes('Please accept my application'), 'formal style must be distinct');
+assert(formalLetter.includes('patient safety focused team'), 'user motivation must remain factual');
+assert(formalLetter.includes('documented handovers'), 'user experience must remain in formal draft');
+await page.locator('[data-field="letter-tone"]').selectOption('focused');
+await generateButton.click();
+const focusedLetter = await generated.inputValue();
+assert(focusedLetter.includes('would like to highlight my relevant experience'), 'role-focused opening missing');
+assert.notEqual(focusedLetter, formalLetter, 'letter styles must produce different drafts');
+assert.equal(await page.getByRole('button', {name: 'Print / Save PDF'}).count(), 1, 'free letter PDF action missing');
+await page.emulateMedia({media:'print'});
+const printableState = await page.evaluate(() => ({
+  printVisible: getComputedStyle(document.querySelector('.career-print-sheet')).display !== 'none',
+  inputHidden: getComputedStyle(document.querySelector('.career-form')).display === 'none',
+  headerHidden: getComputedStyle(document.querySelector('.career-top')).display === 'none',
+  content: document.querySelector('.career-print-sheet')?.textContent || '',
+}));
+assert(printableState.printVisible && printableState.inputHidden && printableState.headerHidden, 'PDF print must hide site chrome and inputs');
+assert.equal(printableState.content, focusedLetter, 'PDF print must use the actually edited draft');
+const coverPdf = await page.pdf({format:'A4',printBackground:true,preferCSSPageSize:true});
+const letterPages = (coverPdf.toString('latin1').match(/\/Type\s*\/Page\b/g)||[]).length;
+assert.equal(letterPages, 1, 'short focused cover letter must print as one A4 page, got '+letterPages);
+await page.emulateMedia({media:'screen'});
+log('Cover Letter Pro V2: 3 tones, motivation and clean one-page A4 PDF without page chrome');
+
+
 await page.getByRole('button', { name: 'LinkedIn profile' }).click();
 await generateButton.click();
 output = await generated.inputValue();
@@ -85,6 +115,16 @@ assert(output.includes('Situation, Task, Action, Result') && output.includes('Em
 await page.getByRole('button', { name: 'Switch language' }).click();
 await page.getByRole('button', { name: 'إنشاء مسودة قابلة للتعديل' }).click();
 assert((await generated.inputValue()).includes('تدريب مقابلة'), 'Arabic interview content missing');
+
+await page.getByRole('button', { name: 'خطاب تقديم' }).click();
+await page.getByRole('button', { name: 'إنشاء مسودة قابلة للتعديل' }).click();
+const arabicLetter = await generated.inputValue();
+assert(arabicLetter.includes('السادة فريق التوظيف') && arabicLetter.includes('خبراتي المرتبطة'),
+  'Arabic cover letter should use professional RTL structure');
+assert(arabicLetter.includes('documented handovers'), 'Arabic draft must retain supplied experience');
+assert.equal(await page.locator('.career-print-sheet').getAttribute('dir'), 'rtl', 'Arabic letter must use RTL print direction');
+log('Cover Letter Pro V2: bilingual letter drafting preserves verified facts');
+
 for (const width of [360, 390, 1440]) {
   await page.setViewportSize({ width, height: 844 });
   const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
