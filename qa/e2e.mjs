@@ -232,50 +232,46 @@ assert(readinessText.includes('not an ATS score or a hiring guarantee'), 'CV Qua
 log('CV Quality Center shows essentials plus actionable content-quality checks');
 await readinessTrigger.click();
 
-// Role-aware personal summaries must be available on demand, not injected automatically.
+// Smart CV: Professional Title shows three ready-to-select Summary templates.
 await page.evaluate(() => {
-  const roleField = document.createElement('div');
-  roleField.className = 'field';
-  roleField.id = 'qa-summary-role-field';
-  roleField.innerHTML = '<label>Job title</label><input id="qa-summary-role" value="Accountant">';
-  const summaryField = document.createElement('div');
-  summaryField.className = 'field';
-  summaryField.id = 'qa-personal-summary-field';
-  summaryField.innerHTML = '<label>Personal Summary</label><textarea id="qa-personal-summary"></textarea>';
-  document.body.append(roleField, summaryField);
+  const title = document.createElement('div');
+  title.className = 'field';
+  title.id = 'qa-summary-role-field';
+  title.innerHTML = '<label>Professional title</label><input id="qa-summary-role" value="Accountant">';
+  const summary = document.createElement('div');
+  summary.className = 'field';
+  summary.id = 'qa-personal-summary-field';
+  summary.innerHTML = '<label>Personal Summary</label><textarea id="qa-personal-summary"></textarea>';
+  document.body.append(title, summary);
 });
 const qaSummary = page.locator('#qa-personal-summary');
-await qaSummary.focus();
-const summaryTrigger = page.locator('#qa-personal-summary-field .sirati-summary-trigger');
-assert.equal(await summaryTrigger.count(), 1, 'Personal Summary helper missing from summary field');
-assert.equal(await page.locator('.sirati-summary-panel').count(), 0, 'Personal Summary must not open automatically');
-await summaryTrigger.click();
-const summaryPanel = page.locator('.sirati-summary-panel');
-assert.equal(await summaryPanel.locator('.sirati-summary-choices label').count(), 3, 'expected three ready-made personal summaries');
-assert.equal(await summaryPanel.locator('.sirati-summary-role input').inputValue(), 'Accountant', 'role should be detected from the existing job title');
-assert((await summaryPanel.innerText()).includes('accurate financial records'), 'accountant summary must be profession-specific');
-await summaryPanel.locator('.sirati-summary-choices label').nth(1).click();
-const pickedSummary = (await summaryPanel.locator('.sirati-summary-choices label').nth(1).locator('span').innerText()).trim();
-await summaryPanel.getByRole('button', { name: 'Use this summary' }).click();
-assert.equal(await qaSummary.inputValue(), pickedSummary, 'selected summary was not inserted');
+const summaryPanel = page.locator('#qa-personal-summary-field .sirati-summary-panel');
+await summaryPanel.waitFor();
+assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(), 3, 'three Summary choices must appear without an extra click');
+assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Accountant'), 'must reuse Professional Title');
+assert.equal(await summaryPanel.locator('.sirati-summary-role input').count(), 0, 'must not ask for title a second time');
+assert((await summaryPanel.innerText()).includes('accurate financial records'), 'accountant-specific suggestions missing');
+assert.equal(await qaSummary.inputValue(), '', 'suggestions must never insert without selection');
+const pickedSummary = (await summaryPanel.locator('.sirati-summary-choice__text').nth(1).innerText()).trim();
+await summaryPanel.locator('.sirati-summary-choice').nth(1).click();
+assert.equal(await qaSummary.inputValue(), pickedSummary, 'one-click choice should insert into Summary');
 await qaSummary.fill('My existing personally written summary.');
-await summaryTrigger.click();
+await page.locator('#qa-personal-summary-field .sirati-summary-trigger').click();
 page.once('dialog', dialog => dialog.dismiss());
-await summaryPanel.getByRole('button', { name: 'Use this summary' }).click();
+await summaryPanel.locator('.sirati-summary-choice').first().click();
 assert.equal(await qaSummary.inputValue(), 'My existing personally written summary.', 'declined replacement must preserve manual summary');
-await summaryPanel.locator('.sirati-summary-role input').fill('Software Developer');
-assert((await summaryPanel.innerText()).includes('maintainable software'), 'changing job title must refresh the summary choices');
-await summaryPanel.getByRole('button', { name: 'Close' }).last().click();
+await page.locator('#qa-summary-role').fill('Software Developer');
+await page.waitForFunction(() => document.querySelector('.sirati-summary-panel')?.textContent?.includes('maintainable software'));
+assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Software Developer'), 'Professional Title changes must update choices');
+await summaryPanel.getByRole('button', { name: 'Hide suggestions' }).click();
 await page.locator('#qa-summary-role').fill('Unlisted Job Profession');
-await qaSummary.focus();
-await summaryTrigger.click();
-assert((await summaryPanel.innerText()).includes('organized work and clear communication'), 'unlisted roles need safe generic suggestions');
-await summaryPanel.getByRole('button', { name: 'Close' }).last().click();
+await summaryPanel.waitFor();
+assert((await summaryPanel.innerText()).includes('organized work and clear communication'), 'unknown title should receive generic editable suggestions');
 await page.evaluate(() => {
   document.getElementById('qa-summary-role-field')?.remove();
   document.getElementById('qa-personal-summary-field')?.remove();
 });
-log('Personal Summary: role detection, 3 templates, manual edit safety, refusal and fallback');
+log('Smart CV auto-shows 3 role-matched Summary cards, safely selects and respects existing text');
 
 await page.evaluate(() => {
   const field = document.createElement('div');
@@ -399,6 +395,8 @@ await page.evaluate(() => {
     return original.apply(this, args);
   };
 });
+await page.locator('.field').filter({ hasText: 'Professional title' }).locator('input').first().fill('Emergency Nurse');
+log('Professional Title entered once in profile section');
 const continueButton = page.getByRole('button', { name: /Continue/ }).last();
 await continueButton.click();
 await page.waitForFunction(() => window.__siratiStepScrolls > 0);
@@ -407,20 +405,27 @@ await page.waitForTimeout(100);
 assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'nursing widget must not return after step navigation');
 log('guided builder continues without standalone Nursing library');
 
-// Verify actual controlled Personal Summary field -> preview -> local draft restore.
-const realSummary = page.locator('.field').filter({ hasText: /Personal summary|Professional summary|نبذة|ملخص/i }).locator('textarea').first();
+// Verify real profile Professional Title flows to Summary without retyping it.
+const realSummary = page.locator('.wizard-section-card textarea').first(); // stable even after suggestion panel closes
 assert.equal(await realSummary.count(), 1, 'actual Personal Summary field must exist');
-await realSummary.focus();
-const realSummaryTrigger = page.locator('.sirati-summary-trigger').last();
-assert.equal(await realSummaryTrigger.count(), 1, 'real Personal Summary must offer contextual suggestions');
-await realSummaryTrigger.click();
 const realSummaryPanel = page.locator('.sirati-summary-panel');
-await realSummaryPanel.locator('.sirati-summary-role input').fill('Accountant');
-const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choices span').first().innerText()).trim();
-await realSummaryPanel.getByRole('button', { name: 'Use this summary' }).click();
-assert.equal(await realSummary.inputValue(), realSummaryChoice, 'template must update controlled Personal Summary field');
+await realSummaryPanel.waitFor();
+assert((await realSummaryPanel.locator('.sirati-summary-context').innerText()).includes('Emergency Nurse'), 'Summary must use Professional Title from earlier wizard step');
+assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 3, 'real Summary must auto-offer 3 templates');
+const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choice__text').first().innerText()).trim();
+await realSummaryPanel.locator('.sirati-summary-choice').first().click();
+const afterSmartChoice = await page.evaluate((selected) => ({
+  progress: document.querySelector('.wizard-progress-meta')?.textContent?.trim(),
+  summaryMounted: Boolean(document.querySelector('.wizard-section-card textarea')),
+  previewUpdated: Boolean(document.querySelector('.cv-sheet')?.textContent?.includes(selected)),
+  visibleCardText: document.querySelector('.wizard-section-card')?.textContent?.slice(0,180),
+  focus: document.activeElement?.tagName
+}), realSummaryChoice);
+log('SMART SUMMARY POST-CLICK DIAGNOSTIC ' + JSON.stringify(afterSmartChoice));
+assert(afterSmartChoice.summaryMounted, 'Summary field disappeared after choosing a template: ' + JSON.stringify(afterSmartChoice));
+assert.equal(await realSummary.inputValue(), realSummaryChoice, 'Summary selection should update controlled field');
 await page.waitForFunction(text => document.querySelector('.cv-sheet')?.textContent?.includes(text), realSummaryChoice);
-log('Personal Summary template updates the real CV preview');
+log('Professional Title templates update real Personal Summary, React preview and saved CV');
 
 await page.getByRole('button', { name: '← Back' }).click();
 await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
