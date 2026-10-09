@@ -186,7 +186,7 @@ for (const id of ['aurora-ats', 'ocean-profile', 'copper-timeline']) {
   assert.equal(await page.locator('.template-real-preview__stage[data-demo-template="' + id + '"] .cv-sheet.template-' + id).count(), 1, id + ' must use a genuine CvPreview');
 }
 log('Template Library: progressive gallery exposes 32 genuine CV previews');
-await page.getByRole('button', { name: 'Photo + Sidebar' }).click();
+await page.locator('.template-library-categories').getByRole('button', { name: 'Photo + Sidebar', exact: true }).click();
 await page.locator('.template-library-count').waitFor();
 assert((await page.locator('.template-library-count').innerText()).includes('of 14'), 'photo category should match fourteen real templates');
 await page.getByRole('button', { name: 'All', exact: true }).click();
