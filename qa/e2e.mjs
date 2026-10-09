@@ -297,14 +297,18 @@ assert.equal(await experiencePicker.locator('.experience-picker__categories butt
 await experiencePicker.getByRole('button', { name: 'Select recommended' }).click();
 const selectedExperienceOptions = experiencePicker.locator('.experience-picker__options input:checked');
 assert((await selectedExperienceOptions.count()) >= 2, 'recommended multi-select did not select enough experience options');
+assert.equal(await page.locator('.experience-picker').count(), 1, 'selecting suggestions must not close Smart CV before insertion');
 const selectedTexts = await experiencePicker.locator('.experience-picker__options article.is-selected label span').allTextContents();
 const addSelectedExperience = experiencePicker.getByRole('button', { name: 'Add selected' });
 assert(await addSelectedExperience.isEnabled(), 'Add selected should be enabled');
 await addSelectedExperience.click();
+assert.equal(await page.locator('.experience-picker').count(), 0, 'Smart CV should close automatically after Add selected');
+assert.equal(await contextualTrigger.count(), 1, 'closed Smart CV should keep its reopen button');
 await page.waitForTimeout(100);
 const insertedExperience = await qaExperienceDescription.inputValue();
 assert(selectedTexts.some((value) => insertedExperience.includes(value.trim())), 'selected experience descriptions were not inserted');
 
+await contextualTrigger.click(); // Reopen manually to adjust choices or add more items.
 await experiencePicker.locator('.experience-picker__search input').fill('monitor');
 assert((await experiencePicker.locator('.experience-picker__options article').count()) >= 1, 'experience suggestion search returned no matching options');
 await experiencePicker.locator('.experience-picker__search input').fill('');
@@ -340,7 +344,7 @@ assert.equal(await page.locator('.experience-picker__selectors select').nth(1).i
 await page.locator('.experience-picker__heading button').click();
 
 await page.evaluate(() => document.getElementById('qa-experience-description-field')?.remove());
-log('Experience Description Pro auto-detects role/level, filters suggestions, supports multi-select and manual writing');
+log('Smart CV advanced nursing suggestions, selection-to-insert auto-close, reopen and manual editing');
 
 assert.equal(await page.locator('.job-tailor, .job-tailor__trigger, .job-tailor__panel').count(), 0, 'Job Match Center must not render');
 
@@ -373,12 +377,13 @@ await page.evaluate(() => {
 await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 const accountantPicker = page.locator('.experience-picker');
-assert((await accountantPicker.innerText()).includes('Prepared and reconciled financial records'), 'accounting examples were not detected');
+assert((await accountantPicker.innerText()).includes('Analyzed ledger reconciliations'), 'advanced accounting examples were not detected');
+assert((await accountantPicker.innerText()).includes('Prepared and reconciled financial records'), 'original safe examples should remain accessible');
 assert.equal(await accountantPicker.locator('.experience-picker__selectors select').count(), 0, 'nursing-only selectors must not appear for accountants');
 const accountingBullet = (await accountantPicker.locator('.experience-picker__options article label span').first().innerText()).trim();
 await accountantPicker.locator('.experience-picker__options article').first().getByRole('button', { name: '+ Add' }).click();
 assert((await page.locator('#qa-accountant-description').inputValue()).includes(accountingBullet), 'accounting example was not inserted');
-await page.locator('.experience-picker__heading button').click();
+assert.equal(await page.locator('.experience-picker').count(), 0, 'single + Add should also close Smart CV after insertion');
 await page.locator('#qa-accountant-role').fill('Unlisted specialty role');
 await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
@@ -455,6 +460,7 @@ const realOption = realPicker.locator('.experience-picker__options article').fir
 const realSuggestion = (await realOption.locator('label span').innerText()).trim();
 await realOption.getByRole('button', { name: '+ Add', exact: true }).click();
 assert((await realExperience.inputValue()).includes(realSuggestion), 'suggestion must reach the real controlled field');
+assert.equal(await page.locator('.experience-picker').count(), 0, 'real Experience Smart CV should auto-close after + Add');
 await page.waitForFunction((text) => document.querySelector('.cv-sheet')?.textContent.includes(text), realSuggestion);
 assert((await realExperience.inputValue()).includes('Manual responsibility retained during QA.'));
 await page.reload({ waitUntil: 'networkidle' });
@@ -616,7 +622,8 @@ await page.locator('#qa-mobile-career-field .sirati-description-assistant-slot .
 const mobileCareerPanel = page.locator('.experience-picker');
 const mobileCareerRect = await mobileCareerPanel.evaluate(el => el.getBoundingClientRect());
 assert(mobileCareerRect.left >= -2 && mobileCareerRect.right <= 392, 'contextual mobile panel overflows');
-assert((await mobileCareerPanel.innerText()).includes('Identified customer requirements'), 'sales suggestions should load on mobile');
+assert((await mobileCareerPanel.innerText()).includes('Qualified opportunities'), 'advanced sales suggestions should load on mobile');
+assert((await mobileCareerPanel.innerText()).includes('Identified customer requirements'), 'original sales suggestions should remain available');
 await page.evaluate(() => document.getElementById('qa-mobile-career-field')?.remove());
 log('mobile role-specific descriptions stay inline and within viewport');
 
