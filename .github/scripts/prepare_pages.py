@@ -226,3 +226,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('ux_cv_editor_forms
 
 # Keep Career Tools text per tab/language during this open session (in memory only).
 subprocess.run([sys.executable, str(Path(__file__).with_name('career_draft_preservation_ux.py')), str(root)], check=True)
+
+# Bilingual account menu sign-out: local session only, saved documents untouched.
+subprocess.run([sys.executable, str(Path(__file__).with_name('menu_signout.py')), str(root)], check=True)
