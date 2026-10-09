@@ -15,6 +15,8 @@ const base = 'http://127.0.0.1:4173/sirati';
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
+page.on('pageerror', error => console.log('QA BROWSER ERROR:', error.message.slice(0,500)));
+page.on('console', message => { if (message.text().startsWith('SC-DIAG')) console.log('QA COMPONENT:', message.text()); });
 
 // Premium Minimal V1: verify the actual rendered landing page before other E2E.
 await page.goto(base + '/', { waitUntil: 'networkidle' });
@@ -626,6 +628,7 @@ await page.evaluate(() => {
   skills.innerHTML = '<label>Skills</label><textarea id="qa-smart-skills"></textarea>';
   document.body.appendChild(skills);
 });
+console.log('SMART CONTENT SOURCE DIAG', JSON.stringify((() => { const s = fs.readFileSync('app/builder/page.tsx','utf8'); const i=s.indexOf('data.skills'); const j=s.indexOf('SmartContentSuggestions'); return {componentMountCount:s.split('<SmartContentSuggestions').length-1, skillsMarkup:s.slice(Math.max(0,i-250),i+450), importMarkup:s.slice(Math.max(0,j-90),j+110)};})()));
 console.log('SMART CONTENT MOUNT DIAGNOSTIC', JSON.stringify(await page.evaluate(() => ({
   anyTrigger:document.querySelectorAll('.sirati-content-trigger').length,
   syntheticField:!!document.getElementById('qa-smart-skills-field'),
