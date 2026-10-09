@@ -15,7 +15,7 @@ try {
 
     assert.equal(await page.locator('.marketing-hero .sirati-v2-paper').count(), 1,
       'Readable CV preview missing');
-    assert.match(await page.locator('.marketing-hero h1').innerText(), /A CV that looks/);
+    assert.match(await page.locator('.marketing-hero h1').innerText(), /Your career\./);
     assert.equal(await page.locator('.home-quickstart').count(), 0,
       'Duplicate three-step strip remained on landing page');
     assert.equal(await page.locator('.sirati-studio').count(), 0,
@@ -51,8 +51,8 @@ try {
   await page.goto(origin, { waitUntil: 'networkidle' });
   const link = page.locator('.marketing-hero .hero-actions a').first();
   const href = await link.getAttribute('href');
-  assert(href && /templates/.test(href), 'Main CTA must lead to CV templates');
-  console.log('PASS: homepage start action points to templates');
+  assert(href && /career-tools/.test(href), 'Primary hero CTA must lead to Career Studio');
+  console.log('PASS: homepage primary action points to Career Studio');
 } finally {
   await browser.close();
 }
