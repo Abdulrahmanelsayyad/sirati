@@ -11,9 +11,17 @@ target = root / "components" / "FlowAutoScroll.tsx"
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text("""'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const continued = /continue|next step|متابعة|التالي|استمرار|أكمل/i;
+const PREF_KEY = 'sirati.autoAdvance.enabled.v1';
+function asWesternDigits(value: string): string {
+  return value.replace(/[٠-٩۰-۹]/g, digit => {
+    const code = digit.charCodeAt(0);
+    return String(code >= 0x6f0 ? code - 0x6f0 : code - 0x660);
+  });
+}
 const stepNavigation = /^(?:continue|next step|←?\\s*back|previous|متابعة|التالي|رجوع|السابق|عودة)/i;
 
 function visible(element: HTMLElement): boolean {
@@ -45,8 +53,49 @@ function afterRender(callback: () => void): void {
  * Manual Continue and Back remain available.
  */
 export default function FlowAutoScroll() {
+  const [enabled, setEnabled] = useState(true);
+  const enabledRef = useRef(true);
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const [arabic, setArabic] = useState(false);
+
   useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(PREF_KEY);
+      if (stored === 'off') {
+        enabledRef.current = false;
+        setEnabled(false);
+      }
+    } catch { /* Private browsing: keep the in-memory preference. */ }
+    const scan = () => {
+      if (!/\/builder\/?$/.test(window.location.pathname)) {
+        setHost(null);
+        return;
+      }
+      const el = document.querySelector<HTMLElement>('.wizard-progress-block');
+      setHost(current => current === el ? current : el);
+      const dir = document.querySelector('.cv-sheet')?.getAttribute('dir');
+      setArabic(dir === 'rtl' || document.documentElement.dir === 'rtl');
+    };
+    const observer = new MutationObserver(scan);
+    observer.observe(document.body, {childList:true, subtree:true});
+    scan();
+    return () => observer.disconnect();
+  }, []);
+
+  const changePreference = (checked: boolean) => {
+    enabledRef.current = checked;
+    setEnabled(checked);
+    try { window.sessionStorage.setItem(PREF_KEY, checked ? 'on' : 'off'); } catch {}
+  };
+
+  useEffect(() => {
+    let pending: number | null = null;
+    const cancelPending = () => {
+      if (pending !== null) window.clearTimeout(pending);
+      pending = null;
+    };
     const onClick = (event: MouseEvent) => {
+      cancelPending();
       if (!(event.target instanceof Element)) return;
       const path = window.location.pathname;
       if (/\\/templates\\/?$/.test(path) &&
@@ -68,8 +117,8 @@ export default function FlowAutoScroll() {
 
     // The active CV section is numbered 1–9 in Builder's own progress line.
     function activeSection(panel: HTMLElement): number {
-      const progress = panel.querySelector('.wizard-progress-meta > span')?.textContent || '';
-      const match = progress.match(/Section\s+(\d+)\s+of\s+(\d+)/i);
+      const progress = asWesternDigits(panel.querySelector('.wizard-progress-meta > span')?.textContent || '');
+      const match = progress.match(/(?:Section|القسم|الخطوة|مرحلة)\s+(\d+)\s+(?:of|من|\/)\s+(\d+)/i);
       return match && Number(match[2]) === 9 ? Number(match[1]) - 1 : -1;
     }
 
@@ -145,6 +194,7 @@ export default function FlowAutoScroll() {
     // A focus/blur without an edit must never cause the user to lose a step.
     const startingValues = new WeakMap<HTMLElement, string>();
     const onFocusField = (event: FocusEvent) => {
+      cancelPending(); // A new interaction invalidates an older blur's scheduled step.
       const target = event.target;
       if ((target instanceof HTMLInputElement ||
            target instanceof HTMLTextAreaElement ||
@@ -155,7 +205,7 @@ export default function FlowAutoScroll() {
     };
 
     const onFinishedField = (event: FocusEvent) => {
-      if (!/\/builder\/?$/.test(window.location.pathname)) return;
+      if (!enabledRef.current || !/\/builder\/?$/.test(window.location.pathname)) return;
       const target = event.target;
       if (!(target instanceof HTMLInputElement ||
             target instanceof HTMLTextAreaElement ||
@@ -174,8 +224,10 @@ export default function FlowAutoScroll() {
 
       // React controlled fields update on input/change. Delay until settled,
       // and never navigate away from new work the user has already focused.
-      window.setTimeout(() => {
-        if (!document.contains(card) || activeSection(panel) !== step ||
+      cancelPending();
+      pending = window.setTimeout(() => {
+        pending = null;
+        if (!enabledRef.current || !document.contains(card) || activeSection(panel) !== step ||
             document.hidden || !eligible(card, step)) return;
         const active = document.activeElement;
         if (active instanceof HTMLElement && card.contains(active) &&
@@ -187,16 +239,30 @@ export default function FlowAutoScroll() {
     };
 
     document.addEventListener('click', onClick);
+    document.addEventListener('pointerdown', cancelPending, true);
+    document.addEventListener('input', cancelPending, true);
     document.addEventListener('focusin', onFocusField);
     document.addEventListener('focusout', onFinishedField);
     return () => {
+      cancelPending();
       document.removeEventListener('click', onClick);
+      document.removeEventListener('pointerdown', cancelPending, true);
+      document.removeEventListener('input', cancelPending, true);
       document.removeEventListener('focusin', onFocusField);
       document.removeEventListener('focusout', onFinishedField);
     };
   }, []);
 
-  return null;
+  // A tiny opt-out by the existing progress, not another floating overlay.
+  if (!host) return null;
+  return createPortal(
+    <label className="sirati-auto-advance-control">
+      <input type="checkbox" aria-label="Auto-advance completed CV sections" checked={enabled}
+        onChange={event => changePreference(event.target.checked)} />
+      <span>{arabic ? 'الانتقال التلقائي بعد إكمال الخطوة' : 'Auto-advance completed steps'}</span>
+    </label>,
+    host
+  );
 }
 """, encoding="utf-8")
 
@@ -210,5 +276,19 @@ if "<FlowAutoScroll />" not in layout:
         raise RuntimeError("Missing layout body for FlowAutoScroll")
     layout = layout.replace("</body>", "        <FlowAutoScroll />\n      </body>", 1)
 layout_path.write_text(layout, encoding="utf-8")
-print("Installed non-submitting auto-scroll for template selection and guided Builder navigation.")
+with (root / "app" / "globals.css").open("a", encoding="utf-8") as css:
+    css.write("""
+/* Visible, opt-out navigation preference next to existing Builder progress. */
+.sirati-auto-advance-control {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  max-width: 100%; min-height: 32px; margin-top: 7px;
+  font-size: 12px; font-weight: 650; line-height: 1.35; color: #475569;
+  cursor: pointer;
+}
+.sirati-auto-advance-control input { width: 17px; height: 17px; margin: 0; accent-color: #1d4ed8; }
+.sirati-auto-advance-control:focus-within { outline: 2px solid #2563eb; outline-offset: 3px; border-radius: 4px; }
+@media(max-width: 500px) { .sirati-auto-advance-control { font-size: 11px; } }
+@media print { .sirati-auto-advance-control { display: none; } }
+""")
+print("Hardened auto-advance timing, localized step detection and visible opt-out.")
 
