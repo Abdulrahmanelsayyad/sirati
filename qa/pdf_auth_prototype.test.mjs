@@ -177,8 +177,9 @@ function frozenFetcher({
     if (path === '/rest/v1/rpc/sirati_pdf_snapshot_for_server') {
       assert.equal(options.method, 'POST');
       assert.equal(options.headers.apikey, frozenEnv.SIRATI_STAGING_SERVER_KEY);
-      assert.equal(options.headers.Authorization,
-        'Bearer ' + frozenEnv.SIRATI_STAGING_SERVER_KEY);
+      // API key must not be forwarded as a JWT in the Authorization header.
+      assert.equal(Object.hasOwn(options.headers, 'Authorization'), false);
+      assert.equal(Object.hasOwn(options.headers, 'authorization'), false);
       assert.deepEqual(JSON.parse(options.body), { p_order_id: ORDER, p_user_id: userId });
       return oversize ? new Response('x'.repeat(200000)) :
         Response.json(returned, { status: rpcStatus });
@@ -199,6 +200,8 @@ test('official route is branch/staging/secret-guarded and disabled by default', 
     { SIRATI_OFFICIAL_PDF_STAGING_ENABLED: undefined }, { BRANCH: 'main' },
     { NEXT_PUBLIC_SUPABASE_URL: PROD }, { SIRATI_STAGING_SERVER_KEY: undefined },
     { SIRATI_STAGING_SERVER_KEY: KEY },
+    { SIRATI_STAGING_SERVER_KEY: 'fake_long_non_secret_key_only_12345' },
+    { SIRATI_STAGING_SERVER_KEY: 'sb_publishable_wrong_role_only_12345' },
   ]) {
     let requests = 0;
     const response = await handleOfficialFrozenPdf(officialRequest(), {
