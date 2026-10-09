@@ -654,6 +654,7 @@ await addAchievement.click();
 await page.waitForFunction(v => document.querySelector('.cv-sheet')?.textContent?.includes(v), proof);
 await page.setViewportSize({width:390,height:844});
 await smartContentTrigger.click();
+await smartContentPanel.getByRole('button', {name:'Skills', exact:true}).click();
 // Regression for the screenshot: a broad .field input style previously inflated
 // native checkboxes to giant squares, squeezing text into a one-character column.
 const verifySmartSkillLayout = async (width, direction) => {
