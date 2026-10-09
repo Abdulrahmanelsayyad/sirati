@@ -205,3 +205,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("career_studio_bran
 
 # Full career platform navigation and self-service customer profile after all UI hooks.
 subprocess.run([sys.executable, str(Path(__file__).with_name("career_platform_navigation.py")), str(root)], check=True)
+
+# Discoverability improvement for the existing sidebar; no data model changes.
+subprocess.run([sys.executable, str(Path(__file__).with_name("sidebar_feature_finder_v2.py")), str(root)], check=True)
