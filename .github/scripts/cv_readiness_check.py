@@ -105,6 +105,20 @@ export function evaluateCvQuality(input: unknown): Check[] {
   ];
 }
 
+const qualityAdvice: Record<string, { en: string; ar: string }> = {
+  name: { en: 'Add the name you want employers to see.', ar: 'أضف الاسم الذي تريد ظهوره لأصحاب العمل.' },
+  contact: { en: 'Add a working phone number or valid email.', ar: 'أضف رقم هاتف صحيحًا أو بريدًا إلكترونيًا صالحًا.' },
+  summary: { en: 'Write a concise factual summary of your work and strengths.', ar: 'اكتب ملخصًا موجزًا وصحيحًا عن خبراتك ونقاط قوتك.' },
+  experience: { en: 'Add a real role, employer, and relevant work details.', ar: 'أضف وظيفة حقيقية وجهة العمل والمهام ذات الصلة.' },
+  education: { en: 'Add your qualification and institution.', ar: 'أضف مؤهلك الدراسي والجهة التعليمية.' },
+  skills: { en: 'Add skills you can genuinely demonstrate.', ar: 'أضف مهارات تمتلكها بالفعل ويمكنك إثباتها.' },
+  'email-quality': { en: 'Check the spelling and format of your email address.', ar: 'راجع كتابة البريد الإلكتروني وتنسيقه.' },
+  'summary-focus': { en: 'Aim for 60–350 characters with specific, truthful wording.', ar: 'اجعل الملخص بين 60 و350 حرفًا بصياغة محددة وصادقة.' },
+  'skills-depth': { en: 'Add up to five or more distinct, relevant skills you possess.', ar: 'اذكر خمس مهارات مختلفة أو أكثر إذا كنت تمتلكها.' },
+  'action-language': { en: 'Explain what you actually did using clear action verbs.', ar: 'اشرح ما قمت به بالفعل باستخدام أفعال واضحة.' },
+  impact: { en: 'If you have verified outcomes, describe them. Never invent numbers.', ar: 'إذا كان لديك نتائج موثقة فاذكرها، ولا تختلق أي أرقام.' },
+};
+
 export default function CvReadinessCheck({ data, language: requestedLanguage }: { data: unknown; language: string }) {
   const [open, setOpen] = useState(false);
   const language: 'en' | 'ar' = requestedLanguage === 'ar' ? 'ar' : 'en';
@@ -158,7 +172,12 @@ export default function CvReadinessCheck({ data, language: requestedLanguage }: 
             {checks.map((item) => (
               <li key={item.id} className={item.passed ? 'is-complete' : ''}>
                 <span aria-hidden="true">{item.passed ? '✓' : '○'}</span>
-                <span>{language === 'ar' ? item.labelAr : item.labelEn}</span>
+                <span>
+                  {language === 'ar' ? item.labelAr : item.labelEn}
+                  {!item.passed && <small className="cv-readiness__advice">
+                    {language === 'ar' ? qualityAdvice[item.id]?.ar : qualityAdvice[item.id]?.en}
+                  </small>}
+                </span>
               </li>
             ))}
           </ul>
