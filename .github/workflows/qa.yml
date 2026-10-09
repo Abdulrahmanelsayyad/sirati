@@ -59,6 +59,20 @@ jobs:
           cp "$GITHUB_WORKSPACE/qa/e2e.mjs" ./qa-e2e.mjs
           node ./qa-e2e.mjs
 
+      - name: Validate Premium Editorial V2 layout
+        working-directory: site-src/sirati-cv-source
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/premium_editorial_v2.mjs" ./qa-premium-editorial-v2.mjs
+          node ./qa-premium-editorial-v2.mjs
+
+      - name: Upload Premium Editorial V2 screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirati-premium-editorial-v2-visual-qa
+          path: /tmp/sirati-premium-editorial-v2/editorial-hero-*.png
+          if-no-files-found: ignore
+
       - name: Upload QA PDFs on failure
         if: failure()
         uses: actions/upload-artifact@v4
