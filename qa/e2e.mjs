@@ -53,14 +53,14 @@ assert.equal(await cards.count(), 8);
 log('eight template cards');
 
 const names = await cards.locator('strong').allTextContents();
-for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive ATS', 'Profile Sidebar', 'Gold Sidebar']) {
+for (const name of ['Compact ATS', 'Professional ATS', 'Classic', 'Compact', 'Healthcare Pro', 'Executive Letterhead', 'Profile Sidebar', 'Gold Sidebar']) {
   assert(names.includes(name), 'missing template ' + name);
 }
 log('all eight template names');
 
 // True finished-resume previews use the same CvPreview renderer as the Builder,
 // never six generic line-pattern illustrations or customer account data.
-const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar'];
+const templateIds = ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-letterhead', 'profile-sidebar', 'gold-sidebar'];
 assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 8);
 const actualMiniatures = await cards.evaluateAll(buttons => buttons.map(button => {
   const stage = button.querySelector('.template-real-preview__stage');
@@ -85,6 +85,14 @@ for (const thumbnail of actualMiniatures) {
   assert.equal(thumbnail.watermark, 0, 'avoid watermark obscuring miniature');
 }
 log('all eight template cards render genuine sample CvPreview with distinct feature tags');
+assert.equal(await cards.filter({hasText:'Executive Letterhead'}).count(), 1,
+  'Executive Letterhead must appear in the featured eight');
+assert.equal(await cards.filter({hasText:'Executive ATS'}).count(), 0,
+  'Executive ATS should be in the full catalog, not the featured eight');
+assert.equal(await page.locator('.template-choice .cv-sheet.template-executive-letterhead').count(), 1,
+  'featured Executive Letterhead must use the real CvPreview component');
+log('Executive Letterhead appears immediately in the featured eight');
+
 
 const sidebarCard = page.locator('.template-choice').filter({ hasText: 'Profile Sidebar' });
 assert.equal(await sidebarCard.locator('.profile-sidebar-layout > .profile-sidebar-rail').count(), 1, 'new template must have a genuine sidebar');
@@ -169,27 +177,36 @@ await page.setViewportSize({ width: 1440, height: 1000 });
 log('mobile horizontal template strip stays inside viewport');
 
 // Template Library: opt-in gallery must not overload initial mobile view.
-await page.getByRole('button', { name: 'Browse all 32 templates' }).click();
+await page.getByRole('button', { name: 'Browse all 33 templates' }).click();
 assert.equal(await page.locator('.template-carousel-track.template-library-grid').count(), 1, 'gallery grid is not active');
 assert.equal(await cards.count(), 8, 'gallery must render only eight CV previews initially');
-assert.equal(await page.locator('.template-library-count').innerText(), 'Showing 8 of 32 templates');
+assert.equal(await page.locator('.template-library-count').innerText(), 'Showing 8 of 33 templates');
 for (let batch = 0; batch < 3; batch++) {
   await page.getByRole('button', { name: 'Show 8 more templates ↓' }).click();
 }
-assert.equal(await cards.count(), 32, 'all 32 templates must be reachable with progressive loading');
+const lastBatch = page.getByRole('button', { name: 'Show 8 more templates ↓' });
+if (await lastBatch.count()) await lastBatch.click();
+assert.equal(await cards.count(), 33, 'all 33 templates must be reachable with progressive loading');
 const allVariantIds = await page.locator('.template-real-preview__stage').evaluateAll(nodes =>
   nodes.map(node => node.getAttribute('data-demo-template'))
 );
-assert.equal(new Set(allVariantIds).size, 32, 'every gallery entry needs its own stable ID');
+assert.equal(new Set(allVariantIds).size, 33, 'every gallery entry needs its own stable ID');
+assert(allVariantIds.includes('executive-ats'), 'Executive ATS must remain available in all 33 templates');
 for (const id of ['aurora-ats', 'ocean-profile', 'copper-timeline']) {
   assert(allVariantIds.includes(id), id + ' not found in library');
   assert.equal(await page.locator('.template-real-preview__stage[data-demo-template="' + id + '"] .cv-sheet.template-' + id).count(), 1, id + ' must use a genuine CvPreview');
 }
-log('Template Library: progressive gallery exposes 32 genuine CV previews');
+const letterheadMini = page.locator('.template-real-preview__stage[data-demo-template="executive-letterhead"]');
+assert.equal(await letterheadMini.locator('.cv-sheet.template-executive-letterhead').count(), 1,
+  'Executive Letterhead must have its own real preview document');
+assert.equal(await letterheadMini.locator('.executive-lh-masthead').count(), 1, 'full-width editorial header missing');
+assert.equal(await letterheadMini.locator('.executive-lh-grid > .executive-lh-rail').count(), 1, 'right-side rail missing');
+assert.equal(await letterheadMini.locator('.executive-lh-grid > .executive-lh-main').count(), 1, 'main experience column missing');
+log('Template Library: progressive gallery exposes 33 genuine CV previews and unique Letterhead structure');
 await page.getByRole('button', { name: 'العربية' }).click();
-assert.equal(await page.locator('.template-library-grid .cv-sheet[dir="rtl"]').count(), 32, 'all new gallery previews must support RTL');
+assert.equal(await page.locator('.template-library-grid .cv-sheet[dir="rtl"]').count(), 33, 'all gallery previews must support RTL');
 await page.getByRole('button', { name: 'English' }).click();
-log('Template Library: 32 genuine Arabic RTL miniature previews');
+log('Template Library: 33 genuine Arabic RTL miniature previews');
 
 await page.locator('.template-library-categories').getByRole('button', { name: 'Photo + Sidebar', exact: true }).click();
 await page.locator('.template-library-count').waitFor();
@@ -263,6 +280,15 @@ for (const id of ['aurora-ats', 'ocean-profile', 'copper-timeline']) {
   assert(samplePdf.length > 3000, id + ' failed to generate a browser print PDF');
 }
 await onboardingTemplateSelect.selectOption('compact-ats');
+await onboardingTemplateSelect.selectOption('executive-letterhead');
+await page.waitForFunction(() =>
+  document.querySelector('.wizard-preview-wrap .cv-sheet')?.classList.contains('template-executive-letterhead'));
+assert.equal(await page.locator('.wizard-preview-wrap .cv-sheet.template-executive-letterhead .executive-lh-grid').count(),1,
+  'new template must render its original two-column layout in the Builder');
+const letterheadPdf = await page.pdf({format:'A4',printBackground:true});
+assert(letterheadPdf.length > 3000, 'Executive Letterhead print PDF failed');
+await onboardingTemplateSelect.selectOption('compact-ats');
+log('Executive Letterhead: original layout renders in Builder and prints to PDF');
 log('Template Library: representative new ATS, photo and timeline CVs render and print to PDF');
 
 log('Compact ATS selection survives template onboarding');
