@@ -80,6 +80,16 @@ gallery_state = r"""
       .toLocaleLowerCase().includes(librarySearch.trim().toLocaleLowerCase())
   );
   const visibleLibrary = libraryView ? libraryMatches.slice(0, libraryLimit) : templateOptions.filter(option => ['modern','classic','compact','compact-ats','healthcare-pro','executive-ats','profile-sidebar','gold-sidebar'].includes(option.id));
+  // Reveal the next small batch as the user scrolls; never mount 32 previews at once.
+  useEffect(() => {
+    if (!libraryView || libraryLimit >= libraryMatches.length) return;
+    const onScroll = () => {
+      const remaining = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+      if (remaining < 440) setLibraryLimit(current => Math.min(current + 8, libraryMatches.length));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [libraryView, libraryLimit, libraryMatches.length]);
 """.replace('__PHOTO__', quote(by_family['photo']+by_family['timeline']))
 source = replace_once(source, state_anchor, state_anchor + gallery_state)
 toolbar = r"""        <div className="template-library-entrance">
