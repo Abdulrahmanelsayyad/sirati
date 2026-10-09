@@ -79,7 +79,7 @@ gallery_state = r"""
     (option.name + ' ' + option.description + ' ' + option.badge)
       .toLocaleLowerCase().includes(librarySearch.trim().toLocaleLowerCase())
   );
-  const visibleLibrary = libraryView ? libraryMatches.slice(0, libraryLimit) : templateOptions.slice(0, 8);
+  const visibleLibrary = libraryView ? libraryMatches.slice(0, libraryLimit) : templateOptions.filter(option => ['modern','classic','compact','compact-ats','healthcare-pro','executive-ats','profile-sidebar','gold-sidebar'].includes(option.id));
 """.replace('__PHOTO__', quote(by_family['photo']+by_family['timeline']))
 source = replace_once(source, state_anchor, state_anchor + gallery_state)
 toolbar = r"""        <div className="template-library-entrance">
