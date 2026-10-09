@@ -186,6 +186,11 @@ for (const id of ['aurora-ats', 'ocean-profile', 'copper-timeline']) {
   assert.equal(await page.locator('.template-real-preview__stage[data-demo-template="' + id + '"] .cv-sheet.template-' + id).count(), 1, id + ' must use a genuine CvPreview');
 }
 log('Template Library: progressive gallery exposes 32 genuine CV previews');
+await page.getByRole('button', { name: 'العربية' }).click();
+assert.equal(await page.locator('.template-library-grid .cv-sheet[dir="rtl"]').count(), 32, 'all new gallery previews must support RTL');
+await page.getByRole('button', { name: 'English' }).click();
+log('Template Library: 32 genuine Arabic RTL miniature previews');
+
 await page.locator('.template-library-categories').getByRole('button', { name: 'Photo + Sidebar', exact: true }).click();
 await page.locator('.template-library-count').waitFor();
 assert((await page.locator('.template-library-count').innerText()).includes('of 14'), 'photo category should match fourteen real templates');
@@ -197,6 +202,9 @@ await page.getByRole('searchbox', { name: 'Search templates' }).fill('impossible
 assert.equal(await cards.count(), 0, 'unknown search should not show unrelated templates');
 await page.getByRole('searchbox', { name: 'Search templates' }).fill('');
 await page.setViewportSize({ width: 390, height: 844 });
+await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+await page.waitForFunction(() => document.querySelectorAll('.template-library-grid .template-choice').length >= 16);
+log('Template Library: mobile scroll reveals additional cards automatically');
 const galleryWidth = await page.evaluate(() => document.documentElement.scrollWidth);
 assert(galleryWidth <= 392, 'mobile gallery overflows viewport: ' + galleryWidth);
 await page.getByRole('button', { name: 'Back to featured' }).click();
@@ -247,6 +255,16 @@ for (let i = 0; i < await onboardingSelects.count(); i++) {
 assert(onboardingTemplateSelect, 'onboarding template selector not found');
 assert.equal(await onboardingTemplateSelect.inputValue(), 'compact-ats');
 assert((await page.locator('.cv-sheet').getAttribute('class')).includes('template-compact-ats'));
+for (const id of ['aurora-ats', 'ocean-profile', 'copper-timeline']) {
+  await onboardingTemplateSelect.selectOption(id);
+  await page.waitForFunction(templateId =>
+    document.querySelector('.wizard-preview-wrap .cv-sheet')?.classList.contains('template-' + templateId), id);
+  const samplePdf = await page.pdf({ format: 'A4', printBackground: true });
+  assert(samplePdf.length > 3000, id + ' failed to generate a browser print PDF');
+}
+await onboardingTemplateSelect.selectOption('compact-ats');
+log('Template Library: representative new ATS, photo and timeline CVs render and print to PDF');
+
 log('Compact ATS selection survives template onboarding');
 
 const qualityImplementation = fs.readFileSync('components/CvReadinessCheck.tsx', 'utf8');
