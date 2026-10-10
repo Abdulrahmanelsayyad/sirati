@@ -60,7 +60,7 @@ export default function StagingApiWriteQa() {
         return;
       }
       const client = createClient();
-      if (!client || client.supabaseUrl !== STAGING_API) {
+      if (!client || process.env.NEXT_PUBLIC_SUPABASE_URL !== STAGING_API) {
         add('Environment', 'NOT RUN', 'Supabase client is not configured for Sirati-Staging.');
         return;
       }
