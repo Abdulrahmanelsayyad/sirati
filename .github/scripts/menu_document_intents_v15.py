@@ -21,11 +21,11 @@ def once(source, needle, replacement, label):
 menu = menu_path.read_text(encoding='utf-8')
 menu = once(menu,
     "{ title: 'مساعد الكتابة الذكي', detail: 'Smart CV — inside the builder', route: '/auth?next=/templates', icon: '✦' },",
-    "{ title: 'مساعد الكتابة الذكي', detail: 'اختيار CV محفوظ ثم Smart CV', route: '/documents?tool=smart', icon: '✦' },",
+    "{ title: 'مساعد الكتابة الذكي', detail: 'Smart CV · اختر سيرة محفوظة', route: '/documents?tool=smart', icon: '✦' },",
     'Smart CV destination')
 menu = once(menu,
     "{ title: 'مراجعة جودة السيرة', detail: 'CV Quality — inside the builder', route: '/auth?next=/templates', icon: '◉' },",
-    "{ title: 'مراجعة جودة السيرة', detail: 'اختيار CV محفوظ ثم فحص الجودة', route: '/documents?tool=quality', icon: '◉' },",
+    "{ title: 'مراجعة جودة السيرة', detail: 'CV Quality · راجع سيرة محفوظة', route: '/documents?tool=quality', icon: '◉' },",
     'Quality destination')
 menu_path.write_text(menu, encoding='utf-8')
 
