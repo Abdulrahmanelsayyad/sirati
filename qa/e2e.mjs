@@ -1580,6 +1580,27 @@ assert((await page.evaluate(() => JSON.parse(
 )?.requested)) === false, 'cancel must disarm auto-download');
 log('guest Save PDF requires a free account; cancel retains tab-scoped CV data');
 
+// After cancel, further edits must replace the old temporary snapshot BEFORE
+// refresh. Loading the tab must not replay the previous stale CV values.
+await page.locator('.cv-substep').first().click();
+const guestEditField = page.locator('.wizard-section-card .field')
+  .filter({hasText:'Full name'}).locator('input').first();
+await guestEditField.fill('Guest Updated After Cancel');
+await page.waitForFunction(() => {
+  const raw = sessionStorage.getItem('sirati.guest.pdf.pending.v1');
+  return raw && JSON.parse(raw).data?.fullName === 'Guest Updated After Cancel';
+}, null, {timeout:12000});
+await page.reload({waitUntil:'networkidle'});
+await page.locator('.cv-substep').first().click();
+assert.equal(await page.locator('.wizard-section-card .field')
+  .filter({hasText:'Full name'}).locator('input').first().inputValue(),
+  'Guest Updated After Cancel', 'latest guest edit must survive page reload');
+assert.equal(await page.evaluate(() => JSON.parse(
+  sessionStorage.getItem('sirati.guest.pdf.pending.v1') || 'null'
+)?.requested), false, 'refresh must not rearm cancelled PDF request');
+await page.locator('.cv-substep').last().click();
+log('guest cancel + edit + reload restores latest tab-only CV without rearming export');
+
 assert(!(await page.locator('body').innerText()).includes('EGP 50'), 'legacy fee must not appear in Builder');
 log('free CV/clean PDF is available without payments or approval');
 
