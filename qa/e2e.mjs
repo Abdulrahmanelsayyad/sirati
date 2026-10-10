@@ -75,7 +75,7 @@ const page = await context.newPage();
   for (const [sample,expected,enoughPages] of [
     ['en1','Professional',1],
     ['en2','Professional',2],
-    ['ar3','الخبرة',3],
+    ['ar3','الخبرة المهنية',3],
   ]) {
     await qaPage.getByLabel('PDF sample scenario').selectOption(sample);
     const [download] = await Promise.all([
@@ -100,6 +100,14 @@ const page = await context.newPage();
     const comparable = extracted.replace(/\s+/g,' ').trim();
     assert(comparable.includes(expected),
       sample+' must contain native extractable '+expected+' text, got '+comparable.slice(0,250));
+    // Synthetic fixture has known repeated paragraphs. Detect lost text across
+    // page boundaries rather than accepting a single surviving Arabic token.
+    const repeated = sample === 'ar3' ? 'الخبرة المهنية'
+      : 'Professional experience';
+    const expectedCount = sample === 'ar3' ? 95 : sample === 'en2' ? 34 : 7;
+    const actualCount = comparable.split(repeated).length - 1;
+    assert(actualCount >= Math.floor(expectedCount * 0.9),
+      sample+' missing native Unicode paragraphs across pages: '+actualCount+'/'+expectedCount);
     await pdf.destroy();
     console.log('PASS: '+sample+' searchable Unicode PDF, '+pdf.numPages+' pages of A4');
   }
