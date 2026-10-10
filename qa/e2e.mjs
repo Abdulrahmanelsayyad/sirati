@@ -103,6 +103,18 @@ const menuSource = fs.readFileSync('components/SiratiSiteMenu.tsx','utf8');
 // Sign-out is account-only: ensure it ends this browser session and handles failure.
 assert(menuSource.includes("supabase.auth.signOut({ scope: 'local' })"),
   'account menu must sign out this browser session');
+// Scoped plaintext drafts must never survive this drawer's successful sign-out.
+// This source guard supplements, but does not replace, real authenticated A/B QA.
+assert(menuSource.includes('const draftKey = `sirati.cv.v2.${user.id}`') &&
+  menuSource.includes('window.localStorage.getItem(draftKey)') &&
+  menuSource.includes('window.localStorage.removeItem(draftKey)'),
+  'drawer must read and remove only the active account draft');
+const draftConfirmAt = menuSource.indexOf('window.confirm(');
+const draftLogoutAt = menuSource.indexOf("supabase.auth.signOut({ scope: 'local' })");
+const draftCleanupAt = menuSource.indexOf('window.localStorage.removeItem(draftKey)');
+assert(draftConfirmAt >= 0 && draftConfirmAt < draftLogoutAt && draftLogoutAt < draftCleanupAt &&
+  menuSource.slice(draftLogoutAt,draftCleanupAt).includes('if (error) throw error;'),
+  'draft must be confirmed before sign-out and cleaned only after its success');
 assert(menuSource.includes("window.location.assign(withBasePath('/'))"),
   'successful sign-out must navigate to the base-path-aware home page');
 assert(menuSource.includes('className="sirati-menu-signout"') &&
