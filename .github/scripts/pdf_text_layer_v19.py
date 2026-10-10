@@ -115,7 +115,10 @@ export async function downloadCvSheet(sheet: HTMLElement, name: string): Promise
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   const [arabicFont, latinFont] = await Promise.all([
-    doc.embedFont(arabicBytes, { subset: false }),
+    doc.embedFont(arabicBytes, { subset: true, features: {
+      init: false, medi: false, fina: false, isol: false,
+      rlig: false, liga: false, calt: false, rclt: false, ccmp: false,
+    } }),
     doc.embedFont(latinBytes, { subset: true }),
   ]);
   const arabicChars = new Set(arabicFont.getCharacterSet());
