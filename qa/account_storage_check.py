@@ -11,9 +11,7 @@ required = {
     "cloud mode avoids shared draft": "} else if (!isSupabaseConfigured()) {",
     "scoped save": "window.sessionStorage.setItem(accountDraftStorageKey(userId), payload);",
     "save waits for identity": "if (!userId) return;",
-    "scoped restore": "window.sessionStorage.getItem(draftKey)",
-    "current-user-only migration": "window.localStorage.getItem(draftKey)",
-    "delete persistent copy on verified migration": "window.localStorage.removeItem(draftKey)",
+    "scoped restore": "window.sessionStorage.getItem(accountDraftStorageKey(user.id))",
     "legacy shared key preserved": "const STORAGE_KEY = 'sirati.cv.v2';",
 }
 
@@ -22,7 +20,62 @@ if missing:
     raise SystemExit("Account draft isolation source check failed: " + ", ".join(missing))
 
 
-print("PASS: account-scoped local draft source invariants")
+if "window.localStorage.getItem(draftKey)" in text:
+    raise SystemExit("Persistent plaintext CV migration must be disabled for prelaunch reset")
+
+# Run the actual sitewide cleanup effect on synthetic browser storage, not
+# any connected customer session. Purge is ONE TIME to preserve later CV edits.
+cleanup = (root / "components" / "LegacyJobMatchCleanup.tsx").read_text(encoding="utf-8")
+for token in ("QA_CV_PURGE_MARKER", "sirati.cv.v1", "sirati.cv.v2.",
+              "isOldCvDraftKey", "window.localStorage.setItem(QA_CV_PURGE_MARKER, '1')"):
+    if token not in cleanup:
+        raise SystemExit("Missing prelaunch CV cleanup token: " + token)
+import subprocess
+test_js = r"""
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const src = fs.readFileSync(process.argv[1], 'utf8');
+const defsStart = src.indexOf("const LEGACY_PREFIX");
+const defsEnd = src.indexOf("export default function", defsStart);
+const bodyStart = src.indexOf("  useEffect(() => {", defsEnd) + "  useEffect(() => {".length;
+const bodyEnd = src.indexOf("  }, []);", bodyStart);
+assert(defsStart >= 0 && defsEnd > defsStart && bodyStart > defsEnd && bodyEnd > bodyStart);
+const defs = src.slice(defsStart, defsEnd).replace("key: string", "key");
+const run = new Function('window', defs + '\n' + src.slice(bodyStart, bodyEnd));
+function store(entries) {
+  const m = new Map(entries);
+  return {get length(){return m.size;},key:i=>[...m.keys()][i]||null,
+    getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v),
+    removeItem:k=>m.delete(k),has:k=>m.has(k)};
+}
+const local = store([
+  ['sirati.cv.v1','old1'],['sirati.cv.v2','old2'],
+  ['sirati.cv.v2.A','oldA'],['sirati.cv.v2.B','oldB'],
+  ['sirati.onboarding.template','compact'],
+  ['sb-example-auth-token','leave-auth-alone'],
+  ['sirati.analytics.consent.v1','yes']
+]);
+const session = store([['sirati.cv.v2.A','oldTabA'],['sirati.jobTailor.v2.A','oldTailor']]);
+const window = {localStorage:local,sessionStorage:session};
+run(window);
+for (const k of ['sirati.cv.v1','sirati.cv.v2','sirati.cv.v2.A','sirati.cv.v2.B'])
+  assert(!local.has(k), k);
+assert(!session.has('sirati.cv.v2.A'));
+assert(!session.has('sirati.jobTailor.v2.A'));
+assert.equal(local.getItem('sirati.privacy.prelaunch-reset.v1'),'1');
+assert.equal(local.getItem('sb-example-auth-token'),'leave-auth-alone');
+assert.equal(local.getItem('sirati.onboarding.template'),'compact');
+assert.equal(local.getItem('sirati.analytics.consent.v1'),'yes');
+local.setItem('sirati.cv.v2','newGuestDraft');
+session.setItem('sirati.cv.v2.A','newSignedInTab');
+run(window);
+assert.equal(local.getItem('sirati.cv.v2'),'newGuestDraft');
+assert.equal(session.getItem('sirati.cv.v2.A'),'newSignedInTab');
+console.log('PASS: prelaunch one-time purge removes only legacy trial CV keys and preserves future drafts');
+"""
+subprocess.run(["node", "-e", test_js,
+                str(root / "components" / "LegacyJobMatchCleanup.tsx")], check=True)
+print("PASS: account-scoped per-tab draft source + controlled prelaunch CV purge")
 
 # Run behavior regressions against the same prepared builder used by the build.
 import subprocess
