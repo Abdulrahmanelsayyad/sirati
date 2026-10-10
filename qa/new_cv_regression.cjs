@@ -15,6 +15,7 @@ function scenario({ fresh = false, query = '', replay = false, owner = 'A', sess
   ]);
   const sessionValues = new Map(sessionExisting ? [
     ['sirati.cv.v2.A', JSON.stringify({ data: { fullName: 'Current Tab A' }, template: 'compact', language: 'ar' })],
+    ['sirati.cv.v2.B', JSON.stringify({ data: { fullName: 'Current Tab B' }, template: 'classic', language: 'en' })],
   ] : []);
   if (fresh) {
     values.set('sirati.onboarding.newCv', '1');
@@ -51,11 +52,12 @@ test('new CV keeps blank data and selected Arabic Compact ATS', () => {
   const s = scenario({ fresh: true, query: '?template=compact-ats&language=ar' });
   assert.equal(s.data.fullName, ''); assert.equal(s.template, 'compact-ats'); assert.equal(s.language, 'ar');
 });
-test('ordinary return restores the account draft', () => {
-  const s = scenario(); assert.equal(s.data.fullName, 'Previous A'); assert.equal(s.template, 'classic');
+test('ordinary return restores only an active-tab draft', () => {
+  const s = scenario({ sessionExisting: true });
+  assert.equal(s.data.fullName, 'Current Tab A'); assert.equal(s.template, 'compact');
 });
 test('another account restores only its own draft', () => {
-  assert.equal(scenario({ owner: 'B' }).data.fullName, 'Previous B');
+  assert.equal(scenario({ owner: 'B', sessionExisting: true }).data.fullName, 'Current Tab B');
 });
 test('effect replay does not lose new-CV intent after keys are consumed', () => {
   const s = scenario({ fresh: true, query: '?template=compact-ats&language=ar', replay: true });
@@ -64,21 +66,21 @@ test('effect replay does not lose new-CV intent after keys are consumed', () => 
 test('explicit saved-document request takes priority over stale onboarding flag', () => {
   assert.equal(scenario({ fresh: true, query: '?doc=saved-document' }).newIntent, false);
 });
-test('fresh CV does not silently discard an older unsaved device draft', () => {
-  const s = scenario({ fresh: true });
-  assert(s.values.has('sirati.cv.v2.A')); assert(s.values.has('sirati.cv.v2.B'));
+test('fresh CV is blank even when this account has an active-tab draft', () => {
+  const s = scenario({ fresh: true, sessionExisting: true });
+  assert(s.sessionValues.has('sirati.cv.v2.A'));
   assert.equal(s.data.fullName, '');
 });
-test('current signed-in account migrates to tab storage before clearing persistent copy', () => {
+test('a persistent legacy CV draft is never auto-restored', () => {
   const s = scenario({ owner: 'A' });
-  assert.equal(s.data.fullName, 'Previous A');
-  assert(s.sessionValues.has('sirati.cv.v2.A'));
-  assert(!s.values.has('sirati.cv.v2.A'));
-  assert(s.values.has('sirati.cv.v2.B'));
+  assert.equal(s.data.fullName, '');
+  assert(!s.sessionValues.has('sirati.cv.v2.A'));
+  // The sitewide pre-launch purge handles old persistent keys once.
+  assert(s.values.has('sirati.cv.v2.A'));
 });
 test('existing tab draft takes precedence over older persistent draft', () => {
   const s = scenario({ owner: 'A', sessionExisting: true });
   assert.equal(s.data.fullName, 'Current Tab A');
   assert.equal(s.language, 'ar');
-  assert(!s.values.has('sirati.cv.v2.A'));
+  assert(s.values.has('sirati.cv.v2.A'));
 });
