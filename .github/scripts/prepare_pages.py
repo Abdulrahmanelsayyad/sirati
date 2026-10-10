@@ -238,3 +238,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('home_documents_v12
 
 # V13: keep five useful landing sections; reuse templates, free tools and FAQ.
 subprocess.run([sys.executable, str(Path(__file__).with_name('minimal_home_v13.py')), str(root)], check=True)
+
+# V14: feature search stays fixed under the sidebar brand while tools scroll.
+subprocess.run([sys.executable, str(Path(__file__).with_name('fixed_menu_search_v14.py')), str(root)], check=True)
