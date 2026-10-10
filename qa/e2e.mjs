@@ -65,6 +65,48 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
 
+// Issue #97: exercise the SAME direct exporter against deterministic CV DOM,
+// and use a real PDF parser rather than trusting a filename or screenshot.
+// This is synthetic staging/CI data only; no accounts or customer CVs.
+{
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const qaPage = await context.newPage();
+  await qaPage.goto(base + '/qa-pdf-ats/', { waitUntil: 'networkidle' });
+  for (const [sample,expected,enoughPages] of [
+    ['en1','Professional',1],
+    ['en2','Experience',2],
+    ['ar3','الخبرة',3],
+  ]) {
+    await qaPage.getByLabel('PDF sample scenario').selectOption(sample);
+    const [download] = await Promise.all([
+      qaPage.waitForEvent('download', {timeout:90000}),
+      qaPage.getByRole('button', {name:'QA Download searchable PDF'}).click()
+    ]);
+    const filePath = await download.path();
+    assert(filePath && fs.existsSync(filePath), 'PDF must be a real downloaded file');
+    const bytes = new Uint8Array(fs.readFileSync(filePath));
+    assert(bytes.length > 1200, 'PDF byte size too small');
+    const pdf = await pdfjs.getDocument({ data:bytes, useSystemFonts: true }).promise;
+    assert(pdf.numPages >= enoughPages, sample+' A4 pages too few: '+pdf.numPages);
+    if (sample === 'en1') assert.equal(pdf.numPages,1,'one-page English should not add trailing page');
+    let extracted = '';
+    for (let i=1; i<=pdf.numPages; i++) {
+      const p = await pdf.getPage(i);
+      const viewport = p.getViewport({scale:1});
+      assert(Math.abs(viewport.width-595.28)<2 && Math.abs(viewport.height-841.89)<2,
+        sample+' must export genuine A4 points');
+      extracted += (await p.getTextContent()).items.map(x=>x.str||'').join(' ')+' ';
+    }
+    const comparable = extracted.replace(/\s+/g,' ').trim();
+    assert(comparable.includes(expected),
+      sample+' must contain native extractable '+expected+' text, got '+comparable.slice(0,250));
+    await pdf.destroy();
+    console.log('PASS: '+sample+' searchable Unicode PDF, '+pdf.numPages+' pages of A4');
+  }
+  await qaPage.close();
+}
+
+
 // Premium Minimal V1: verify the actual rendered landing page before other E2E.
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 assert.equal(await page.locator('.marketing-page').count(), 1, 'Sirati landing page missing');
