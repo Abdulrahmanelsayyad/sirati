@@ -14,7 +14,7 @@
 | `public.sirati_analytics_summary(1/7/30)` | Executable by authenticated only; checks `auth.uid()` against private admin allowlist and returns aggregates | Access design reasonable; **real A/B and admin tests NOT RUN** |
 | RLS-without-policy notices | Five private, RLS-enabled tables, no direct `anon`/`authenticated` schema access | INFO, expected deny unless proven otherwise |
 | Leaked-password protection | Disabled in Staging; Supabase docs state availability on **Pro plan and above** | Do not incur charges or modify Auth; owner choice later |
-| Automatic retention | `pg_cron` **available but not installed** in Staging; rollback-only synthetic test passed for 35d events and 2d UTC quota predicates, leaving all test tables empty | **Predicate PASS; actual scheduling BLOCKED** |
+| Automatic retention | `pg_cron` **installed on Staging**; 1 active daily 02:12 UTC/GMT cron job; cleanup function tested with rolled-back synthetic records and no leftovers | **Staging manual execution PASS; first automatic run NOT OBSERVED** |
 | Production analytics | `sirati_metrics.events` and `public.sirati_analytics_summary` absent in prior read-only Production inventory. GitHub Pages feature flag remains OFF | **No Production tracking** |
 
 Sources: [Issue #87](https://github.com/Abdulrahmanelsayyad/sirati/issues/87), [Issue #99](https://github.com/Abdulrahmanelsayyad/sirati/issues/99), [PR #115](https://github.com/Abdulrahmanelsayyad/sirati/pull/115), [Supabase advisor on anonymous definer functions](https://supabase.com/docs/guides/observability/advisors?queryGroups=lint&lint=0028_anon_security_definer_function_executable), [Supabase Cron](https://supabase.com/docs/guides/cron), [Supabase Password security](https://supabase.com/docs/guides/auth/password-security).
@@ -41,7 +41,7 @@ Verified on Staging: both client-role permissions are **false**, `postgres` reta
 - Use **35 days** retention for accepted analytics events, allowing 30-day reports with a modest grace margin. Count **page views** and **estimated browser sessions**, never assert a number of unique people.
 - Use **2 UTC days** retention for `session_quota` and `day_quota` records after their calendar day has passed; these quotas serve abuse/cost safety, not visit analytics.
 - Introduce a reviewed and versioned cleanup function that deletes **only** qualifying records in `sirati_metrics.events`, `sirati_metrics.session_quota` and `sirati_metrics.day_quota`. Never prune `auth.users`, `cv_documents`, CV versions, payments, or historical order data.
-- Enable `pg_cron` in **Staging** and schedule one daily job only after separate explicit approval and tests; `pg_cron` is not installed there now. Confirm cron execution, date boundaries, privileges and job-run visibility. Retention is **not operational** until the job completes at least one controlled trial.
+- **Staging now has** `pg_cron` installed and a single active daily job `sirati-analytics-retention-staging` at 02:12 UTC/GMT; migration `20261010223659_staging_analytics_retention_schedule` is recorded in this PR. The invoker-rights cleanup function was manually verified with synthetic fixture records inside a fully rolled-back transaction; records and admin fixtures remain at zero. **First scheduled job execution has not yet occurred / was not observed.** Before any Production rollout, independently verify a cron job run and an explicitly approved separate Production retention schedule.
 - Display a bilingual privacy explanation, obtain opt-in consent, respect DNT/GPC/owner QA exclusion, avoid raw URLs, IPs, identifiers or CV contents. Manual mobile (360/390px), RTL/LTR and test-traffic checks still required.
 - Exclude Staging traffic from Production analytics; avoid any event collection without consent.
 - Historical page views cannot be reconstructed from existing user registrations or saved CVs.
@@ -54,4 +54,13 @@ Verified on Staging: both client-role permissions are **false**, `postgres` reta
 4. Owner explicitly approves each **Production** analytics migration, merge/deploy, and activation of `NEXT_PUBLIC_ANALYTICS_ENABLED`. No automatic publication or payment.
 5. After approved activation, record the first real page view and compare privacy-safe aggregate with the dashboard. Do not claim old traffic totals.
 
-**Decision:** Staging RPC hardening **APPLIED and verified** (grant change only), retention predicates **PASS in rolled-back tests**; automatic retention, owner provisioning, independent sign-off, and all Production actions **BLOCKED**.
+**Decision:** Staging RPC hardening **APPLIED and verified**; Staging retention function and daily cron job **INSTALLED**, manual synthetic deletion **PASS**, first automatic cron-run **NOT YET OBSERVED**. Real owner provisioning, independent Security/QA sign-off, and all Production changes/activation **BLOCKED**.
+
+## Supplemental access-control verification (2026-10-11, Staging)
+
+- `anon` has no execute permission for `public.sirati_analytics_summary(integer)`; logged-in users can call the endpoint, but the function enforces the admin UUID allowlist.
+- In a **rollback-only transaction**, a synthetic `authenticated` non-admin was denied by the server function, while a synthetic allowlisted admin successfully retrieved the 7-day aggregate.
+- Admin accepted 1-day and 30-day windows; unsupported 31-day window was rejected. No real user email, token, CV or identity was copied, and no synthetic allowlist membership persisted.
+- `cron` scheduler process observed running. Daily job active; `cron.job_run_details` contained **0 executions for this job** at verification time.
+- Manual function execution removed expired synthetic events and UTC-dated quota records only, retained recent rows and was rolled back. Real deletion automation is not accepted as fully verified until a scheduled run is observed.
+- The security evidence is technical self-review, **not the required independent Security/QA reviewer sign-off**.
