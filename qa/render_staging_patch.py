@@ -14,7 +14,7 @@ builder = builder_path.read_text(encoding="utf-8")
 # historical paid-order UI in Staging. Fail closed on incompatible builds.
 for required in (
     "Everything in Sirati is free",
-    "No payment or approval required.",
+    "Download your PDF file directly to your device. No print dialog, payment or approval required.",
 ):
     if required not in builder:
         raise SystemExit("FAIL: expected free-access Builder proof is missing: " + required)
@@ -55,5 +55,5 @@ css += """
 }
 """
 css_path.write_text(css, encoding="utf-8")
-print("PASS: staging-only payment and support instructions are non-transactional")
+print("PASS: Staging free-only payment guard and direct PDF message verified")
 print("PASS: visible test-only banner installed, no real payments")
