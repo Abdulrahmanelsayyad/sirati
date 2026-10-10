@@ -24,6 +24,8 @@ jobs:
           node-version: "22"
 
       - name: Reconstruct and prepare source
+        env:
+          SIRATI_PDF_QA_FIXTURE: '1'
         run: |
           cat source.part1 source.part2 source.part3 source.part4a source.part4b source.part4c source.part5 source.part6 source.part7 | base64 -d > /tmp/sirati.zip
           rm -rf site-src
