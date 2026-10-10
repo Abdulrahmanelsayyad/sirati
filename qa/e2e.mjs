@@ -188,6 +188,29 @@ assert(noDraftLogout.confirmations===0 && noDraftLogout.signOuts===1 &&
   noDraftLogout.navigations===1,
   'no local draft should not show a needless destructive-change dialog');
 log('Synthetic generated-menu logout behavior: cancel/success/failure/no-draft PASS; real A/B NOT RUN');
+// PR #81 compatibility: prove that the *generated* older logout routes also
+// contain the same per-account warning and success-only cleanup. Previously
+// validated synthetic tests on PR #81 are reused rather than reintroduced here.
+for (const legacySignOutPath of ['components/AccountNav.tsx','app/documents/page.tsx']) {
+  const component = fs.readFileSync(legacySignOutPath,'utf8');
+  const begin = component.indexOf('// SIRATI_PRIVACY_SIGNOUT_START');
+  const finish = component.indexOf('// SIRATI_PRIVACY_SIGNOUT_END',begin);
+  assert(begin>=0 && finish>begin &&
+    component.split('// SIRATI_PRIVACY_SIGNOUT_START').length===2,
+    'Missing or duplicate account-scoped sign-out guard in '+legacySignOutPath);
+  const protectedSection = component.slice(begin,finish);
+  const confirmAt = protectedSection.indexOf('window.confirm(');
+  const signOutAt = protectedSection.indexOf('await draftAuthClient.auth.signOut()');
+  const cleanupAt = protectedSection.indexOf('window.localStorage.removeItem(draftScopedKey)');
+  assert(protectedSection.includes('await draftAuthClient.auth.getSession()') &&
+    protectedSection.includes("'sirati.cv.v2.' + draftSession.user.id") &&
+    confirmAt>=0 && signOutAt>confirmAt && cleanupAt>signOutAt &&
+    protectedSection.slice(signOutAt,cleanupAt).includes('if (draftSignOutError)') &&
+    !protectedSection.includes('localStorage.clear('),
+    'Unsafe sign-out order or broad draft deletion in '+legacySignOutPath);
+}
+log('All three generated account logout paths contain scoped draft protection; real A/B NOT RUN');
+
 log('Signed-in drawer: local sign-out action, loading, errors, home navigation and focus');
 assert(menuSource.includes('input:not([disabled])'),
   'keyboard focus trap must include drawer search input, not only buttons and links');
