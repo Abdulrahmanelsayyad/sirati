@@ -251,3 +251,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('menu_document_inte
 
 # V16: direct saved CV and Builder PDF download (no browser print dialog).
 subprocess.run([sys.executable, str(Path(__file__).with_name('direct_pdf_download_v16.py')), str(root)], check=True)
+
+# Diagnose the current public-template loading gate; no UI change in this probe.
+subprocess.run([sys.executable, str(Path(__file__).parents[2] / 'qa' / 'templates_guest_diagnostic.py'), str(root)], check=True)
