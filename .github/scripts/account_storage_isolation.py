@@ -85,7 +85,7 @@ old_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
 new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.location.search).get('doc');
       if (!requestedDocumentId) {
         const draftKey = accountDraftStorageKey(user.id);
-        let raw: string | null = null;
+        let raw = null;
         // Prefer this tab's session draft. Migrate ONLY the authenticated
         // account's old persistent draft after a verified sessionStorage copy.
         // A deliberate "New CV" never silently destroys an older device draft.
