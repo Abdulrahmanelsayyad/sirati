@@ -10,6 +10,21 @@ console.log('PASS: retired Job Match absent from source, layout and CSS; Experie
 
 // Account-discovery regression: logged-in My Documents view must expose Career Tools.
 // Do not fake authenticated access in this test; live session QA remains a separate gate.
+// Public template previews are independent of Supabase auth or network timing.
+const guestTemplateSource = fs.readFileSync('app/templates/page.tsx', 'utf8');
+for (const forbidden of [
+  'Checking your account', 'setChecking(', 'auth.getUser()',
+  "withBasePath('/auth?next=/templates')"
+]) {
+  assert(!guestTemplateSource.includes(forbidden),
+    'guest template gallery still gated by ' + forbidden);
+}
+assert(guestTemplateSource.includes('function continueToBuilder()') &&
+  guestTemplateSource.includes('template-carousel-track') &&
+  guestTemplateSource.includes('template-library-grid'),
+  'guest-first fix must preserve onboarding, gallery and template carousel');
+console.log('PASS: guest CV gallery has no account-loading state or auth redirect');
+
 const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
 assert.equal((docsSource.match(/data-testid="career-tools-entry"/g) || []).length, 1,
   'My Documents must have exactly one visible career tools entry');
@@ -548,6 +563,12 @@ log('Career toolkit: LinkedIn, interviews, Arabic & 360/390px accessibility smok
 await page.setViewportSize({ width: 1440, height: 1000 });
 
 await page.goto(base + '/templates/', { waitUntil: 'networkidle' });
+assert.equal(await page.getByText('Checking your account…').count(), 0,
+  'guest must never see an account-loading splash on the public template gallery');
+assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 8,
+  'all eight featured CV previews must render for visitors without sign-in');
+log('Guest-first templates: all featured previews visible immediately without sign-in');
+
 // V11 — only the global Sirati header remains; Documents stays reachable
 // from the desktop navbar and the existing mobile drawer.
 assert.equal(await page.locator('.flow-page header.flow-nav').count(), 0,
