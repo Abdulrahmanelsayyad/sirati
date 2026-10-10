@@ -59,8 +59,8 @@ for required in (
     "localStorage.setItem('sirati.onboarding.template', template);",
     'window.location.href = withBasePath(',
     '<OnboardingSteps current={2} />',
-    'className="template-carousel-track"',
-    'className="template-library-grid"',
+    'template-carousel-track',
+    'template-library-grid',
     '<CvPreview',
 ):
     if required not in source:
