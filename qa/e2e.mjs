@@ -129,6 +129,18 @@ const menuSource = fs.readFileSync('components/SiratiSiteMenu.tsx','utf8');
 // Sign-out is account-only: ensure it ends this browser session and handles failure.
 assert(menuSource.includes("supabase.auth.signOut({ scope: 'local' })"),
   'account menu must sign out this browser session');
+// Scoped plaintext drafts must never survive this drawer's successful sign-out.
+// This source guard supplements, but does not replace, real authenticated A/B QA.
+assert(menuSource.includes('const draftKey = `sirati.cv.v2.${user.id}`') &&
+  menuSource.includes('window.localStorage.getItem(draftKey)') &&
+  menuSource.includes('window.localStorage.removeItem(draftKey)'),
+  'drawer must read and remove only the active account draft');
+const draftConfirmAt = menuSource.indexOf('window.confirm(');
+const draftLogoutAt = menuSource.indexOf("supabase.auth.signOut({ scope: 'local' })");
+const draftCleanupAt = menuSource.indexOf('window.localStorage.removeItem(draftKey)');
+assert(draftConfirmAt >= 0 && draftConfirmAt < draftLogoutAt && draftLogoutAt < draftCleanupAt &&
+  menuSource.slice(draftLogoutAt,draftCleanupAt).includes('if (error) throw error;'),
+  'draft must be confirmed before sign-out and cleaned only after its success');
 assert(menuSource.includes("window.location.assign(withBasePath('/'))"),
   'successful sign-out must navigate to the base-path-aware home page');
 assert(menuSource.includes('className="sirati-menu-signout"') &&
@@ -139,6 +151,92 @@ assert(menuSource.includes('role="alert">{signOutError}'),
   'logout failure must be communicated to the user');
 assert(fs.readFileSync('app/globals.css','utf8').includes('.sirati-menu-signout:focus-visible'),
   'logout button must provide visible keyboard focus');
+// Execute the actual generated handler against synthetic in-memory accounts.
+// This is a behavioral unit test, NOT an authenticated browser A/B or RLS test.
+const menuHandlerSignature = '  async function handleSignOut() {';
+const menuHandlerStart = menuSource.indexOf(menuHandlerSignature);
+const menuHandlerEnd = menuSource.indexOf('\n  }\n',menuHandlerStart);
+assert(menuHandlerStart >= 0 && menuHandlerEnd > menuHandlerStart,
+  'generated drawer sign-out handler cannot be extracted for behavioral regression');
+const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
+const syntheticMenuLogout = new AsyncFunction(
+  'user','signingOut','createClient','window','setSigningOut',
+  'setSignOutError','setUser','close','withBasePath',
+  menuSource.slice(menuHandlerStart+menuHandlerSignature.length,menuHandlerEnd)
+);
+async function checkMenuSignOut({confirm=true, fail=false, hasDraft=true}={}) {
+  const store = new Map([
+    ['sirati.cv.v2.A','synthetic draft A'],
+    ['sirati.cv.v2.B','synthetic draft B'],
+    ['sirati.cv.v2','legacy draft']
+  ]);
+  if (!hasDraft) store.delete('sirati.cv.v2.A');
+  let signOuts=0, confirmations=0, navigations=0, errorMessage='', activeUser='A';
+  const mockWindow = {
+    localStorage:{
+      getItem:key=>store.get(key)||null,
+      removeItem:key=>store.delete(key)
+    },
+    confirm:()=>{ confirmations++; return confirm; },
+    location:{ assign:()=>{navigations++;} }
+  };
+  const fakeClient = ()=>({auth:{signOut:async({scope})=>{
+    assert.equal(scope,'local','drawer must end only this browser session');
+    signOuts++;
+    return {error:fail?new Error('synthetic failure'):null};
+  }}});
+  await syntheticMenuLogout(
+    {id:'A'}, false, fakeClient, mockWindow, ()=>{},
+    message=>{errorMessage=message}, user=>{activeUser=user?.id||null},
+    ()=>{}, path=>'/sirati'+path
+  );
+  assert(store.has('sirati.cv.v2.B') && store.has('sirati.cv.v2'),
+    'logout must not clear other accounts or legacy device keys');
+  return {store,signOuts,confirmations,navigations,errorMessage,activeUser};
+}
+const cancelLogout = await checkMenuSignOut({confirm:false});
+assert(cancelLogout.store.has('sirati.cv.v2.A') &&
+  cancelLogout.confirmations===1 && cancelLogout.signOuts===0 &&
+  cancelLogout.activeUser==='A' && cancelLogout.navigations===0,
+  'cancel must preserve A draft and current session');
+const successfulLogout = await checkMenuSignOut();
+assert(!successfulLogout.store.has('sirati.cv.v2.A') &&
+  successfulLogout.confirmations===1 && successfulLogout.signOuts===1 &&
+  successfulLogout.activeUser===null && successfulLogout.navigations===1,
+  'success must remove only A draft after sign-out');
+const failedLogout = await checkMenuSignOut({fail:true});
+assert(failedLogout.store.has('sirati.cv.v2.A') &&
+  failedLogout.signOuts===1 && failedLogout.navigations===0 &&
+  failedLogout.activeUser==='A' && failedLogout.errorMessage,
+  'logout failure must preserve draft, identity and show error');
+const noDraftLogout = await checkMenuSignOut({hasDraft:false});
+assert(noDraftLogout.confirmations===0 && noDraftLogout.signOuts===1 &&
+  noDraftLogout.navigations===1,
+  'no local draft should not show a needless destructive-change dialog');
+log('Synthetic generated-menu logout behavior: cancel/success/failure/no-draft PASS; real A/B NOT RUN');
+// PR #81 compatibility: prove that the *generated* older logout routes also
+// contain the same per-account warning and success-only cleanup. Previously
+// validated synthetic tests on PR #81 are reused rather than reintroduced here.
+for (const legacySignOutPath of ['components/AccountNav.tsx','app/documents/page.tsx']) {
+  const component = fs.readFileSync(legacySignOutPath,'utf8');
+  const begin = component.indexOf('// SIRATI_PRIVACY_SIGNOUT_START');
+  const finish = component.indexOf('// SIRATI_PRIVACY_SIGNOUT_END',begin);
+  assert(begin>=0 && finish>begin &&
+    component.split('// SIRATI_PRIVACY_SIGNOUT_START').length===2,
+    'Missing or duplicate account-scoped sign-out guard in '+legacySignOutPath);
+  const protectedSection = component.slice(begin,finish);
+  const confirmAt = protectedSection.indexOf('window.confirm(');
+  const signOutAt = protectedSection.indexOf('await draftAuthClient.auth.signOut()');
+  const cleanupAt = protectedSection.indexOf('window.localStorage.removeItem(draftScopedKey)');
+  assert(protectedSection.includes('await draftAuthClient.auth.getSession()') &&
+    protectedSection.includes("'sirati.cv.v2.' + draftSession.user.id") &&
+    confirmAt>=0 && signOutAt>confirmAt && cleanupAt>signOutAt &&
+    protectedSection.slice(signOutAt,cleanupAt).includes('if (draftSignOutError)') &&
+    !protectedSection.includes('localStorage.clear('),
+    'Unsafe sign-out order or broad draft deletion in '+legacySignOutPath);
+}
+log('All three generated account logout paths contain scoped draft protection; real A/B NOT RUN');
+
 log('Signed-in drawer: local sign-out action, loading, errors, home navigation and focus');
 assert(menuSource.includes('input:not([disabled])'),
   'keyboard focus trap must include drawer search input, not only buttons and links');
