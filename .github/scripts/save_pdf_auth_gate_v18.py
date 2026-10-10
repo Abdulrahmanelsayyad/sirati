@@ -155,10 +155,9 @@ export default function SiratiBuilderPdfButton(props: Props) {
     try {
       if (!hydrated) throw new Error('CV is still loading. Try again.');
       const client = createClient();
-      if (!client) throw new Error('Account service is unavailable. Please retry later.');
-      const { data: result, error: authError } = await client.auth.getUser();
-      if (!authError && result.user) {
-        onAuthenticated(result.user.id, result.user.email || null);
+      const result = client ? await client.auth.getUser() : null;
+      if (result && !result.error && result.data.user) {
+        onAuthenticated(result.data.user.id, result.data.user.email || null);
         await exportCurrentSheet();
         return;
       }
