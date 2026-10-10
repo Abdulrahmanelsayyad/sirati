@@ -25,6 +25,25 @@ if source.count(configured_anchor)!=1:
     raise SystemExit('Builder nonconfigured guest readiness anchor missing')
 source=source.replace(configured_anchor,'''    if (!isSupabaseConfigured()) {
       cloudReadyRef.current = true;
+      // The public Builder also works in local QA/offline configuration.
+      // Restore a short-lived guest snapshot before enabling auto-updates.
+      if (!newCvRequestedRef.current &&
+          !new URLSearchParams(window.location.search).has('doc')) {
+        try {
+          const raw = window.sessionStorage.getItem('sirati.guest.pdf.pending.v1');
+          const pending = raw ? JSON.parse(raw) : null;
+          if (pending?.version === 1 && Number.isFinite(pending.createdAt) &&
+              Date.now() - pending.createdAt >= 0 &&
+              Date.now() - pending.createdAt < 30 * 60 * 1000 &&
+              pending.data && typeof pending.data === 'object') {
+            setData(normalizeCv(pending.data));
+            if (typeof pending.template === 'string') {
+              setTemplate(pending.template as TemplateName);
+            }
+            setLanguage(pending.language === 'ar' ? 'ar' : 'en');
+          }
+        } catch { /* Storage access must not prevent offline editing. */ }
+      }
       setGuestRestoreReady(true);
       return;
     }''',1)
