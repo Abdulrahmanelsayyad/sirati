@@ -1960,6 +1960,134 @@ assert.equal(await page.getByRole('button', {name:'Download free PDF'}).count(),
 assert((await currentStep()).includes('Section 9 of 9'), 'free review must not automatically submit or navigate');
 log('Free PDF review remains manually accessible');
     
+
+// Dedicated Phase-1 mobile complete-journey / direct-PDF validation.
+// These are synthetic, clean-session Chromium phone emulations, not real
+// Android hardware and not an authenticated account A/B test.
+for (const scenario of [
+  { language: 'en', width: 390, template: 'compact-ats', long: false },
+  { language: 'ar', width: 360, template: 'profile-sidebar', long: true }
+]) {
+  const mobileContext = await browser.newContext({
+    viewport: { width: scenario.width, height: 844 },
+    isMobile: true, hasTouch: true, deviceScaleFactor: 2,
+    acceptDownloads: true, locale: scenario.language === 'ar' ? 'ar-EG' : 'en-US'
+  });
+  const mobile = await mobileContext.newPage();
+  const tag = scenario.language + '-' + scenario.width;
+  try {
+    const gallery = await mobile.goto(base + '/templates/', { waitUntil: 'networkidle' });
+    assert(gallery?.ok(), tag + ': templates route failed');
+    assert.equal(await mobile.getByText('Checking your account…').count(), 0,
+      tag + ': guest template gallery must never await auth');
+    assert.equal(await mobile.locator('.template-real-preview__stage > .cv-sheet').count(), 8,
+      tag + ': guest must see all eight filled template previews');
+    const chosen = mobile.locator('.template-choice').filter({
+      has: mobile.locator('.template-real-preview__stage[data-demo-template="' + scenario.template + '"]')
+    });
+    assert.equal(await chosen.count(), 1, tag + ': chosen template not present');
+    await chosen.click();
+    await mobile.getByRole('button', { name: 'Continue to CV details →' }).click();
+    await mobile.waitForURL(/\/builder\//);
+    await mobile.locator('.wizard-section-card').waitFor();
+    assert.equal(await mobile.locator('.cv-substep').count(), 9,
+      tag + ': full nine-step Builder not available');
+
+    const fullName = scenario.language === 'ar' ? 'سيرة تجريبية للاختبار' : 'QA Mobile Test Candidate';
+    const jobTitle = scenario.language === 'ar' ? 'أخصائي تمريض الطوارئ' : 'Emergency Department Nurse';
+    const summary = scenario.language === 'ar'
+      ? 'ممرض طوارئ تجريبي يتمتع بخبرة في الفرز وتوثيق الرعاية والتواصل بين أعضاء الفريق. '
+      : 'Emergency nursing professional skilled in triage, clinical documentation and teamwork. ';
+    const experience = scenario.language === 'ar'
+      ? 'تقييم حالة المريض وتوثيق العلامات الحيوية وإبلاغ الفريق بأي تغيرات ملحوظة. '
+      : 'Assessed patient needs, documented vital signs and escalated changes to the care team. ';
+    await mobile.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill(fullName);
+    await mobile.locator('.field').filter({ hasText: 'Professional title' }).locator('input').first().fill(jobTitle);
+    const languageSelector = mobile.locator('select')
+      .filter({ has: mobile.locator('option[value="en"]') })
+      .filter({ has: mobile.locator('option[value="ar"]') }).first();
+    assert(await languageSelector.count(), tag + ': language selector not found');
+    await languageSelector.selectOption(scenario.language);
+    await mobile.locator('.cv-substep').nth(1).click();
+    const summaryField = mobile.locator('.wizard-section-card textarea').first();
+    assert(await summaryField.count(), tag + ': summary editor not shown');
+    await summaryField.fill(summary.repeat(scenario.long ? 4 : 2));
+    await mobile.locator('.cv-substep').nth(2).click();
+    const experienceField = mobile.locator('.wizard-section-card textarea').first();
+    if (await experienceField.count()) {
+      await experienceField.fill(experience.repeat(scenario.long ? 25 : 3));
+    }
+    // Visit the complete section journey without adding fake credentials or
+    // relying on any production database or user session.
+    for (let step = 3; step < 9; step++) {
+      await mobile.locator('.cv-substep').nth(step).click();
+      await mobile.waitForFunction(expected => (
+        document.querySelector('.wizard-progress-meta')?.textContent || ''
+      ).includes('Section ' + expected + ' of 9'), step + 1, {timeout: 5000});
+    }
+    const sheet = mobile.locator('.wizard-preview-wrap .cv-sheet').first();
+    await sheet.waitFor();
+    assert.equal(await sheet.getAttribute('dir'), scenario.language === 'ar' ? 'rtl' : 'ltr',
+      tag + ': CV direction differs from chosen language');
+    assert((await sheet.innerText()).includes(fullName),tag+': entered name missing from CV');
+    assert.equal(await mobile.locator('.cv-watermark').count(), 0,
+      tag+': unexpected PDF watermark');
+    fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
+    await sheet.screenshot({
+      path: '/tmp/sirati-qa-pdfs/mobile-builder-cv-preview-' + tag + '.png',
+      animations: 'disabled', timeout: 20000
+    });
+    const paper = await sheet.evaluate(el => ({
+      width: Math.ceil(el.getBoundingClientRect().width),
+      height: Math.ceil(el.scrollHeight),
+      pageText: el.innerText.length,
+      overflow: document.documentElement.scrollWidth - window.innerWidth
+    }));
+    assert(paper.width > 200 && paper.height > 100 && paper.pageText > 60,
+      tag+': missing substantial CV preview');
+    assert(paper.overflow <= 2, tag+': mobile page overflows viewport: '+JSON.stringify(paper));
+    // The same user button, without invoking window.print() or Print -> Save.
+    let printed = 0;
+    await mobile.evaluate(() => {
+      window.__siratiPdfPrintInvoked = false;
+      window.print = () => { window.__siratiPdfPrintInvoked = true; };
+    });
+    const button = mobile.getByRole('button', {
+      name: scenario.language === 'ar' ? 'تنزيل PDF مجانًا' : 'Download free PDF'
+    });
+    assert.equal(await button.count(),1,tag+': direct download button missing');
+    const downloadWait = mobile.waitForEvent('download', { timeout: 60000 });
+    await button.click();
+    const downloadFile = await downloadWait;
+    const filename = downloadFile.suggestedFilename();
+    assert(filename.endsWith('.pdf'),tag+': filename must end in .pdf');
+    const bytes = fs.readFileSync(await downloadFile.path());
+    assert(bytes.length > 4000 && bytes.subarray(0,5).toString('ascii') === '%PDF-',
+      tag+': empty/non-PDF download');
+    assert.equal(await mobile.evaluate(()=>window.__siratiPdfPrintInvoked),false,
+      tag+': Print dialog was triggered');
+    const binary = bytes.toString('latin1');
+    const count = (binary.match(/\/Type\s*\/Page\b/g)||[]).length;
+    assert(count>=1 && count<=8,tag+': unexpected A4 PDF page count '+count);
+    const expected = Math.ceil(paper.height/(paper.width*297/210));
+    assert(count <= expected+1,tag+': unexpected extra A4 PDF pages '+JSON.stringify({count,expected,paper}));
+    assert(/\/MediaBox\s*\[\s*0\s+0\s+595[\d.]*\s+841[\d.]*\s*\]/.test(binary),
+      tag+': downloaded PDF does not have A4 page geometry');
+    // Current exporter rasterizes text. Log this transparently, rather than
+    // claiming machine-readable ATS text from a visual screenshot PDF.
+    const imageBased = /\/Subtype\s*\/Image\b/.test(binary);
+    const hasPdfTextOperators = /\b(?:Tj|TJ)\b/.test(binary);
+    log('MOBILE CV PDF '+JSON.stringify({
+      tag, template:scenario.template, bytes:bytes.length, A4Pages:count,
+      estimatedPages:expected, rasterImage:imageBased, textOperators:hasPdfTextOperators,
+      phoneEmulation:true, physicalAndroid:false
+    }));
+  } finally {
+    await mobileContext.close();
+  }
+}
+log('Mobile end-to-end: guest template -> nine Builder sections -> actual Arabic/English A4 device downloads; ATS/accessibility still require dedicated review');
+
 await browser.close();
 console.log('E2E QA COMPLETE');
 
