@@ -1568,7 +1568,8 @@ const guestSavedDraft = await page.evaluate(() => {
 });
 assert(guestSavedDraft && guestSavedDraft.requested === true && guestSavedDraft.data &&
   guestSavedDraft.template, 'guest export must snapshot the actual CV and chosen template');
-assert(!localStorage.getItem('sirati.guest.pdf.pending.v1'),
+assert.equal(await page.evaluate(() =>
+  window.localStorage.getItem('sirati.guest.pdf.pending.v1')), null,
   'never put guest CV transfer in origin-persistent localStorage');
 await guestAuthModal.getByRole('button', {name:'Back to editing'}).click();
 assert.equal(await page.getByRole('dialog').count(), 0,
