@@ -82,6 +82,9 @@ import subprocess
 # Parse the opt-in A/B privacy harness at every CI run; do NOT execute it without fixture accounts.
 subprocess.run(['node', '--check', str(Path(__file__).with_name('live_account_ab_readonly.mjs'))], check=True)
 print('PASS: optional real-account A/B test harness has valid JavaScript syntax (live test NOT RUN)')
+# Gate analytics privacy behavior in the existing PR CI without touching workflows.
+subprocess.run(['python3', str(Path(__file__).with_name('analytics_privacy_check.py')), str(root)], check=True)
+
 subprocess.run([
     'node', str(Path(__file__).with_name('new_cv_regression.cjs')),
     str(root),
