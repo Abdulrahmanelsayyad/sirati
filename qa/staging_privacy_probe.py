@@ -80,7 +80,7 @@ export default function StagingPrivacyCheckPage() {
       try {
         let foreign = 0;
         let legacy = 0;
-        const scoped = /^sirati\\.cv\\.v2\\.([0-9a-f-]{36})$/i;
+        const scoped = /^sirati\.cv\.v2\.([0-9a-f-]{36})$/i;
         for (let i = 0; i < window.localStorage.length; i++) {
           const key = window.localStorage.key(i) || '';
           const match = scoped.exec(key);
