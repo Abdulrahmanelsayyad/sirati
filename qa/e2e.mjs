@@ -391,6 +391,32 @@ log('Career toolkit: LinkedIn, interviews, Arabic & 360/390px accessibility smok
 await page.setViewportSize({ width: 1440, height: 1000 });
 
 await page.goto(base + '/templates/', { waitUntil: 'networkidle' });
+// V11 — only the global Sirati header remains; Documents stays reachable
+// from the desktop navbar and the existing mobile drawer.
+assert.equal(await page.locator('.flow-page header.flow-nav').count(), 0,
+  'redundant Sirati/My documents header must not render in template picker');
+assert.equal(await page.getByRole('heading', { name: 'Choose your CV template' }).count(), 1,
+  'template picker needs one concise, descriptive heading');
+for (const width of [360, 390, 1440]) {
+  await page.setViewportSize({ width, height: 844 });
+  const nav = page.locator('.sirati-site-topbar');
+  assert.equal(await nav.locator('.sirati-topbar-brand').count(), 1, 'one site brand at ' + width);
+  const docsShortcut = nav.locator('.sirati-topbar-docs');
+  const toolsShortcut = nav.locator('.sirati-topbar-tools');
+  assert.equal(await docsShortcut.isVisible(), width > 760, 'Documents desktop shortcut at ' + width);
+  assert.equal(await toolsShortcut.isVisible(), width > 760, 'Tools desktop shortcut at ' + width);
+  assert((await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 2,
+    'V11 template picker overflows ' + width + 'px');
+  if (width < 760) {
+    await nav.getByRole('button', { name: 'Open Sirati menu' }).click();
+    const drawer = page.getByRole('dialog', { name: 'Sirati features and customer account' });
+    assert(await drawer.getByText('My Documents · Saved CVs').isVisible(),
+      'mobile Documents must remain accessible in drawer');
+    await page.keyboard.press('Escape');
+  }
+}
+await page.setViewportSize({ width: 1440, height: 1000 });
+log('V11: no duplicate header; mobile menu and desktop shortcuts preserve navigation');
 const cards = page.locator('.template-choice');
 assert.equal(await cards.count(), 8);
 log('eight template cards');
