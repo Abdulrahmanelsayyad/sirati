@@ -30,6 +30,14 @@ const docId = process.env.SIRATI_AB_A_DOC_ID;
 assert(/^[0-9a-f-]{36}$/i.test(docId), 'Fixture A document ID must be a UUID');
 const marker = process.env.SIRATI_AB_A_MARKER;
 assert(marker.length >= 10, 'Use a distinctive non-sensitive A-only marker');
+// Prefer the newest sitewide menu route, but allow the My Documents route as a
+// separate regression. Each run uses one pre-existing synthetic A/B fixture pair.
+const signOutPath = process.env.SIRATI_AB_SIGNOUT_PATH || 'menu';
+assert(['menu', 'documents'].includes(signOutPath),
+  'SIRATI_AB_SIGNOUT_PATH must be menu or documents');
+const viewportWidth = Number(process.env.SIRATI_AB_VIEWPORT_WIDTH || 390);
+assert([360, 390, 1440].includes(viewportWidth),
+  'Use an explicitly supported QA viewport: 360, 390 or 1440');
 
 const report = [];
 const record = (name, status, reason = '') => {
@@ -40,7 +48,7 @@ const path = segment => new URL(segment, base).href;
 const timeout = 25000;
 const browser = await chromium.launch({headless: process.env.SIRATI_AB_HEADED !== 'YES'});
 try {
-  const context = await browser.newContext({viewport: {width: 390, height: 844}});
+  const context = await browser.newContext({viewport: {width: viewportWidth, height: 844}});
   const page = await context.newPage();
   const safeVisibleText = async () => page.locator('body').innerText();
   const anyVisibleFieldContains = async value => page.evaluate(value => {
@@ -89,9 +97,33 @@ try {
 
     await page.goto(path('documents/'), {waitUntil:'domcontentloaded'});
     await page.locator('.documents-section').waitFor({timeout});
-    await page.getByRole('button', {name:'Sign out'}).click();
-    await page.waitForURL(url => url.pathname === '/sirati/' || url.pathname === '/sirati', {timeout});
-    record('A explicitly signed out without changing CV data', 'PASS');
+    // New privacy guards warn before deleting device-only drafts. Without
+    // explicitly accepting the confirmation, Playwright may dismiss it by
+    // default, leaving A signed in and causing a misleading navigation FAIL.
+    let confirmations = 0;
+    const respondToSignOutDialog = async dialog => {
+      if (dialog.type() === 'confirm') {
+        confirmations++;
+        await dialog.accept();
+      } else {
+        await dialog.dismiss();
+      }
+    };
+    page.on('dialog', respondToSignOutDialog);
+    try {
+      if (signOutPath === 'menu') {
+        await page.getByRole('button', {name:'Open Sirati menu'}).click();
+        await page.locator('.sirati-menu-signout').click();
+      } else {
+        await page.getByRole('button', {name:'Sign out'}).click();
+      }
+      await page.waitForURL(url => url.pathname === '/sirati/' || url.pathname === '/sirati', {timeout});
+    } finally {
+      page.off('dialog', respondToSignOutDialog);
+    }
+    assert(!originalKey || confirmations === 1,
+      'A device draft was found, but sign-out did not show its required confirmation');
+    record('A explicitly signed out via '+signOutPath+' with draft warning when needed', 'PASS');
 
     await signIn(process.env.SIRATI_AB_B_EMAIL, process.env.SIRATI_AB_B_PASSWORD);
     await page.locator('.document-card')
