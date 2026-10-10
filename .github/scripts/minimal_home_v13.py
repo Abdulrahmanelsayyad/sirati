@@ -255,5 +255,61 @@ css += r"""
  .marketing-page .sirati-v13-tools .btn { transition:none; }
 }
 """
+# Visual QA refinement: prevent featured badge/title collision at 320/390px,
+# remove inherited 210px process-card minimum and reduce FAQ headline scale.
+css += r"""
+@media screen {
+ .marketing-page #how-it-works .process-card {
+    min-height:0;
+    height:auto;
+ }
+ .marketing-page #how-it-works .process-card h3 {
+    margin:22px 0 6px;
+ }
+ .marketing-page #faq .faq-intro h2 {
+    font-size:clamp(27px,3vw,36px);
+    line-height:1.13;
+ }
+}
+@media screen and (max-width:640px) {
+ .marketing-page #templates .template-card-copy,
+ .marketing-page #templates .template-card-featured .template-card-copy {
+    padding:4px 1px 5px;
+    min-width:0;
+ }
+ .marketing-page #templates .template-card-copy > div {
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:3px;
+    min-width:0;
+ }
+ .marketing-page #templates .template-card-copy h3 {
+    margin:0;
+    max-width:100%;
+    font-size:12px;
+    line-height:1.2;
+    overflow-wrap:anywhere;
+ }
+ .marketing-page #templates .template-badge {
+    font-size:8px;
+    letter-spacing:0;
+    padding:3px 5px;
+    line-height:1.1;
+    white-space:normal;
+ }
+ .marketing-page #how-it-works .process-card {
+    min-height:0;
+    padding:11px 9px;
+ }
+ .marketing-page #how-it-works .process-card h3 {
+    margin:15px 0 5px;
+ }
+ .marketing-page #faq .faq-intro h2 {
+    font-size:clamp(26px,7vw,31px);
+    line-height:1.12;
+ }
+}
+"""
 cssfile.write_text(css, encoding="utf-8")
 print("PASS: Sirati V13 minimal CV-first homepage, 3 template examples, 3 steps, tools, FAQ and support.")
