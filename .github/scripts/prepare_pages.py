@@ -126,7 +126,9 @@ builder_path.write_text(builder_text, encoding="utf-8")
 
 # Job Match Center has been retired. Remove any inherited generated artifact,
 # and clear only its legacy browser-local storage after the new site loads.
-# CV drafts, account data, and the independent Experience helper are untouched.
+# The independent Experience helper is untouched. The site has not launched:
+# all existing browser CV drafts are owner-created QA data, and the owner
+# approved their one-time removal before the first real customer.
 (root / "components" / "TargetJobTailor.tsx").unlink(missing_ok=True)
 cleanup_path = root / "components" / "LegacyJobMatchCleanup.tsx"
 cleanup_path.parent.mkdir(parents=True, exist_ok=True)
@@ -135,6 +137,11 @@ cleanup_path.write_text("""'use client';
 import { useEffect } from 'react';
 
 const LEGACY_PREFIX = 'sirati.jobTailor.v2.';
+const QA_CV_PURGE_MARKER = 'sirati.privacy.prelaunch-reset.v1';
+function isOldCvDraftKey(key: string) {
+  return key === 'sirati.cv.v1' || key === 'sirati.cv.v2' ||
+    key.startsWith('sirati.cv.v2.');
+}
 
 export default function LegacyJobMatchCleanup() {
   useEffect(() => {
@@ -148,6 +155,23 @@ export default function LegacyJobMatchCleanup() {
       } catch {
         // Storage is unavailable in this browser context.
       }
+    }
+    // One-time prelaunch cleanup; never blanket-clear browser auth/session,
+    // onboarding, analytics or other application keys.
+    // Do not repeat on later visits: real guests may be editing an unsaved CV.
+    try {
+      if (window.localStorage.getItem(QA_CV_PURGE_MARKER) !== '1') {
+        for (const storage of [window.localStorage, window.sessionStorage]) {
+          for (let index = storage.length - 1; index >= 0; index--) {
+            const key = storage.key(index);
+            if (key && isOldCvDraftKey(key)) storage.removeItem(key);
+          }
+        }
+        window.localStorage.setItem(QA_CV_PURGE_MARKER, '1');
+      }
+    } catch {
+      // If either storage area fails, retry at the next site visit.
+      // Never block auth or cloud-saved CVs.
     }
   }, []);
   return null;
@@ -254,3 +278,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('direct_pdf_downloa
 
 # V17: public template previews must never await a remote account lookup.
 subprocess.run([sys.executable, str(Path(__file__).with_name('templates_guest_first_v17.py')), str(root)], check=True)
+
+# V18 (#98): guest Builder; sign in/up only when requesting Save PDF.
+# Protected Auth/Browse paths stay untouched; PDF engine stays the same.
+subprocess.run([sys.executable, str(Path(__file__).with_name('save_pdf_auth_gate_v18.py')), str(root)], check=True)

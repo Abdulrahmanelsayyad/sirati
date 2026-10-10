@@ -62,7 +62,8 @@ new_save = """  useEffect(() => {
     const payload = JSON.stringify({ version: 2, data, template, language });
     if (isSupabaseConfigured()) {
       if (!userId) return;
-      localStorage.setItem(accountDraftStorageKey(userId), payload);
+      try { window.sessionStorage.setItem(accountDraftStorageKey(userId), payload); }
+      catch { /* Session storage unavailable; cloud CV saves remain unaffected. */ }
       return;
     }
 
@@ -83,9 +84,14 @@ old_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
 """
 new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.location.search).get('doc');
       if (!requestedDocumentId) {
-        const raw = newCvRequestedRef.current
-          ? null
-          : localStorage.getItem(accountDraftStorageKey(user.id));
+        // Pre-launch: all former persistent CV drafts were synthetic fixtures.
+        // The site-wide one-time cleanup removes historical local copies.
+        // Restore only this authenticated user's active-tab draft.
+        let raw = null;
+        if (!newCvRequestedRef.current) {
+          try { raw = window.sessionStorage.getItem(accountDraftStorageKey(user.id)); }
+          catch { /* Private mode or disabled storage: cloud CVs still work. */ }
+        }
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
@@ -99,11 +105,11 @@ new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
             );
             setLanguage(parsed.language === 'ar' ? 'ar' : 'en');
           } catch {
-            // Keep the blank CV when this user's device draft is invalid.
+            // Invalid drafts never override this user's new CV.
           }
         }
 
-        setCloudStatus('Signed in · device draft');
+        setCloudStatus('Signed in · tab draft (save to My Documents before closing)');
         cloudReadyRef.current = true;
         return;
       }

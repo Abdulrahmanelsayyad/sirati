@@ -45,6 +45,8 @@ replace_once(
     } catch {
       // Blocked storage should not prevent signing out.
     }
+    try { hasDeviceDraft = Boolean(window.sessionStorage.getItem(draftKey)) || hasDeviceDraft; }
+    catch { /* Session storage may be unavailable. */ }
     if (hasDeviceDraft && !window.confirm(
       'Your CV may have unsaved changes on this device. Save to My Documents before signing out. ' +
       'Continuing will remove this device draft, but not cloud-saved CVs. Continue? ' +
@@ -59,6 +61,8 @@ replace_once(
       // Clean this account's plaintext device draft only after successful logout.
       try { window.localStorage.removeItem(draftKey); }
       catch { /* Storage may be disabled; cloud-saved documents remain untouched. */ }
+      try { window.sessionStorage.removeItem(draftKey); }
+      catch { /* Session storage may be disabled. */ }
       setUser(null);
       close();
       window.location.assign(withBasePath('/'));
@@ -150,6 +154,9 @@ for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
         "try {",
         "  hasDeviceDraft = Boolean(draftScopedKey && window.localStorage.getItem(draftScopedKey));",
         "} catch { /* Storage may be disabled; do not block sign-out. */ }",
+        "try {",
+        "  hasDeviceDraft = Boolean(draftScopedKey && window.sessionStorage.getItem(draftScopedKey)) || hasDeviceDraft;",
+        "} catch { /* Session storage may be disabled; do not block sign-out. */ }",
         "if (hasDeviceDraft && !window.confirm(",
         "  'A device-only CV draft may contain unsaved changes. Save your CV to My Documents before signing out. Continuing will clear this device draft, but will NOT delete cloud-saved CVs. Continue?'",
         ")) return;",
@@ -161,6 +168,8 @@ for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
         "if (draftScopedKey) {",
         "  try { window.localStorage.removeItem(draftScopedKey); }",
         "  catch { /* Storage disabled; no additional data is deleted. */ }",
+        "  try { window.sessionStorage.removeItem(draftScopedKey); }",
+        "  catch { /* Session storage disabled; cloud data untouched. */ }",
         "}",
         "// SIRATI_PRIVACY_SIGNOUT_END",
     ]
