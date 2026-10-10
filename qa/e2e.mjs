@@ -125,6 +125,69 @@ assert(menuSource.includes('role="alert">{signOutError}'),
   'logout failure must be communicated to the user');
 assert(fs.readFileSync('app/globals.css','utf8').includes('.sirati-menu-signout:focus-visible'),
   'logout button must provide visible keyboard focus');
+// Execute the actual generated handler against synthetic in-memory accounts.
+// This is a behavioral unit test, NOT an authenticated browser A/B or RLS test.
+const menuHandlerSignature = '  async function handleSignOut() {';
+const menuHandlerStart = menuSource.indexOf(menuHandlerSignature);
+const menuHandlerEnd = menuSource.indexOf('\n  }\n',menuHandlerStart);
+assert(menuHandlerStart >= 0 && menuHandlerEnd > menuHandlerStart,
+  'generated drawer sign-out handler cannot be extracted for behavioral regression');
+const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
+const syntheticMenuLogout = new AsyncFunction(
+  'user','signingOut','createClient','window','setSigningOut',
+  'setSignOutError','setUser','close','withBasePath',
+  menuSource.slice(menuHandlerStart+menuHandlerSignature.length,menuHandlerEnd)
+);
+async function checkMenuSignOut({confirm=true, fail=false, hasDraft=true}={}) {
+  const store = new Map([
+    ['sirati.cv.v2.A','synthetic draft A'],
+    ['sirati.cv.v2.B','synthetic draft B'],
+    ['sirati.cv.v2','legacy draft']
+  ]);
+  if (!hasDraft) store.delete('sirati.cv.v2.A');
+  let signOuts=0, confirmations=0, navigations=0, errorMessage='', activeUser='A';
+  const mockWindow = {
+    localStorage:{
+      getItem:key=>store.get(key)||null,
+      removeItem:key=>store.delete(key)
+    },
+    confirm:()=>{ confirmations++; return confirm; },
+    location:{ assign:()=>{navigations++;} }
+  };
+  const fakeClient = ()=>({auth:{signOut:async({scope})=>{
+    assert.equal(scope,'local','drawer must end only this browser session');
+    signOuts++;
+    return {error:fail?new Error('synthetic failure'):null};
+  }}});
+  await syntheticMenuLogout(
+    {id:'A'}, false, fakeClient, mockWindow, ()=>{},
+    message=>{errorMessage=message}, user=>{activeUser=user?.id||null},
+    ()=>{}, path=>'/sirati'+path
+  );
+  assert(store.has('sirati.cv.v2.B') && store.has('sirati.cv.v2'),
+    'logout must not clear other accounts or legacy device keys');
+  return {store,signOuts,confirmations,navigations,errorMessage,activeUser};
+}
+const cancelLogout = await checkMenuSignOut({confirm:false});
+assert(cancelLogout.store.has('sirati.cv.v2.A') &&
+  cancelLogout.confirmations===1 && cancelLogout.signOuts===0 &&
+  cancelLogout.activeUser==='A' && cancelLogout.navigations===0,
+  'cancel must preserve A draft and current session');
+const successfulLogout = await checkMenuSignOut();
+assert(!successfulLogout.store.has('sirati.cv.v2.A') &&
+  successfulLogout.confirmations===1 && successfulLogout.signOuts===1 &&
+  successfulLogout.activeUser===null && successfulLogout.navigations===1,
+  'success must remove only A draft after sign-out');
+const failedLogout = await checkMenuSignOut({fail:true});
+assert(failedLogout.store.has('sirati.cv.v2.A') &&
+  failedLogout.signOuts===1 && failedLogout.navigations===0 &&
+  failedLogout.activeUser==='A' && failedLogout.errorMessage,
+  'logout failure must preserve draft, identity and show error');
+const noDraftLogout = await checkMenuSignOut({hasDraft:false});
+assert(noDraftLogout.confirmations===0 && noDraftLogout.signOuts===1 &&
+  noDraftLogout.navigations===1,
+  'no local draft should not show a needless destructive-change dialog');
+log('Synthetic generated-menu logout behavior: cancel/success/failure/no-draft PASS; real A/B NOT RUN');
 log('Signed-in drawer: local sign-out action, loading, errors, home navigation and focus');
 assert(menuSource.includes('input:not([disabled])'),
   'keyboard focus trap must include drawer search input, not only buttons and links');
