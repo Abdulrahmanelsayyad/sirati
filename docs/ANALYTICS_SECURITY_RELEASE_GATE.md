@@ -1,6 +1,6 @@
 # Sirati Analytics — Security and launch gate (read-only review, 2026-10-11)
 
-**Scope:** Staging `ykfxcxhozqqsvhtdyxho` and GitHub PR #115 only. No Production database inspection, writes, deployment, migration, paid services, secrets or real customer CV inspection. This is a preparatory technical assessment, **not an independent Security Agent sign-off**.
+**Scope:** Staging `ykfxcxhozqqsvhtdyxho` and GitHub PRs #115/#116. A narrowly scoped permission migration **was applied to Staging only** and verified; no Production changes, paid services, secrets or customer CV inspection. This is a technical assessment, **not an independent Security Agent sign-off**.
 
 ## Evidence and disposition
 
@@ -9,28 +9,28 @@
 | GitHub PR #115 | Build, isolated Staging smoke and E2E workflow all reported **success** on head `aa82ac22d4d19b302162fc193f312fdb57ab2a01`; remains **Draft / unmerged** | PASS for CI; manual verification pending |
 | Metrics schema | Present in Staging; `events`, `session_quota`, `day_quota`, `admin_users` all have **0 rows** during read-only check. No owner admin provisioned | BLOCKED for live dashboard |
 | Direct metrics access | `anon` and `authenticated` have no `USAGE` on `sirati_metrics`; direct access blocked by schema grants/RLS | PASS for read-only metadata check |
-| `public.rls_auto_enable()` | `SECURITY DEFINER`, owner `postgres`, callable by PUBLIC/anon/authenticated; attached to active `ensure_rls` event trigger | **P1 harden public EXECUTE** after compatibility test |
+| `public.rls_auto_enable()` | **STAGING FIXED** with migration `20261010223236`: `EXECUTE` revoked for PUBLIC/anon/authenticated; `postgres` retains execute; `ensure_rls` still active and synthetic public-table RLS test passed in rolled-back transaction | **PASS in Staging; independent review pending** |
 | `public.sirati_track_event` | Deliberately executable by anonymous visitors for `page_view` only, validates event type and fixed normalized routes; 80 calls per session/day, 15,000 site-wide/day | **P1 abuse/residual-risk review**; current caps not bot protection |
 | `public.sirati_analytics_summary(1/7/30)` | Executable by authenticated only; checks `auth.uid()` against private admin allowlist and returns aggregates | Access design reasonable; **real A/B and admin tests NOT RUN** |
 | RLS-without-policy notices | Five private, RLS-enabled tables, no direct `anon`/`authenticated` schema access | INFO, expected deny unless proven otherwise |
 | Leaked-password protection | Disabled in Staging; Supabase docs state availability on **Pro plan and above** | Do not incur charges or modify Auth; owner choice later |
-| Automatic retention | `pg_cron` **available but not installed** in Staging; metrics cleanup not scheduled | **BLOCKED** before Production collection |
+| Automatic retention | `pg_cron` **available but not installed** in Staging; rollback-only synthetic test passed for 35d events and 2d UTC quota predicates, leaving all test tables empty | **Predicate PASS; actual scheduling BLOCKED** |
 | Production analytics | `sirati_metrics.events` and `public.sirati_analytics_summary` absent in prior read-only Production inventory. GitHub Pages feature flag remains OFF | **No Production tracking** |
 
 Sources: [Issue #87](https://github.com/Abdulrahmanelsayyad/sirati/issues/87), [Issue #99](https://github.com/Abdulrahmanelsayyad/sirati/issues/99), [PR #115](https://github.com/Abdulrahmanelsayyad/sirati/pull/115), [Supabase advisor on anonymous definer functions](https://supabase.com/docs/guides/observability/advisors?queryGroups=lint&lint=0028_anon_security_definer_function_executable), [Supabase Cron](https://supabase.com/docs/guides/cron), [Supabase Password security](https://supabase.com/docs/guides/auth/password-security).
 
 ## Proposed, **not executed**, least-privilege remediation
 
-**First**, on a dedicated reviewed Staging migration **after explicit Staging change authorization**:
+**First**, the following migration has **already been applied on Staging only** after owner acceptance. It is recorded in `supabase/migrations/20261010223236_staging_restrict_rls_auto_enable_rpc_execution.sql`; **no Production execution authorized**:
 
 ```sql
 -- Protect an event-trigger helper that should not be a client RPC.
--- This is a proposal, NOT applied in any database.
+-- Already applied to Staging, NOT Production.
 REVOKE EXECUTE ON FUNCTION public.rls_auto_enable()
   FROM PUBLIC, anon, authenticated;
 ```
 
-Pre/post assertions: `has_function_privilege('anon', 'public.rls_auto_enable()', 'EXECUTE')` and the equivalent for `authenticated` must be false. Independently verify that event trigger `ensure_rls` still fires on safe synthetic `CREATE TABLE` in Staging (transactionally rolled back); if broken, rollback the grant change. Do not alter/remove the `ensure_rls` trigger itself.
+Verified on Staging: both client-role permissions are **false**, `postgres` retains execute, and active trigger `ensure_rls` enabled RLS on a synthetic public table in a transaction that was rolled back. The test table is absent. Independent review is still outstanding; do not change the trigger itself.
 
 **Second**, retain the deliberate limited `sirati_track_event` exposure only with written Security acceptance and mitigation for caller-controlled random session IDs, spoofable events and exhausting the global cap. Consider checking the site-wide quota **before** creating a per-session quota row and a separate operational kill switch to disable tracking without breaking CV creation. Verify successful and rejected inserts with rollback-only synthetic data. Do **not** treat the 15k/day limit as robust rate limiting or distinct-person measurement.
 
@@ -54,4 +54,4 @@ Pre/post assertions: `has_function_privilege('anon', 'public.rls_auto_enable()',
 4. Owner explicitly approves each **Production** analytics migration, merge/deploy, and activation of `NEXT_PUBLIC_ANALYTICS_ENABLED`. No automatic publication or payment.
 5. After approved activation, record the first real page view and compare privacy-safe aggregate with the dashboard. Do not claim old traffic totals.
 
-**Decision:** Staging security review prepared; activation **BLOCKED**, no data writes or independent sign-off.
+**Decision:** Staging RPC hardening **APPLIED and verified** (grant change only), retention predicates **PASS in rolled-back tests**; automatic retention, owner provisioning, independent sign-off, and all Production actions **BLOCKED**.
