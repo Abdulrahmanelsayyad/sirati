@@ -84,35 +84,13 @@ old_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
 """
 new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.location.search).get('doc');
       if (!requestedDocumentId) {
-        const draftKey = accountDraftStorageKey(user.id);
+        // Pre-launch: all former persistent CV drafts were synthetic fixtures.
+        // The site-wide one-time cleanup removes historical local copies.
+        // Restore only this authenticated user's active-tab draft.
         let raw = null;
-        // Prefer this tab's session draft. Migrate ONLY the authenticated
-        // account's old persistent draft after a verified sessionStorage copy.
-        // A deliberate "New CV" never silently destroys an older device draft.
         if (!newCvRequestedRef.current) {
-          try {
-            raw = window.sessionStorage.getItem(draftKey);
-            const previous = window.localStorage.getItem(draftKey);
-            if (previous) {
-              if (!raw) {
-                try {
-                  window.sessionStorage.setItem(draftKey, previous);
-                  if (window.sessionStorage.getItem(draftKey) === previous) {
-                    raw = previous;
-                    window.localStorage.removeItem(draftKey);
-                  }
-                } catch {
-                  // Keep the existing local draft if migration fails.
-                  raw = previous;
-                }
-              } else {
-                // The current tab draft takes precedence over older local data.
-                try { window.localStorage.removeItem(draftKey); } catch {}
-              }
-            }
-          } catch {
-            // Restricted browser storage must not block cloud access.
-          }
+          try { raw = window.sessionStorage.getItem(accountDraftStorageKey(user.id)); }
+          catch { /* Private mode or disabled storage: cloud CVs still work. */ }
         }
         if (raw) {
           try {
@@ -127,7 +105,7 @@ new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
             );
             setLanguage(parsed.language === 'ar' ? 'ar' : 'en');
           } catch {
-            // Invalid drafts never override this user's empty CV.
+            // Invalid drafts never override this user's new CV.
           }
         }
 
