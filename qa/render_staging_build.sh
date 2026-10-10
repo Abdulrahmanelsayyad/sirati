@@ -32,6 +32,7 @@ PY
 python3 .github/scripts/prepare_pages.py site-src/sirati-cv-source
 python3 qa/render_staging_patch.py site-src/sirati-cv-source
 python3 qa/staging_privacy_probe.py site-src/sirati-cv-source
+python3 qa/staging_api_write_probe.py site-src/sirati-cv-source
 python3 qa/print_isolation_fix.py site-src/sirati-cv-source
 
 (
