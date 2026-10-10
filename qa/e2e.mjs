@@ -1531,8 +1531,20 @@ assert.equal(await freeNotice.count(), 1, 'free export guidance must be displaye
 assert((await freeNotice.innerText()).includes('Everything in Sirati is free'), 'free promise must be explicit');
 assert.equal(await page.locator('.manual-payment-card').count(), 0, 'payment form must be absent');
 assert.equal(await page.locator('.cv-watermark').count(), 0, 'free CV must not be watermarked');
-assert.equal(await page.getByRole('button', {name:'Print / Save free PDF'}).count(), 1,
+assert.equal(await page.getByRole('button', {name:'Download free PDF'}).count(), 1,
   'free PDF export must be available without an order');
+const devicePdfDownload = page.waitForEvent('download', {timeout:45000});
+await page.getByRole('button', {name:'Download free PDF'}).click();
+const cvDownload = await devicePdfDownload;
+assert(cvDownload.suggestedFilename().endsWith('.pdf'),
+  'direct CV export must provide a real .pdf download filename');
+const devicePdfPath = await cvDownload.path();
+assert(devicePdfPath, 'direct CV PDF must be saved by the browser');
+const directPdfBytes = fs.readFileSync(devicePdfPath);
+assert(directPdfBytes.subarray(0,5).toString('ascii') === '%PDF-' && directPdfBytes.length > 2500,
+  'direct export must produce a real, non-empty PDF without the print dialog');
+log('direct browser CV PDF downloaded; no print action in export flow');
+
 assert(!(await page.locator('body').innerText()).includes('EGP 50'), 'legacy fee must not appear in Builder');
 log('free CV/clean PDF is available without payments or approval');
 
@@ -1922,7 +1934,7 @@ await page.setViewportSize({width:1440,height:1000});
 await page.locator('.cv-substep').last().click();
 assert((await currentStep()).includes('Section 9 of 9'), 'free review remains manually reachable');
 assert.equal(await page.locator('.manual-payment-card').count(), 0, 'paid request must remain absent');
-assert.equal(await page.getByRole('button', {name:'Print / Save free PDF'}).count(), 1,
+assert.equal(await page.getByRole('button', {name:'Download free PDF'}).count(), 1,
   'free PDF must be available on review step');
 assert((await currentStep()).includes('Section 9 of 9'), 'free review must not automatically submit or navigate');
 log('Free PDF review remains manually accessible');
