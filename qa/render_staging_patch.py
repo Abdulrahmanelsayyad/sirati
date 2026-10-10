@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safety patch applied to the Render staging build ONLY, after prepare_pages.py."""
+"""Fail-closed free-access check and test-only banner for Netlify Staging."""
 from pathlib import Path
 import sys
 
@@ -10,29 +10,23 @@ root = Path(sys.argv[1])
 builder_path = root / "app" / "builder" / "page.tsx"
 css_path = root / "app" / "globals.css"
 builder = builder_path.read_text(encoding="utf-8")
-payment_phrase = (
-    "1. Get payment details from Sirati Support. "
-    "2. Pay EGP 50 by InstaPay or Vodafone Cash. "
-    "3. Enter the payment transaction reference below and submit it for manual review. "
-    "Never enter card details."
-)
-fake_payment_phrase = (
-    "STAGING TEST ONLY — DO NOT TRANSFER REAL MONEY. "
-    "Enter a fictional transaction reference (for example QA-TEST-002) to request "
-    "a simulated EGP 50 clean PDF order for manual QA approval."
-)
-if payment_phrase not in builder:
-    raise SystemExit("FAIL: payment text marker changed; staging guard cannot disable real-payment instructions")
-builder = builder.replace(payment_phrase, fake_payment_phrase)
+# The active Sirati builder became free in PR #64; do not reintroduce a
+# historical paid-order UI in Staging. Fail closed on incompatible builds.
+for required in (
+    "Everything in Sirati is free",
+    "No payment or approval required.",
+):
+    if required not in builder:
+        raise SystemExit("FAIL: expected free-access Builder proof is missing: " + required)
 
-support_link = "href={process.env.NEXT_PUBLIC_WHATSAPP_URL || 'mailto:sirati-support@agentmail.to?subject=Sirati%20PDF%20Payment'}"
-if support_link not in builder:
-    raise SystemExit("FAIL: customer payment support marker changed; do not deploy unsafe staging preview")
-builder = builder.replace(
-    support_link, 'href="mailto:qa-only@example.invalid?subject=Sirati%20Staging%20No%20Real%20Payments"'
-)
-builder = builder.replace("Get payment details from Sirati Support →", "TEST ONLY: No real payment details →")
-builder_path.write_text(builder, encoding="utf-8")
+for forbidden in (
+    "pdfOrderStatus", "requestCleanPdf", "refreshPdfOrder",
+    "paymentReference", "manual-payment-card", "from('pdf_orders')",
+    "Pay EGP 50 by InstaPay or Vodafone Cash",
+):
+    if forbidden in builder:
+        raise SystemExit("FAIL: paid-order Builder path detected in Staging: " + forbidden)
+print("PASS: current free-only Builder verified; no real payment actions")
 
 css = css_path.read_text(encoding="utf-8")
 css += """

@@ -109,7 +109,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name("profile_sidebar_po
 subprocess.run([sys.executable, str(Path(__file__).with_name("gold_sidebar_template.py")), str(root)], check=True)
 
 subprocess.run([sys.executable, str(Path(__file__).with_name("cv_quality_preview_anchor.py")), str(root)], check=True)
-subprocess.run([sys.executable, str(Path(__file__).with_name("auto_scroll_flow.py")), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).with_name("manual_navigation_scroll.py")), str(root)], check=True)
 
 print("Prepared Sirati for GitHub Pages.")
 
@@ -166,3 +166,91 @@ if "<LegacyJobMatchCleanup />" not in layout_text:
         raise RuntimeError("Could not install legacy Job Match storage cleanup")
     layout_text = layout_text.replace("</body>", "        <LegacyJobMatchCleanup />\n      </body>", 1)
 layout_path.write_text(layout_text, encoding="utf-8")
+
+# Apply contextual descriptions after the existing Builder/Experience generators.
+subprocess.run([sys.executable, str(Path(__file__).with_name("career_description_upgrade.py")), str(root)], check=True)
+
+# Add opt-in role-based Personal Summary templates after the description helper.
+subprocess.run([sys.executable, str(Path(__file__).with_name("personal_summary_picker.py")), str(root)], check=True)
+
+# Polish the builder navigation without changing save/auth/payment behavior.
+subprocess.run([sys.executable, str(Path(__file__).with_name("builder_toolbar_upgrade.py")), str(root)], check=True)
+
+# Keep visual upgrades last: override inherited design styles, never business logic.
+subprocess.run([sys.executable, str(Path(__file__).with_name("premium_minimal_v1.py")), str(root)], check=True)
+
+# Opt-in template gallery after all base builders, previews and visual overrides.
+subprocess.run([sys.executable, str(Path(__file__).with_name("template_library_v1.py")), str(root)], check=True)
+# One genuinely new document structure, built after the 32-style template library.
+subprocess.run([sys.executable, str(Path(__file__).with_name("executive_letterhead_template.py")), str(root)], check=True)
+
+# Add opt-in role-based skill and achievement prompts; reuse existing Experience Pro for duties.
+subprocess.run([sys.executable, str(Path(__file__).with_name("smart_content_suggestions.py")), str(root)], check=True)
+
+# Owner-approved all-free offering: applied after every Builder and homepage patch.
+# Does not alter legacy payment data, RLS, auth, or historic entitlement records.
+subprocess.run([sys.executable, str(Path(__file__).with_name("free_access_v1.py")), str(root)], check=True)
+
+# Zero-cost public career tools, separated from the existing CV Builder.
+subprocess.run([sys.executable, str(Path(__file__).with_name("free_career_toolkit.py")), str(root)], check=True)
+
+# Discovery UX: show these shipped tools in the signed-in My Documents view.
+subprocess.run([sys.executable, str(Path(__file__).with_name("account_career_shortcut.py")), str(root)], check=True)
+
+# Last-mile visual identity applied AFTER the homepage, Career Tools and account dashboard.
+subprocess.run([sys.executable, str(Path(__file__).with_name("signature_ui_v3.py")), str(root)], check=True)
+
+# Career Studio brand replaces CV-only visual identity after the existing UI layers.
+subprocess.run([sys.executable, str(Path(__file__).with_name("career_studio_brand.py")), str(root)], check=True)
+
+# Full career platform navigation and self-service customer profile after all UI hooks.
+subprocess.run([sys.executable, str(Path(__file__).with_name("career_platform_navigation.py")), str(root)], check=True)
+
+# Discoverability improvement for the existing sidebar; no data model changes.
+subprocess.run([sys.executable, str(Path(__file__).with_name("sidebar_feature_finder_v2.py")), str(root)], check=True)
+
+# Role-specific, opt-in Smart CV Pro V4: UI-only and facts-first.
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v4.py')), str(root)], check=True)
+
+# V5 enriches only the generated V4 Summary picker, no auth/backend changes.
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v5.py')), str(root)], check=True)
+
+# V6 Pro Max: local job fit and pre-insertion editor; never touches persistence.
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v6.py')), str(root)], check=True)
+
+# Cross-site navigation UX: visible shortcuts, route context and overlay-free mobile menu.
+subprocess.run([sys.executable, str(Path(__file__).with_name('sitewide_navigation_ux.py')), str(root)], check=True)
+
+# UX phase 2: manual Builder form/preview navigation and responsive input usability.
+subprocess.run([sys.executable, str(Path(__file__).with_name('ux_cv_editor_forms_v2.py')), str(root)], check=True)
+
+# Keep Career Tools text per tab/language during this open session (in memory only).
+subprocess.run([sys.executable, str(Path(__file__).with_name('career_draft_preservation_ux.py')), str(root)], check=True)
+
+# Bilingual account menu sign-out: local session only, saved documents untouched.
+subprocess.run([sys.executable, str(Path(__file__).with_name('menu_signout.py')), str(root)], check=True)
+
+# V11: remove redundant template header, keep Documents/Tools in existing navigation.
+subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_header_v11.py')), str(root)], check=True)
+
+# V12: remove duplicated Home header; put saved CV workspace ahead of tools.
+subprocess.run([sys.executable, str(Path(__file__).with_name('home_documents_v12.py')), str(root)], check=True)
+
+# V13: keep five useful landing sections; reuse templates, free tools and FAQ.
+subprocess.run([sys.executable, str(Path(__file__).with_name('minimal_home_v13.py')), str(root)], check=True)
+
+# V14: feature search stays fixed under the sidebar brand while tools scroll.
+subprocess.run([sys.executable, str(Path(__file__).with_name('fixed_menu_search_v14.py')), str(root)], check=True)
+
+# Optional privacy-first analytics UI; GitHub Pages does not set NEXT_PUBLIC_ANALYTICS_ENABLED.
+# Keep event collection off until owner approves Production migration, privacy notice and QA.
+subprocess.run([sys.executable, str(Path(__file__).with_name('analytics_client_dashboard.py')), str(root)], check=True)
+
+# V15: dedicated saved-document routes to existing Smart CV and CV Quality.
+subprocess.run([sys.executable, str(Path(__file__).with_name('menu_document_intents_v15.py')), str(root)], check=True)
+
+# V16: direct saved CV and Builder PDF download (no browser print dialog).
+subprocess.run([sys.executable, str(Path(__file__).with_name('direct_pdf_download_v16.py')), str(root)], check=True)
+
+# V17: public template previews must never await a remote account lookup.
+subprocess.run([sys.executable, str(Path(__file__).with_name('templates_guest_first_v17.py')), str(root)], check=True)

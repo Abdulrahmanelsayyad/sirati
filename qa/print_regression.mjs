@@ -3,7 +3,9 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
-const origin = 'http://127.0.0.1:4173';
+// Match GitHub Pages' /sirati/ base path while preserving the staging root default.
+const basePath = (process.env.SIRATI_PRINT_BASE_PATH || '').replace(/\/+$/, '');
+const origin = `http://127.0.0.1:4173${basePath}`;
 const browser = await chromium.launch({headless:true});
 const fixture = `
 <header class="site-header">LEAKED-SITE-HEADER</header>

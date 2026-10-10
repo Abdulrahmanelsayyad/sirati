@@ -176,6 +176,83 @@ begin
   end;
 end $$;
 
+-- P0-SEC-PDF-01 (#26): the customer role must not approve or discount
+-- a PDF order or provide a fabricated review timestamp on INSERT.
+-- The positive pending/EGP 50 order is tested above.
+insert into qa_results
+select 'pdf_order_restrictive_guard_present',
+       count(*) = 1,
+       'restrictive policies=' || count(*)
+from pg_policies
+where schemaname = 'public'
+  and tablename = 'pdf_orders'
+  and policyname = 'Customer PDF orders require pending status and fixed price'
+  and permissive = 'RESTRICTIVE'
+  and cmd = 'INSERT';
+
+do $$
+begin
+  begin
+    insert into public.pdf_orders
+      (user_id, document_id, amount_egp, payment_method, payment_reference, status)
+    values
+      ('11111111-1111-4111-8111-111111111111',
+       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+       50, 'instapay', 'QA-APPROVED', 'approved');
+
+    insert into qa_results values
+      ('pdf_order_self_approval_blocked', false, 'approved INSERT unexpectedly succeeded');
+  exception when insufficient_privilege then
+    insert into qa_results values
+      ('pdf_order_self_approval_blocked', true, 'RLS denied approved INSERT');
+  end;
+
+  begin
+    insert into public.pdf_orders
+      (user_id, document_id, amount_egp, payment_method, payment_reference, status)
+    values
+      ('11111111-1111-4111-8111-111111111111',
+       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+       1, 'instapay', 'QA-DISCOUNT', 'pending');
+
+    insert into qa_results values
+      ('pdf_order_price_tampering_blocked', false, 'altered-price INSERT unexpectedly succeeded');
+  exception when insufficient_privilege then
+    insert into qa_results values
+      ('pdf_order_price_tampering_blocked', true, 'RLS denied altered-price INSERT');
+  end;
+
+  begin
+    insert into public.pdf_orders
+      (user_id, document_id, amount_egp, payment_method, payment_reference, status, reviewed_at)
+    values
+      ('11111111-1111-4111-8111-111111111111',
+       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+       50, 'instapay', 'QA-REVIEWED', 'pending', now());
+
+    insert into qa_results values
+      ('pdf_order_fake_review_blocked', false, 'reviewed_at INSERT unexpectedly succeeded');
+  exception when insufficient_privilege then
+    insert into qa_results values
+      ('pdf_order_fake_review_blocked', true, 'RLS denied reviewed_at INSERT');
+  end;
+
+  begin
+    insert into public.pdf_orders
+      (user_id, document_id, amount_egp, payment_method, payment_reference, status)
+    values
+      ('11111111-1111-4111-8111-111111111111',
+       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+       50, 'instapay', 'QA-REJECTED', 'rejected');
+
+    insert into qa_results values
+      ('pdf_order_self_rejection_blocked', false, 'rejected INSERT unexpectedly succeeded');
+  exception when insufficient_privilege then
+    insert into qa_results values
+      ('pdf_order_self_rejection_blocked', true, 'RLS denied rejected INSERT');
+  end;
+end $$;
+
 insert into public.cv_versions (document_id,user_id,data,template,language)
 select
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,

@@ -43,7 +43,7 @@ if quality_import not in builder_text:
 assert preview
 builder_text = (
     builder_text[:preview.end()]
-    + "\n          <CvReadinessCheck />"
+    + "\n          <CvReadinessCheck data={data} language={language} />"
     + builder_text[preview.end():]
 )
 builder.write_text(builder_text, encoding="utf-8")
@@ -93,6 +93,14 @@ css_path.write_text(css_path.read_text(encoding="utf-8") + r'''
 .wizard-preview-wrap .cv-readiness__bar--inline {
   height: 7px;
   margin: 8px 0 0;
+}
+.wizard-preview-wrap .cv-readiness__list .cv-readiness__advice {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 400;
+  opacity: .8;
 }
 .wizard-preview-wrap .cv-readiness__panel {
   position: relative;
