@@ -76,6 +76,7 @@ const page = await context.newPage();
     ['en1','Professional',1],
     ['en2','Professional',2],
     ['ar3','الخبرة المهنية',3],
+    ['short','Sample Candidate',1],
   ]) {
     await qaPage.getByLabel('PDF sample scenario').selectOption(sample);
     const [download] = await Promise.all([
@@ -88,7 +89,8 @@ const page = await context.newPage();
     assert(bytes.length > 1200, 'PDF byte size too small');
     const pdf = await pdfjs.getDocument({ data:bytes, useSystemFonts: true }).promise;
     assert(pdf.numPages >= enoughPages, sample+' A4 pages too few: '+pdf.numPages);
-    if (sample === 'en1') assert.equal(pdf.numPages,1,'one-page English should not add trailing page');
+    if (sample === 'en1' || sample === 'short') assert.equal(pdf.numPages,1,
+      sample+' must not add a trailing page for blank content overhang');
     let extracted = '';
     for (let i=1; i<=pdf.numPages; i++) {
       const p = await pdf.getPage(i);
@@ -104,10 +106,13 @@ const page = await context.newPage();
     // page boundaries rather than accepting a single surviving Arabic token.
     const repeated = sample === 'ar3' ? 'الخبرة المهنية'
       : 'Professional experience';
-    const expectedCount = sample === 'ar3' ? 95 : sample === 'en2' ? 34 : 7;
+    const expectedCount = sample === 'short' ? 0 : sample === 'ar3' ? 95 : sample === 'en2' ? 34 : 7;
     const actualCount = comparable.split(repeated).length - 1;
-    assert(actualCount >= Math.floor(expectedCount * 0.9),
+    if (sample !== 'short') assert(actualCount >= Math.floor(expectedCount * 0.9),
       sample+' missing native Unicode paragraphs across pages: '+actualCount+'/'+expectedCount);
+    if (sample === 'short') assert(comparable.includes('TECHNICAL SKILLS') &&
+      comparable.includes('SOFTWARE DEVELOPER'),
+      'short Software Developer CV text and career headings must remain extractable');
     await pdf.destroy();
     console.log('PASS: '+sample+' searchable Unicode PDF, '+pdf.numPages+' pages of A4');
   }
