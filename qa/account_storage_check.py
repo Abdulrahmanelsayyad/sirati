@@ -9,9 +9,11 @@ required = {
     "account key helper": "function accountDraftStorageKey(userId: string)",
     "scoped key format": "return `${STORAGE_KEY}.${userId}`;",
     "cloud mode avoids shared draft": "} else if (!isSupabaseConfigured()) {",
-    "scoped save": "localStorage.setItem(accountDraftStorageKey(userId), payload);",
+    "scoped save": "window.sessionStorage.setItem(accountDraftStorageKey(userId), payload);",
     "save waits for identity": "if (!userId) return;",
-    "scoped restore": "localStorage.getItem(accountDraftStorageKey(user.id))",
+    "scoped restore": "window.sessionStorage.getItem(draftKey)",
+    "current-user-only migration": "window.localStorage.getItem(draftKey)",
+    "delete persistent copy on verified migration": "window.localStorage.removeItem(draftKey)",
     "legacy shared key preserved": "const STORAGE_KEY = 'sirati.cv.v2';",
 }
 
@@ -62,9 +64,14 @@ async function check({allowed=true, logoutFails=false, hasDraft=true}) {
     ['sirati.cv.v2.B', '{"data":"keep B"}'],
     ['sirati.cv.v2', '{"data":"keep legacy"}']
   ]);
+  const sessionCache = new Map([
+    ['sirati.cv.v2.A', hasDraft ? '{"data":"current tab A"}' : ''],
+    ['sirati.cv.v2.B', '{"data":"keep session B"}']
+  ]);
   let signedOut=0, confirmed=0, alerts=0;
   const window = {
     localStorage: {getItem: k=>cache.get(k)||null, removeItem:k=>cache.delete(k)},
+    sessionStorage: {getItem: k=>sessionCache.get(k)||null, removeItem:k=>sessionCache.delete(k)},
     confirm:()=>{confirmed++;return allowed;},
     alert:()=>{alerts++;}
   };
@@ -73,20 +80,20 @@ async function check({allowed=true, logoutFails=false, hasDraft=true}) {
     signOut:async()=>{signedOut++;return {error:logoutFails?Error('synthetic'):null};}
   }};
   await handler(AUTH_ARG,window);
-  return {cache,signedOut,confirmed,alerts};
+  return {cache,sessionCache,signedOut,confirmed,alerts};
 }
 (async()=>{
   let s=await check({allowed:false});
-  assert.equal(s.signedOut,0);assert(s.cache.has('sirati.cv.v2.A'));
+  assert.equal(s.signedOut,0);assert(s.cache.has('sirati.cv.v2.A'));assert(s.sessionCache.has('sirati.cv.v2.A'));
   s=await check({});
-  assert.equal(s.signedOut,1);assert(!s.cache.has('sirati.cv.v2.A'));
-  assert(s.cache.has('sirati.cv.v2.B'));assert(s.cache.has('sirati.cv.v2'));
+  assert.equal(s.signedOut,1);assert(!s.cache.has('sirati.cv.v2.A'));assert(!s.sessionCache.has('sirati.cv.v2.A'));
+  assert(s.cache.has('sirati.cv.v2.B'));assert(s.sessionCache.has('sirati.cv.v2.B'));assert(s.cache.has('sirati.cv.v2'));
   s=await check({logoutFails:true});
-  assert.equal(s.signedOut,1);assert(s.cache.has('sirati.cv.v2.A'));
+  assert.equal(s.signedOut,1);assert(s.cache.has('sirati.cv.v2.A'));assert(s.sessionCache.has('sirati.cv.v2.A'));
   assert.equal(s.alerts,1);
   s=await check({hasDraft:false});
   assert.equal(s.confirmed,0);assert.equal(s.signedOut,1);
-  console.log('PASS: synthetic sign-out cancellation, scoped purge, failure retention, legacy preservation');
+  console.log('PASS: synthetic logout safety for local+session scoped drafts, failure retention, and other-user preservation');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 """.replace("CLIENT", json.dumps(client_name)).replace("SNIPPET", json.dumps(block)).replace("AUTH_ARG", client_arg)
     subprocess.run(["node", "-e", js], check=True)
