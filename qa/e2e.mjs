@@ -1552,19 +1552,32 @@ assert.equal(await freeNotice.count(), 1, 'free export guidance must be displaye
 assert((await freeNotice.innerText()).includes('Everything in Sirati is free'), 'free promise must be explicit');
 assert.equal(await page.locator('.manual-payment-card').count(), 0, 'payment form must be absent');
 assert.equal(await page.locator('.cv-watermark').count(), 0, 'free CV must not be watermarked');
-assert.equal(await page.getByRole('button', {name:'Download free PDF'}).count(), 1,
-  'free PDF export must be available without an order');
-const devicePdfDownload = page.waitForEvent('download', {timeout:45000});
-await page.getByRole('button', {name:'Download free PDF'}).click();
-const cvDownload = await devicePdfDownload;
-assert(cvDownload.suggestedFilename().endsWith('.pdf'),
-  'direct CV export must provide a real .pdf download filename');
-const devicePdfPath = await cvDownload.path();
-assert(devicePdfPath, 'direct CV PDF must be saved by the browser');
-const directPdfBytes = fs.readFileSync(devicePdfPath);
-assert(directPdfBytes.subarray(0,5).toString('ascii') === '%PDF-' && directPdfBytes.length > 2500,
-  'direct export must produce a real, non-empty PDF without the print dialog');
-log('direct browser CV PDF downloaded; no print action in export flow');
+assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
+  'guest PDF button must be present only at the review step');
+let exportDownloadTriggered = false;
+page.once('download', () => { exportDownloadTriggered = true; });
+await page.getByRole('button', {name:'Save PDF'}).click();
+const guestAuthModal = page.getByRole('dialog', {name:'Create a free account to save your CV as PDF'});
+await guestAuthModal.waitFor({timeout:15000});
+assert.equal(exportDownloadTriggered, false, 'guest click must not download PDF without auth');
+assert.equal(await guestAuthModal.getByRole('button', {name:'Sign up'}).count(), 1);
+assert.equal(await guestAuthModal.getByRole('button', {name:'Sign in'}).count(), 1);
+const guestSavedDraft = await page.evaluate(() => {
+  const value = sessionStorage.getItem('sirati.guest.pdf.pending.v1');
+  return value ? JSON.parse(value) : null;
+});
+assert(guestSavedDraft && guestSavedDraft.requested === true && guestSavedDraft.data &&
+  guestSavedDraft.template, 'guest export must snapshot the actual CV and chosen template');
+assert(!localStorage.getItem('sirati.guest.pdf.pending.v1'),
+  'never put guest CV transfer in origin-persistent localStorage');
+await guestAuthModal.getByRole('button', {name:'Back to editing'}).click();
+assert.equal(await page.getByRole('dialog').count(), 0,
+  'cancel must return to the editable CV, not navigate to auth');
+assert.equal(exportDownloadTriggered, false, 'cancelled PDF request must not export');
+assert((await page.evaluate(() => JSON.parse(
+  sessionStorage.getItem('sirati.guest.pdf.pending.v1') || 'null'
+)?.requested)) === false, 'cancel must disarm auto-download');
+log('guest Save PDF requires a free account; cancel retains tab-scoped CV data');
 
 assert(!(await page.locator('body').innerText()).includes('EGP 50'), 'legacy fee must not appear in Builder');
 log('free CV/clean PDF is available without payments or approval');
@@ -1955,7 +1968,7 @@ await page.setViewportSize({width:1440,height:1000});
 await page.locator('.cv-substep').last().click();
 assert((await currentStep()).includes('Section 9 of 9'), 'free review remains manually reachable');
 assert.equal(await page.locator('.manual-payment-card').count(), 0, 'paid request must remain absent');
-assert.equal(await page.getByRole('button', {name:'Download free PDF'}).count(), 1,
+assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
   'free PDF must be available on review step');
 assert((await currentStep()).includes('Section 9 of 9'), 'free review must not automatically submit or navigate');
 log('Free PDF review remains manually accessible');
