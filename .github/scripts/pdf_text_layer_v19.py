@@ -240,12 +240,12 @@ import { useRef, useState } from 'react';
 import { downloadCvSheet } from '@/lib/siratiPdfExport';
 
 export default function QaPdfAtsFixture() {
-  const [mode,setMode] = useState<'en1'|'en2'|'ar3'>('en1');
+  const [mode,setMode] = useState<'en1'|'en2'|'ar3'|'short'>('en1');
   const [error,setError] = useState('');
   const [busy,setBusy] = useState(false);
   const sheet = useRef<HTMLDivElement>(null);
   const isAr = mode === 'ar3';
-  const repetitions = mode === 'en1' ? 7 : mode === 'en2' ? 34 : 95;
+  const repetitions = mode === 'short' ? 0 : mode === 'en1' ? 7 : mode === 'en2' ? 34 : 95;
   const line = isAr
     ? 'الخبرة المهنية في تمريض الطوارئ ومهارات سلامة المرضى ومكافحة العدوى.'
     : 'Professional experience, Emergency Nursing, Patient Safety, and Infection Control.';
@@ -265,6 +265,7 @@ export default function QaPdfAtsFixture() {
         <option value="en1">English 1 page</option>
         <option value="en2">English 2 pages</option>
         <option value="ar3">Arabic 3+ pages</option>
+        <option value="short">Short software CV, 17px blank overhang</option>
       </select>
     </label>
     <button type="button" disabled={busy} onClick={exportPdf}>
@@ -272,15 +273,29 @@ export default function QaPdfAtsFixture() {
     </button>
     {error&&<p role="alert">{error}</p>}
     <div className="cv-sheet" ref={sheet} dir={isAr?'rtl':'ltr'}
-      style={{boxSizing:'border-box',width:794,minHeight:1123,
+      style={{boxSizing:'border-box',width:794,minHeight:mode==='short'?1140:1123,
         padding:36,fontFamily:'Arial, sans-serif', background:'#fff',
         color:'#183e30',lineHeight:1.5}}>
+      {mode === 'short' && <section>
+        <h1>Sample Candidate</h1>
+        <h2>SOFTWARE DEVELOPER</h2>
+        <p>sample@example.com · Your City</p>
+        <h2>PROFESSIONAL SUMMARY</h2>
+        <p>Technology professional focused on practical problem-solving, reliable software delivery, testing and clear technical documentation.</p>
+        <h2>PROFESSIONAL EXPERIENCE</h2>
+        <p>Software Developer — Example Organization</p>
+        <h2>EDUCATION</h2><p>Degree — Institution</p>
+        <h2>TECHNICAL SKILLS</h2>
+        <p>Software Development, Debugging, Testing, Collaboration, Documentation</p>
+      </section>}
+      {mode !== 'short' && <>
       <h1 style={{fontSize:27,margin:'0 0 10px'}}>
         {isAr?'سيرة ذاتية تجريبية':'Synthetic Test Resume'}
       </h1>
       <h2>{isAr?'الملخص المهني':'Professional Summary'}</h2>
       {Array.from({length:repetitions},(_,i)=>
         <p style={{margin:'0 0 12px',fontSize:14}} key={i}>{line}</p>)}
+      </>}
     </div>
   </main>;
 }
