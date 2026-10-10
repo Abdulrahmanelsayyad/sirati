@@ -229,3 +229,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('career_draft_prese
 
 # Bilingual account menu sign-out: local session only, saved documents untouched.
 subprocess.run([sys.executable, str(Path(__file__).with_name('menu_signout.py')), str(root)], check=True)
+
+# V11: remove redundant template header, keep Documents/Tools in existing navigation.
+subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_header_v11.py')), str(root)], check=True)
