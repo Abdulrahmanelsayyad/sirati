@@ -251,3 +251,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('menu_document_inte
 
 # V16: direct saved CV and Builder PDF download (no browser print dialog).
 subprocess.run([sys.executable, str(Path(__file__).with_name('direct_pdf_download_v16.py')), str(root)], check=True)
+
+# V17: public template previews must never await a remote account lookup.
+subprocess.run([sys.executable, str(Path(__file__).with_name('templates_guest_first_v17.py')), str(root)], check=True)
