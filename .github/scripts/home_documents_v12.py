@@ -42,8 +42,8 @@ docs = once(
 )
 docs = once(
     docs,
-    '  return (\n    <main>\n      <header className="container nav">',
-    '  return (\n    <main className="sirati-documents-page">\n      <header className="container nav">',
+    '  return (\n    <main>\n',
+    '  return (\n    <main className="sirati-documents-page">\n',
     'configured documents main',
 )
 old_header = """      <header className="container nav">
