@@ -245,3 +245,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('fixed_menu_search_
 # Optional privacy-first analytics UI; GitHub Pages does not set NEXT_PUBLIC_ANALYTICS_ENABLED.
 # Keep event collection off until owner approves Production migration, privacy notice and QA.
 subprocess.run([sys.executable, str(Path(__file__).with_name('analytics_client_dashboard.py')), str(root)], check=True)
+
+# V15: dedicated saved-document routes to existing Smart CV and CV Quality.
+subprocess.run([sys.executable, str(Path(__file__).with_name('menu_document_intents_v15.py')), str(root)], check=True)
