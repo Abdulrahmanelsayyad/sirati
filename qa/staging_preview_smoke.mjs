@@ -34,6 +34,20 @@ try {
       assert(onAuth || hasAuthForm, 'auth page was not accessible');
     }
   }
+  // Exercise the actual generated analytics route in the isolated Staging
+  // Playwright browser, without fetching any private owner data or credentials.
+  const analytics = await page.goto(base + '/analytics/', { waitUntil: 'domcontentloaded' });
+  assert(analytics && analytics.status() < 400, 'analytics route unavailable in staging build');
+  await page.getByRole('heading', { name: /Site Analytics/ }).waitFor({ timeout: 15000 });
+  await page.getByRole('alert').waitFor({ timeout: 15000 });
+  const denied = await page.getByRole('alert').innerText();
+  assert.match(denied, /Sign in required|يلزم تسجيل الدخول|Owner access only|مخصصة للمالك/,
+    'an unauthenticated visitor did not receive an owner-access denial');
+  assert.equal(await page.getByText('Page views · مشاهدات الصفحات').count(), 0,
+    'an unauthenticated visitor can see owner metric cards');
+  console.log('PASS: staging /analytics loads and denies unauthenticated browser');
+  console.log('NOT RUN: signed-in owner versus signed-in non-owner browser sessions');
+
   console.log('PASS: staging app loads and its login/preview routes are reachable');
   console.log('NOT RUN: signed-in payment reference -> approval -> clean PDF unlock');
 } finally {
