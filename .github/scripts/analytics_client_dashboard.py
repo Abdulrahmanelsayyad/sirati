@@ -30,8 +30,16 @@ function safeRoute(path: string) {
 }
 
 function trackingBlocked() {
+  // QA exclusion must be enforced at every send, not just at component mount.
+  // When browser storage is inaccessible, fail closed for analytics only.
+  if (typeof navigator === 'undefined' || typeof localStorage === 'undefined') return true;
   const nav = navigator as Navigator & { globalPrivacyControl?: boolean };
-  return nav.doNotTrack === '1' || nav.globalPrivacyControl === true;
+  try {
+    return nav.doNotTrack === '1' || nav.globalPrivacyControl === true ||
+      localStorage.getItem('sirati.analytics.qa_optout') === 'yes';
+  } catch {
+    return true;
+  }
 }
 
 export default function SiratiAnalyticsTracker() {
@@ -41,7 +49,7 @@ export default function SiratiAnalyticsTracker() {
   useEffect(() => {
     if (!ENABLED) return;
     try {
-      if (trackingBlocked() || localStorage.getItem('sirati.analytics.qa_optout') === 'yes') {
+      if (trackingBlocked()) {
         setChoice('no'); return;
       }
       const saved = localStorage.getItem(CONSENT_KEY);
@@ -63,7 +71,7 @@ export default function SiratiAnalyticsTracker() {
       })).catch(() => { /* Analytics failures never break Sirati. */ });
     } catch { /* Browser storage/crypto may be blocked. */ }
   }, [pathname, choice]);
-  if (!ENABLED || choice === 'loading') return null;
+  if (!ENABLED || choice === 'loading' || trackingBlocked()) return null;
   const choose = (value: 'yes' | 'no') => {
     try { localStorage.setItem(CONSENT_KEY, value); } catch { return; }
     setChoice(value);
