@@ -227,5 +227,21 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('ux_cv_editor_forms
 # Keep Career Tools text per tab/language during this open session (in memory only).
 subprocess.run([sys.executable, str(Path(__file__).with_name('career_draft_preservation_ux.py')), str(root)], check=True)
 
-# Privacy guard runs last, after all generated components have been finalized.
-subprocess.run([sys.executable, str(Path(__file__).with_name('privacy_draft_signout.py')), str(root)], check=True)
+# Bilingual account menu sign-out: local session only, saved documents untouched.
+subprocess.run([sys.executable, str(Path(__file__).with_name('menu_signout.py')), str(root)], check=True)
+
+# V11: remove redundant template header, keep Documents/Tools in existing navigation.
+subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_header_v11.py')), str(root)], check=True)
+
+# V12: remove duplicated Home header; put saved CV workspace ahead of tools.
+subprocess.run([sys.executable, str(Path(__file__).with_name('home_documents_v12.py')), str(root)], check=True)
+
+# V13: keep five useful landing sections; reuse templates, free tools and FAQ.
+subprocess.run([sys.executable, str(Path(__file__).with_name('minimal_home_v13.py')), str(root)], check=True)
+
+# V14: feature search stays fixed under the sidebar brand while tools scroll.
+subprocess.run([sys.executable, str(Path(__file__).with_name('fixed_menu_search_v14.py')), str(root)], check=True)
+
+# Optional privacy-first analytics UI; GitHub Pages does not set NEXT_PUBLIC_ANALYTICS_ENABLED.
+# Keep event collection off until owner approves Production migration, privacy notice and QA.
+subprocess.run([sys.executable, str(Path(__file__).with_name('analytics_client_dashboard.py')), str(root)], check=True)
