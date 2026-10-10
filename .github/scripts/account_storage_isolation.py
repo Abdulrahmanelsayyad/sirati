@@ -62,7 +62,8 @@ new_save = """  useEffect(() => {
     const payload = JSON.stringify({ version: 2, data, template, language });
     if (isSupabaseConfigured()) {
       if (!userId) return;
-      localStorage.setItem(accountDraftStorageKey(userId), payload);
+      try { window.sessionStorage.setItem(accountDraftStorageKey(userId), payload); }
+      catch { /* Session storage unavailable; cloud CV saves remain unaffected. */ }
       return;
     }
 
@@ -83,9 +84,36 @@ old_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
 """
 new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.location.search).get('doc');
       if (!requestedDocumentId) {
-        const raw = newCvRequestedRef.current
-          ? null
-          : localStorage.getItem(accountDraftStorageKey(user.id));
+        const draftKey = accountDraftStorageKey(user.id);
+        let raw: string | null = null;
+        // Prefer this tab's session draft. Migrate ONLY the authenticated
+        // account's old persistent draft after a verified sessionStorage copy.
+        // A deliberate "New CV" never silently destroys an older device draft.
+        if (!newCvRequestedRef.current) {
+          try {
+            raw = window.sessionStorage.getItem(draftKey);
+            const previous = window.localStorage.getItem(draftKey);
+            if (previous) {
+              if (!raw) {
+                try {
+                  window.sessionStorage.setItem(draftKey, previous);
+                  if (window.sessionStorage.getItem(draftKey) === previous) {
+                    raw = previous;
+                    window.localStorage.removeItem(draftKey);
+                  }
+                } catch {
+                  // Keep the existing local draft if migration fails.
+                  raw = previous;
+                }
+              } else {
+                // The current tab draft takes precedence over older local data.
+                try { window.localStorage.removeItem(draftKey); } catch {}
+              }
+            }
+          } catch {
+            // Restricted browser storage must not block cloud access.
+          }
+        }
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
@@ -99,11 +127,11 @@ new_no_doc = """      const requestedDocumentId = new URLSearchParams(window.loc
             );
             setLanguage(parsed.language === 'ar' ? 'ar' : 'en');
           } catch {
-            // Keep the blank CV when this user's device draft is invalid.
+            // Invalid drafts never override this user's empty CV.
           }
         }
 
-        setCloudStatus('Signed in · device draft');
+        setCloudStatus('Signed in · tab draft (save to My Documents before closing)');
         cloudReadyRef.current = true;
         return;
       }
