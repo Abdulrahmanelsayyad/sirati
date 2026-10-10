@@ -2021,8 +2021,9 @@ for (const scenario of [
     // relying on any production database or user session.
     for (let step = 3; step < 9; step++) {
       await mobile.locator('.cv-substep').nth(step).click();
-      assert((await mobile.locator('.wizard-progress-meta').innerText()).includes('Section ' + (step+1) + ' of 9'),
-        tag + ': wizard did not reach section ' + (step+1));
+      await mobile.waitForFunction(expected => (
+        document.querySelector('.wizard-progress-meta')?.textContent || ''
+      ).includes('Section ' + expected + ' of 9'), step + 1, {timeout: 5000});
     }
     const sheet = mobile.locator('.wizard-preview-wrap .cv-sheet').first();
     await sheet.waitFor();
