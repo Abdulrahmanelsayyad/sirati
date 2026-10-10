@@ -23,6 +23,8 @@ Install the repository's existing Playwright Chromium dependency in the working 
 | `SIRATI_AB_A_MARKER` | Unique A-only harmless CV field value |
 | `SIRATI_AB_ALLOW_PRODUCTION=YES` | Mandatory explicit consent to run the fixture check on the production domain |
 | `SIRATI_AB_HEADED=YES` | Optional visible browser for manually observing QA |
+| `SIRATI_AB_SIGNOUT_PATH` | `menu` (default, sitewide drawer / PR #83) or `documents` (My Documents / PR #81); run both separately |
+| `SIRATI_AB_VIEWPORT_WIDTH` | `360`, `390` (default), or `1440`; repeat supported combinations on prepared staging |
 
 Run `node live_account_ab_readonly.mjs` from the folder with Playwright installed. Missing fixtures produce **NOT RUN**, exit 2. An actual test failure produces exit 1. No account usernames, passwords, tokens, or CV text should be included in shared QA output.
 
@@ -31,7 +33,7 @@ Run `node live_account_ab_readonly.mjs` from the folder with Playwright installe
 1. A signs in and sees its saved synthetic CV: PASS/FAIL.
 2. A opens its saved document and confirms its harmless marker: PASS/FAIL.
 3. Browser-local account draft is created through the existing builder: PASS/NOT RUN.
-4. A logs out, then B signs in **in the same browser context**: PASS/FAIL.
+4. A logs out via the selected menu or documents control. The harness **accepts the unsaved-draft confirmation** when displayed, and checks it appears if an A device draft was observed. Then B signs in **in the same browser context**: PASS/FAIL.
 5. B sees its own saved CV, not A's title: PASS/FAIL.
 6. B's profile shows only B's verified account identity: PASS/FAIL.
 7. B opens A's saved document URL, and A's unique CV marker never appears in the UI: PASS/FAIL. **This is UI-only, not an authoritative direct RLS test.**
@@ -44,3 +46,9 @@ The test does **not** prove direct REST/PostgREST RLS permission enforcement, en
 - Current source static finding: the A-scoped JSON draft is stored plaintext in shared-origin localStorage; there is no evidenced sign-out purge. **FAIL for shared-device confidentiality by source review, exploitation not tested here**.
 - Real A→logout→B end-to-end: **NOT RUN until synthetic accounts and existing fixtures are available**.
 - Earlier browser/E2E and PDF tests: retain their prior PASS evidence; do not rerun them just to claim this check.
+
+## Post-PR #82/#81/#83 update (10 October 2026)
+
+The latest menu logout is a distinct code path from AccountNav / My Documents. The previous harness could silently dismiss the new confirmation dialog, generating a false failed journey. This harness now explicitly accepts the confirmation and tests the menu path by default; select `documents` in a separate run to exercise the older route. Each run starts with A then B inside **one** fresh Playwright browser context; do not share credentials, markers or screenshots.
+
+**Release status:** No real A/B fixture test or independent security sign-off is implied by the harness change. Before testing combined PR #81 and #83, create a controlled, non-production integration build containing both draft fixes and run this script against that exact revision with **privately provided pre-existing synthetic accounts**. For production, obtain a separate explicit owner authorization; never use real customer records. If fixtures are missing, report NOT RUN rather than assuming PASS.
