@@ -41,6 +41,22 @@ try {
         animations: 'disabled'
       });
     }
+    if (width === 390 || width === 1440) {
+      await page.screenshot({
+        path: out + '/editorial-hero-full-' + width + '.png',
+        fullPage: true,
+        animations: 'disabled'
+      });
+      const geometry = await page.evaluate(() => ({
+        pageHeight: document.documentElement.scrollHeight,
+        sections: [...document.querySelectorAll('.marketing-page > section')].map(el => ({
+          name: el.id || 'hero',
+          y: Math.round(el.getBoundingClientRect().top + window.scrollY),
+          height: Math.round(el.getBoundingClientRect().height)
+        }))
+      }));
+      console.log('V13 FULL PAGE GEOMETRY ' + width + ': ' + JSON.stringify(geometry));
+    }
     console.log('PASS: V13 minimal homepage at ' + width + 'px');
   }
 } finally {
