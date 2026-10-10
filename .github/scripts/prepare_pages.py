@@ -232,3 +232,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('menu_signout.py'))
 
 # V11: remove redundant template header, keep Documents/Tools in existing navigation.
 subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_header_v11.py')), str(root)], check=True)
+
+# V12: remove duplicated Home header; put saved CV workspace ahead of tools.
+subprocess.run([sys.executable, str(Path(__file__).with_name('home_documents_v12.py')), str(root)], check=True)

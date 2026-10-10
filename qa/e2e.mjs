@@ -21,6 +21,26 @@ assert(fs.readFileSync('app/globals.css', 'utf8').includes('Sirati signed-in Car
   'responsive Career Tools shortcut styling missing');
 console.log('PASS: account landing has direct accessible bilingual Career Tools entry');
 
+const homeSource = fs.readFileSync('app/page.tsx', 'utf8');
+assert(!homeSource.includes('className="marketing-header"'),
+  'V12: Home must not render a second brand/navigation bar');
+assert(docsSource.includes('className="sirati-documents-page"'),
+  'V12: authenticated documents view needs scoped workspace layout');
+assert(!docsSource.includes('<Link href="/" className="brand">Sirati</Link>'),
+  'V12: Documents must rely on the shared Sirati site header');
+const workspacePos = docsSource.indexOf('className="documents-head"');
+const savedCardsPos = docsSource.indexOf('className="document-grid"');
+const careerToolsPos = docsSource.indexOf('data-testid="career-tools-entry"');
+assert(workspacePos !== -1 && savedCardsPos > workspacePos && careerToolsPos > savedCardsPos,
+  'V12: workspace + saved CV grid must appear before Career Tools promotion');
+assert(docsSource.includes('className="sirati-documents-account-disclosure"') &&
+  docsSource.includes('onClick={signOut}') && docsSource.includes('{email}'),
+  'V12: account details and original sign-out control must remain available');
+assert(docsSource.includes('onClick={() => removeDocument(doc.id)}') &&
+  docsSource.includes('documents.map(doc =>'),
+  'V12: document display/delete behavior must remain intact');
+console.log('PASS: V12 Home branding and Documents markup preserve original behavior');
+
 
 const { chromium } = await import('playwright');
 
@@ -47,6 +67,10 @@ for (const width of [320, 390, 1440]) {
   });
   assert(bounds.left >= -2 && bounds.right <= bounds.viewport + 2,
     'Premium landing hero overflows at ' + width + 'px: ' + JSON.stringify(bounds));
+  if (width <= 390) {
+    const gap = await page.locator('.marketing-hero').evaluate(el => el.getBoundingClientRect().top);
+    assert(gap < 130, 'V12 mobile hero must sit near the shared topbar: ' + gap + 'px');
+  }
   assert(await page.locator('.marketing-hero .hero-actions a').first().isVisible(),
     'Main CV creation CTA must remain visible at ' + width + 'px');
 }
@@ -57,8 +81,8 @@ console.log('PASS: Premium Minimal rendered homepage, brand token, and 320/390/1
 const heroTitle = await page.locator('.marketing-hero h1').innerText();
 assert(heroTitle.includes('Your career.') && heroTitle.includes('Beautifully presented.'),
   'Sirati must introduce all career services, not only CVs');
-assert(!(await page.locator('.marketing-header').innerText()).includes('Build my CV'),
-  'CV-only header CTA must not remain');
+assert.equal(await page.locator('.marketing-header').count(), 0,
+  'V12: old Home navigation must be removed instead of duplicated');
 assert((await page.locator('.marketing-hero .hero-actions a').first().innerText()).includes('Career Studio'),
   'primary hero CTA must open Career Studio');
 assert((await page.locator('.marketing-hero .hero-actions a').first().getAttribute('href')||'').includes('career-tools'),
@@ -72,6 +96,8 @@ assert.equal(lead.opacity,'1','hero lead must not be transparent');
 // Sitewide UX: fast, responsive navigation must not float over page content.
 const topBar = page.getByRole('navigation',{name:'Primary site navigation · التنقل الرئيسي'});
 assert.equal(await topBar.count(),1,'one global primary navigation expected');
+assert.equal(await page.locator('.marketing-page .brand-lockup').count() > 0, true,
+  'Home retains product branding in footer');
 assert((await topBar.locator('.sirati-topbar-brand').getAttribute('href') || '').endsWith('/sirati/'),
   'Sirati brand must link to the correctly based homepage');
 assert((await topBar.locator('.sirati-topbar-link').count())===3,
