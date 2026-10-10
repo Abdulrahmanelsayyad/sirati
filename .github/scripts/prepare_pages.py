@@ -235,3 +235,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_h
 
 # V12: remove duplicated Home header; put saved CV workspace ahead of tools.
 subprocess.run([sys.executable, str(Path(__file__).with_name('home_documents_v12.py')), str(root)], check=True)
+
+# Optional, disabled-by-default site analytics UI; no Production ingestion until enabled.
+subprocess.run([sys.executable, str(Path(__file__).with_name('analytics_client_dashboard.py')), str(root)], check=True)
