@@ -64,3 +64,12 @@ Verified on Staging: both client-role permissions are **false**, `postgres` reta
 - `cron` scheduler process observed running. Daily job active; `cron.job_run_details` contained **0 executions for this job** at verification time.
 - Manual function execution removed expired synthetic events and UTC-dated quota records only, retained recent rows and was rolled back. Real deletion automation is not accepted as fully verified until a scheduled run is observed.
 - The security evidence is technical self-review, **not the required independent Security/QA reviewer sign-off**.
+
+## Staging atomic quota hardening (2026-10-11, separately approved testing)
+
+- **Applied on Staging only**: migration `20261010224342_staging_analytics_atomic_quota_ingest`, recorded in `supabase/migrations/20261010224342_staging_analytics_atomic_quota_ingest.sql`.
+- The public collector now verifies the **sitewide** 15,000/day budget before allocating a caller-supplied session UUID's quota row. If the session cap (80/day) or global cap fails, an inner PL/pgSQL exception block atomically rolls back **both** quota updates and returns false. Concurrent duplicate event retries do not charge quota twice.
+- **PASS** on Staging with synthetic rollback-only `anon` test: valid event inserted, retry idempotent, global limit denial creates no new session row, session limit denial consumes no daily budget, anonymous `pdf_export_succeeded` rejected. No persistent fixture rows; events, session quotas, day quotas and admin allowlist remain at **zero**.
+- **Residual risk**: a determined remote caller can forge randomized session/event UUIDs and consume the genuine 15,000/day global allowance. The quota hardening limits write growth and partial accounting errors; it **does not establish real unique visitors or fully prevent denial of analytics**. Independent Security reviewer must accept this tradeoff, possibly require a non-exposing kill switch and telemetry abuse alert, before launch.
+- Staging Security Advisor still reports deliberate `sirati_track_event` anonymous `SECURITY DEFINER` reachability, authenticated owner-aggregate `SECURITY DEFINER` reachability, and an Auth password warning. No report claims those warnings disappeared.
+- PR #115 and PR #116 remain independent, unmerged drafts; their integration, live consent/mobile testing, real owner provisioning, independent reviewer sign-off, cron first real daily run, Production migration and activation remain separate gates.
