@@ -36,12 +36,29 @@ replace_once(
       setSignOutError('تعذّر تسجيل الخروج الآن · Sign out unavailable.');
       return;
     }
+    // A local draft may be the only copy of unsaved edits on this device.
+    // Warn before discarding it, and never remove other accounts' drafts.
+    const draftKey = `sirati.cv.v2.${user.id}`;
+    let hasDeviceDraft = false;
+    try {
+      hasDeviceDraft = Boolean(window.localStorage.getItem(draftKey));
+    } catch {
+      // Blocked storage should not prevent signing out.
+    }
+    if (hasDeviceDraft && !window.confirm(
+      'Your CV may have unsaved changes on this device. Save to My Documents before signing out. ' +
+      'Continuing will remove this device draft, but not cloud-saved CVs. Continue? ' +
+      'قد توجد تغييرات غير محفوظة. احفظ السيرة في مستنداتي أولاً. المتابعة تحذف مسودة الجهاز فقط.'
+    )) return;
     setSigningOut(true);
     setSignOutError('');
     try {
       // End this browser's session, without deleting account CV documents.
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) throw error;
+      // Clean this account's plaintext device draft only after successful logout.
+      try { window.localStorage.removeItem(draftKey); }
+      catch { /* Storage may be disabled; cloud-saved documents remain untouched. */ }
       setUser(null);
       close();
       window.location.assign(withBasePath('/'));
