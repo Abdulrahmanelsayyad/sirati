@@ -203,6 +203,7 @@ deps=data.setdefault('dependencies',{})
 deps['pdf-lib']='1.17.1'
 deps['@pdf-lib/fontkit']='1.1.1'
 deps['@fontsource/noto-naskh-arabic']='5.3.0'
+data.setdefault('devDependencies',{})['pdfjs-dist']='4.10.38'
 # Font assets are copied from pinned OFL package LOCALLY before build.
 # No network requests are made when exporting a CV in the browser.
 copy_script=root/'scripts/prepare_pdf_fonts.cjs'
@@ -225,4 +226,61 @@ if scripts.get('prebuild') and scripts.get('prebuild') != 'node scripts/prepare_
     raise SystemExit('FAIL #97: existing prebuild script must be composed manually')
 scripts['prebuild']='node scripts/prepare_pdf_fonts.cjs'
 pkg.write_text(json.dumps(data, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+
+# Synthetic-only PDF QA page. No accounts, network CVs, payments or personal data.
+# It exercises the EXACT shared exporter on true Arabic/Latin DOM text and A4.
+qa_page=root/'app/qa-pdf-ats/page.tsx'
+qa_page.parent.mkdir(parents=True,exist_ok=True)
+qa_page.write_text(r"""'use client';
+
+import { useRef, useState } from 'react';
+import { downloadCvSheet } from '@/lib/siratiPdfExport';
+
+export default function QaPdfAtsFixture() {
+  const [mode,setMode] = useState<'en1'|'en2'|'ar3'>('en1');
+  const [error,setError] = useState('');
+  const [busy,setBusy] = useState(false);
+  const sheet = useRef<HTMLDivElement>(null);
+  const isAr = mode === 'ar3';
+  const repetitions = mode === 'en1' ? 7 : mode === 'en2' ? 34 : 95;
+  const line = isAr
+    ? 'الخبرة المهنية في تمريض الطوارئ ومهارات سلامة المرضى ومكافحة العدوى.'
+    : 'Professional experience, Emergency Nursing, Patient Safety, and Infection Control.';
+  const exportPdf = async () => {
+    if (!sheet.current || busy) return;
+    setBusy(true); setError('');
+    try { await downloadCvSheet(sheet.current,
+      mode === 'ar3' ? 'Synthetic-Arabic-CV' : 'Synthetic-English-CV'); }
+    catch(e) { setError(e instanceof Error ? e.message : 'PDF QA failed'); }
+    finally { setBusy(false); }
+  };
+  return <main style={{padding:16}}>
+    <h1>Sirati PDF Unicode QA — synthetic fixture only</h1>
+    <label>Test case
+      <select aria-label="PDF sample scenario" value={mode}
+        onChange={e=>setMode(e.target.value as typeof mode)}>
+        <option value="en1">English 1 page</option>
+        <option value="en2">English 2 pages</option>
+        <option value="ar3">Arabic 3+ pages</option>
+      </select>
+    </label>
+    <button type="button" disabled={busy} onClick={exportPdf}>
+      {busy?'Preparing test PDF…':'QA Download searchable PDF'}
+    </button>
+    {error&&<p role="alert">{error}</p>}
+    <div className="cv-sheet" ref={sheet} dir={isAr?'rtl':'ltr'}
+      style={{boxSizing:'border-box',width:794,minHeight:1123,
+        padding:36,fontFamily:'Arial, sans-serif', background:'#fff',
+        color:'#183e30',lineHeight:1.5}}>
+      <h1 style={{fontSize:27,margin:'0 0 10px'}}>
+        {isAr?'سيرة ذاتية تجريبية':'Synthetic Test Resume'}
+      </h1>
+      <h2>{isAr?'الملخص المهني':'Professional Summary'}</h2>
+      {Array.from({length:repetitions},(_,i)=>
+        <p style={{margin:'0 0 12px',fontSize:14}} key={i}>{line}</p>)}
+    </div>
+  </main>;
+}
+""",encoding='utf-8')
+
 print('PASS: experimental hybrid Unicode PDF exporter generated (issue #97)')
