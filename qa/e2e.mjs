@@ -74,7 +74,7 @@ const page = await context.newPage();
   await qaPage.goto(base + '/qa-pdf-ats/', { waitUntil: 'networkidle' });
   for (const [sample,expected,enoughPages] of [
     ['en1','Professional',1],
-    ['en2','Experience',2],
+    ['en2','Professional',2],
     ['ar3','الخبرة',3],
   ]) {
     await qaPage.getByLabel('PDF sample scenario').selectOption(sample);
