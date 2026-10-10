@@ -34,7 +34,8 @@ source=source[:start]+"""      if (!user) {
 anchor="      setUserId(user?.id ?? null);\n      setUserEmail(user?.email ?? null);\n"
 if source.count(anchor)!=1:
     raise SystemExit('Builder account identity anchor changed')
-source=source.replace(anchor,anchor+"""      const guestDocRequested = new URLSearchParams(window.location.search).has('doc');
+source=source.replace(anchor,anchor+"""      let guestTransferRestored = false;
+      const guestDocRequested = new URLSearchParams(window.location.search).has('doc');
       if (!guestDocRequested && !newCvRequestedRef.current) {
         try {
           const raw = window.sessionStorage.getItem('sirati.guest.pdf.pending.v1');
@@ -45,6 +46,7 @@ source=source.replace(anchor,anchor+"""      const guestDocRequested = new URLSe
               Date.now() - pending.createdAt >= 0 &&
               Date.now() - pending.createdAt < 30 * 60 * 1000 && emailOK &&
               pending.data && typeof pending.data === 'object') {
+            guestTransferRestored = Boolean(user);
             setData(normalizeCv(pending.data));
             if (typeof pending.template === 'string') {
               setTemplate(pending.template as TemplateName);
@@ -66,6 +68,16 @@ new="""<SiratiBuilderPdfButton language={language} data={data} template={templat
 if source.count(old)!=1:
     raise SystemExit('Builder PDF CTA anchor changed')
 source=source.replace(old,new,1)
+# An authenticated user may already have a separate tab draft. The verified
+# just-confirmed guest transfer must win only for this explicit Save PDF action,
+# without overwriting their cloud documents.
+draft_anchor="""        if (!newCvRequestedRef.current) {
+          try { raw = window.sessionStorage.getItem(accountDraftStorageKey(user.id)); }"""
+draft_replacement="""        if (!newCvRequestedRef.current && !guestTransferRestored) {
+          try { raw = window.sessionStorage.getItem(accountDraftStorageKey(user.id)); }"""
+if source.count(draft_anchor)!=1:
+    raise SystemExit('Signed-in tab draft precedence anchor changed')
+source=source.replace(draft_anchor,draft_replacement,1)
 builder_path.write_text(source,encoding='utf-8')
 
 # Keep the original PDF generator unchanged. Password auth stays on the page;
