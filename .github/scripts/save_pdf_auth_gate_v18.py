@@ -11,6 +11,43 @@ button_path=root/'components/SiratiBuilderPdfButton.tsx'
 css_path=root/'app/globals.css'
 source=builder_path.read_text(encoding='utf-8')
 
+# Synchronize an existing short-lived guest CV snapshot only after account
+# resolution and CV hydration, preventing an empty first render from wiping it.
+ready_ref='  const cloudReadyRef = useRef(false);'
+if source.count(ready_ref)!=1:
+    raise SystemExit('Builder cloud readiness anchor missing')
+source=source.replace(ready_ref, ready_ref + '\n  const [guestRestoreReady, setGuestRestoreReady] = useState(false);', 1)
+configured_anchor='''    if (!isSupabaseConfigured()) {
+      cloudReadyRef.current = true;
+      return;
+    }'''
+if source.count(configured_anchor)!=1:
+    raise SystemExit('Builder nonconfigured guest readiness anchor missing')
+source=source.replace(configured_anchor,'''    if (!isSupabaseConfigured()) {
+      cloudReadyRef.current = true;
+      // The public Builder also works in local QA/offline configuration.
+      // Restore a short-lived guest snapshot before enabling auto-updates.
+      if (!newCvRequestedRef.current &&
+          !new URLSearchParams(window.location.search).has('doc')) {
+        try {
+          const raw = window.sessionStorage.getItem('sirati.guest.pdf.pending.v1');
+          const pending = raw ? JSON.parse(raw) : null;
+          if (pending?.version === 1 && Number.isFinite(pending.createdAt) &&
+              Date.now() - pending.createdAt >= 0 &&
+              Date.now() - pending.createdAt < 30 * 60 * 1000 &&
+              pending.data && typeof pending.data === 'object') {
+            setData(normalizeCv(pending.data));
+            if (typeof pending.template === 'string') {
+              setTemplate(pending.template as TemplateName);
+            }
+            setLanguage(pending.language === 'ar' ? 'ar' : 'en');
+          }
+        } catch { /* Storage access must not prevent offline editing. */ }
+      }
+      setGuestRestoreReady(true);
+      return;
+    }''',1)
+
 # Only direct account-owned ?doc links require early authentication.
 start=source.find("      if (!user) {\n        cloudReadyRef.current = true;\n")
 end=source.find("\n      const requestedDocumentId = ",start)
@@ -24,6 +61,7 @@ source=source[:start]+"""      if (!user) {
           return;
         }
         setCloudStatus('Guest mode · Create a free account only at Save PDF');
+        setGuestRestoreReady(true);
         return;
       }
 """ + source[end:]
@@ -40,7 +78,8 @@ source=source.replace(anchor,anchor+"""      let guestTransferRestored = false;
         try {
           const raw = window.sessionStorage.getItem('sirati.guest.pdf.pending.v1');
           const pending = raw ? JSON.parse(raw) : null;
-          const emailOK = !user || (typeof pending?.email === 'string' &&
+          const emailOK = !user || (pending?.requested === true &&
+            typeof pending?.email === 'string' &&
             pending.email.toLowerCase() === user.email?.toLowerCase());
           if (pending?.version === 1 && typeof pending.createdAt === 'number' &&
               Date.now() - pending.createdAt >= 0 &&
@@ -78,6 +117,34 @@ draft_replacement="""        if (!newCvRequestedRef.current && !guestTransferRes
 if source.count(draft_anchor)!=1:
     raise SystemExit('Signed-in tab draft precedence anchor changed')
 source=source.replace(draft_anchor,draft_replacement,1)
+# The Builder stays mounted on every CV step, unlike the final-step PDF button.
+# Synchronize the existing snapshot after user input, but only AFTER guest
+# restoration is complete. Do not create new persistent/localStorage guest data.
+effect_anchor="""  const [guestRestoreReady, setGuestRestoreReady] = useState(false);"""
+if source.count(effect_anchor)!=1:
+    raise SystemExit('Builder guest-ready state not found')
+effect=r'''
+  useEffect(() => {
+    if (!hydrated || !guestRestoreReady || userId) return;
+    try {
+      const key = 'sirati.guest.pdf.pending.v1';
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) return;
+      const pending = JSON.parse(raw);
+      if (pending?.version !== 1 || !Number.isFinite(pending.createdAt) ||
+          Date.now() - pending.createdAt < 0 ||
+          Date.now() - pending.createdAt >= 30 * 60 * 1000) return;
+      const updated = JSON.stringify({...pending, data, template, language});
+      if (updated.length > 1800000) throw new Error('Guest CV snapshot is too large.');
+      window.sessionStorage.setItem(key, updated);
+    } catch {
+      setCloudStatus(language === 'ar'
+        ? 'لا يمكن حفظ آخر تعديل مؤقتًا. اترك هذا التبويب مفتوحًا.'
+        : 'Latest guest edit could not be kept temporarily. Keep this tab open.');
+    }
+  }, [hydrated, guestRestoreReady, userId, data, template, language]);
+'''
+source=source.replace(effect_anchor, effect_anchor+'\n'+effect,1)
 builder_path.write_text(source,encoding='utf-8')
 
 # Keep the original PDF generator unchanged. Password auth stays on the page;
@@ -121,7 +188,8 @@ function storeTransfer(value: Transfer) {
 }
 type Props = {
   language: string; data: CvData; template: TemplateName; hydrated: boolean;
-  userId: string | null; onAuthenticated: (id: string, email: string | null) => void;
+  userId: string | null;
+  onAuthenticated: (id: string, email: string | null) => void;
 };
 export default function SiratiBuilderPdfButton(props: Props) {
   const {language, data, template, hydrated, userId, onAuthenticated} = props;
@@ -136,13 +204,25 @@ export default function SiratiBuilderPdfButton(props: Props) {
   const autoResumed = useRef(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const firstField = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const arabic = language === 'ar';
 
   useEffect(() => {
     if (!open) return;
     firstField.current?.focus();
     const escape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !busy) { setOpen(false); trigger.current?.focus(); }
+      if (e.key === 'Escape' && !busy) { e.preventDefault(); cancel(); }
+      if (e.key === 'Tab') {
+        const choices = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled])');
+        if (!choices?.length) return;
+        const first = choices[0], last = choices[choices.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        }
+      }
     };
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
@@ -280,7 +360,7 @@ export default function SiratiBuilderPdfButton(props: Props) {
     </button>
     {error && <small role="alert" className="sirati-pdf-error">{error}</small>}
     {open && <div className="sirati-pdf-auth-overlay">
-      <section role="dialog" aria-modal="true" aria-labelledby="sirati-pdf-auth-heading"
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="sirati-pdf-auth-heading"
         className="sirati-pdf-auth-dialog" dir={arabic?'rtl':'ltr'}>
         <button type="button" className="sirati-pdf-auth-close" aria-label="Close"
           disabled={busy} onClick={cancel}>×</button>
