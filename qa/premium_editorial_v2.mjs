@@ -31,6 +31,27 @@ try {
     const overflow = await page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert(overflow <= 2, 'V13 horizontal overflow at ' + width + 'px: ' + overflow);
+    if (width <= 390) {
+      const firstCard = page.locator('#templates .template-card').first();
+      const titleBounds = await firstCard.locator('h3').boundingBox();
+      const cardBounds = await firstCard.boundingBox();
+      assert(titleBounds && cardBounds &&
+        titleBounds.x >= cardBounds.x - 1 &&
+        titleBounds.x + titleBounds.width <= cardBounds.x + cardBounds.width + 1,
+        'Featured Modern label clips adjacent card at ' + width + 'px');
+      const processHeights = await page.locator('#how-it-works .process-card').evaluateAll(
+        nodes => nodes.map(n => Math.round(n.getBoundingClientRect().height))
+      );
+      assert(processHeights.length === 3 && processHeights.every(h => h < 180),
+        'Step cards still have excessive empty vertical space at ' + width + 'px: ' + processHeights);
+    }
+    if (width === 1440) {
+      const faqTitleHeight = await page.locator('#faq .faq-intro h2').evaluate(el =>
+        el.getBoundingClientRect().height
+      );
+      assert(faqTitleHeight < 110,
+        'FAQ desktop title wraps into too many lines: ' + faqTitleHeight);
+    }
     const cvButton = page.locator('.marketing-hero .hero-actions a').first();
     assert(await cvButton.isVisible(), 'Primary CV creation CTA hidden at ' + width);
     assert.match(await cvButton.innerText(), /Create My CV/);
