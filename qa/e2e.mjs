@@ -53,8 +53,8 @@ const page = await context.newPage();
 // Premium Minimal V1: verify the actual rendered landing page before other E2E.
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 assert.equal(await page.locator('.marketing-page').count(), 1, 'Sirati landing page missing');
-assert((await page.locator('.marketing-hero h1').innerText()).includes('Your career.'),
-  'Career-wide headline was not applied');
+assert((await page.locator('.marketing-hero h1').innerText()).includes('Build a CV'),
+  'V13 CV-first homepage headline missing');
 const brandColor = await page.locator('.marketing-page').evaluate(el =>
   getComputedStyle(el).getPropertyValue('--pm-green').trim()
 );
@@ -79,14 +79,47 @@ console.log('PASS: Premium Minimal rendered homepage, brand token, and 320/390/1
 
 // Career-wide homepage replaces the CV-only call to action and fixes lead contrast.
 const heroTitle = await page.locator('.marketing-hero h1').innerText();
-assert(heroTitle.includes('Your career.') && heroTitle.includes('Beautifully presented.'),
-  'Sirati must introduce all career services, not only CVs');
+assert(heroTitle.includes('Build a CV') && heroTitle.includes('that gets noticed.'),
+  'V13 concise CV-first hero missing');
 assert.equal(await page.locator('.marketing-header').count(), 0,
   'V12: old Home navigation must be removed instead of duplicated');
-assert((await page.locator('.marketing-hero .hero-actions a').first().innerText()).includes('Career Studio'),
-  'primary hero CTA must open Career Studio');
-assert((await page.locator('.marketing-hero .hero-actions a').first().getAttribute('href')||'').includes('career-tools'),
-  'Career Studio hero route is missing');
+
+const homeSections = await page.locator('.marketing-page > section').evaluateAll(nodes =>
+  nodes.map(el => el.id || (el.classList.contains('marketing-hero') ? 'hero' : 'other'))
+);
+assert.deepEqual(homeSections, ['hero','templates','how-it-works','services','faq'],
+  'V13 must show exactly five ordered marketing sections');
+assert.equal(await page.locator('.feature-strip,.final-cta,.sirati-v2-product-stage,.support-card').count(), 0,
+  'V13 must not ship repetitive homepage promotional blocks');
+assert.equal(await page.locator('.template-showcase .template-card').count(), 3,
+  'V13 must reuse three homepage template examples');
+assert((await page.locator('#templates .text-link').getAttribute('href')||'').includes('templates'),
+  'V13 full 33-template library should be reachable');
+assert.equal(await page.locator('#how-it-works .process-card').count(), 3,
+  'V13 compact step cards missing');
+assert(await page.locator('#services a[href*="career-tools"]').isVisible(),
+  'V13 separate Career Tools section must be accessible');
+assert.equal(await page.locator('#support a[href^="mailto:"]').count(), 1,
+  'V13 must preserve existing support contact and anchor');
+assert.equal(await page.locator('#faq .faq-item').count(), 3,
+  'V13 FAQ should focus on just three essential questions');
+for (const width of [320,360,390,1440]) {
+  await page.setViewportSize({width,height:844});
+  const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  assert(over <= 2, 'V13 landing page horizontal overflow at ' + width);
+  if (width <= 390) {
+    const gridColumns = await page.locator('#templates .template-showcase').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+    assert.equal(gridColumns, 3, 'V13 must display three small example previews at '+width);
+  }
+}
+await page.setViewportSize({width:1440,height:1000});
+log('V13 five-section hierarchy, CV-first CTA, 33 template route, tools, FAQ, support, 320/360/390/1440');
+assert((await page.locator('.marketing-hero .hero-actions a').first().innerText()).includes('Create My CV'),
+  'V13 primary hero CTA must create a CV');
+assert((await page.locator('.marketing-hero .hero-actions a').first().getAttribute('href')||'').includes('/templates'),
+  'V13 primary hero CTA must open existing templates');
+assert((await page.locator('.marketing-hero .hero-actions a').nth(1).getAttribute('href')||'').includes('/career-tools'),
+  'V13 secondary Career Tools CTA missing');
 const lead = await page.locator('.marketing-hero .hero-lead').evaluate(el => ({
   color:getComputedStyle(el).color,opacity:getComputedStyle(el).opacity,
 }));

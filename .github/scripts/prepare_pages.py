@@ -235,3 +235,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('compact_template_h
 
 # V12: remove duplicated Home header; put saved CV workspace ahead of tools.
 subprocess.run([sys.executable, str(Path(__file__).with_name('home_documents_v12.py')), str(root)], check=True)
+
+# V13: keep five useful landing sections; reuse templates, free tools and FAQ.
+subprocess.run([sys.executable, str(Path(__file__).with_name('minimal_home_v13.py')), str(root)], check=True)
