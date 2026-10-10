@@ -248,3 +248,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('analytics_client_d
 
 # V15: dedicated saved-document routes to existing Smart CV and CV Quality.
 subprocess.run([sys.executable, str(Path(__file__).with_name('menu_document_intents_v15.py')), str(root)], check=True)
+
+# V16: direct saved CV and Builder PDF download (no browser print dialog).
+subprocess.run([sys.executable, str(Path(__file__).with_name('direct_pdf_download_v16.py')), str(root)], check=True)
