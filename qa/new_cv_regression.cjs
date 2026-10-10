@@ -40,6 +40,7 @@ function scenario({ fresh = false, query = '', replay = false, owner = 'A', sess
     STORAGE_KEY: 'sirati.cv.v2', LEGACY_STORAGE_KEY: 'sirati.cv.v1',
     requestedDocumentId: new URLSearchParams(query).get('doc'),
     accountDraftStorageKey: id => 'sirati.cv.v2.' + id, user: { id: owner },
+    guestTransferRestored: false,
     setCloudStatus: () => {}, cloudReadyRef: { current: false },
   };
   const run = code => new Function(...Object.keys(args), code)(...Object.values(args));
