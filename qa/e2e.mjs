@@ -1536,6 +1536,38 @@ assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'Ar
 await languageSelect.selectOption('en');
 log('Arabic RTL and Smart Library localization');
 
+// #108: modern preview skills/certification headings must follow actual role,
+// not carry nursing-only labels into a Software Developer's exported CV.
+await templateSelect.selectOption('modern');
+await page.locator('.cv-substep').first().click();
+const jobTitleForHeadings = page.locator('.wizard-section-card .field')
+  .filter({hasText:'Professional title'}).locator('input').first();
+const checkCareerHeading = async (job, heading) => {
+  await jobTitleForHeadings.fill(job);
+  await page.waitForFunction(text => [...document.querySelectorAll(
+    '.cv-sheet.template-modern .professional-v2-section h2'
+  )].some(h => h.textContent?.trim() === text), heading, {timeout:8000});
+  assert((await page.locator('.cv-sheet.template-modern').innerText()).includes(heading),
+    job+' must render '+heading+' in real CV preview');
+};
+for (const [job,heading] of [
+  ['Software Developer','TECHNICAL SKILLS'],
+  ['Registered Nurse','CLINICAL SKILLS'],
+  ['Accountant','PROFESSIONAL SKILLS'],
+  ['','PROFESSIONAL SKILLS'],
+]) await checkCareerHeading(job,heading);
+const modernLanguage = page.locator('select:has(option[value="ar"]):has(option[value="en"])').first();
+await modernLanguage.selectOption('ar');
+for (const [job,heading] of [
+  ['Software Developer','المهارات التقنية'],
+  ['ممرض طوارئ','المهارات السريرية'],
+  ['محاسب','المهارات المهنية'],
+]) await checkCareerHeading(job,heading);
+await modernLanguage.selectOption('en');
+await jobTitleForHeadings.fill('Emergency Nurse');
+log('#108 Modern career-aware headings EN/AR: developer, nurse, accountant and blank PASS');
+
+
 let overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 assert(overflow <= 2, 'desktop horizontal overflow=' + overflow);
 log('desktop page-level overflow check');
