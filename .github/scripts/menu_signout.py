@@ -36,12 +36,29 @@ replace_once(
       setSignOutError('تعذّر تسجيل الخروج الآن · Sign out unavailable.');
       return;
     }
+    // A local draft may be the only copy of unsaved edits on this device.
+    // Warn before discarding it, and never remove other accounts' drafts.
+    const draftKey = `sirati.cv.v2.${user.id}`;
+    let hasDeviceDraft = false;
+    try {
+      hasDeviceDraft = Boolean(window.localStorage.getItem(draftKey));
+    } catch {
+      // Blocked storage should not prevent signing out.
+    }
+    if (hasDeviceDraft && !window.confirm(
+      'Your CV may have unsaved changes on this device. Save to My Documents before signing out. ' +
+      'Continuing will remove this device draft, but not cloud-saved CVs. Continue? ' +
+      'قد توجد تغييرات غير محفوظة. احفظ السيرة في مستنداتي أولاً. المتابعة تحذف مسودة الجهاز فقط.'
+    )) return;
     setSigningOut(true);
     setSignOutError('');
     try {
       // End this browser's session, without deleting account CV documents.
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) throw error;
+      // Clean this account's plaintext device draft only after successful logout.
+      try { window.localStorage.removeItem(draftKey); }
+      catch { /* Storage may be disabled; cloud-saved documents remain untouched. */ }
       setUser(null);
       close();
       window.location.assign(withBasePath('/'));
@@ -98,3 +115,58 @@ css += r"""
 """
 style_path.write_text(css, encoding="utf-8")
 print("PASS: signed-in drawer has accessible local logout with error handling.")
+
+
+# PR #81 parity: apply the same tested scoped draft safeguard to the two
+# existing AccountNav / My Documents logout routes.  Putting it here ensures
+# it executes *after* the latest global menu generator, avoiding the stale
+# prepare_pages.py insertion conflict. No other generator changes.
+import re
+signout_call = re.compile(
+    r"(?P<indent>^[ \t]*)await (?P<client>[A-Za-z_$][\w$]*(?:\(\))?)(?:\?)?\.auth\.signOut\(\);",
+    re.MULTILINE,
+)
+
+for relative in ("components/AccountNav.tsx", "app/documents/page.tsx"):
+    path = root / relative
+    source = path.read_text(encoding="utf-8")
+    matches = list(signout_call.finditer(source))
+    if len(matches) != 1:
+        # Diagnostics expose only static source-code call shapes, never CV data.
+        calls = [line.strip()[:180] for line in source.splitlines() if "signOut" in line]
+        raise RuntimeError(
+            f"{relative}: expected exactly one awaited signOut() call, found {len(matches)}; candidates={calls[:5]!r}"
+        )
+    match = matches[0]
+    indent, client = match.group("indent", "client")
+    lines = [
+        "// SIRATI_PRIVACY_SIGNOUT_START",
+        f"const draftAuthClient = {client};",
+        "if (!draftAuthClient) return;",
+        "const { data: { session: draftSession } } = await draftAuthClient.auth.getSession();",
+        "const draftScopedKey = draftSession?.user?.id",
+        "  ? 'sirati.cv.v2.' + draftSession.user.id : null;",
+        "let hasDeviceDraft = false;",
+        "try {",
+        "  hasDeviceDraft = Boolean(draftScopedKey && window.localStorage.getItem(draftScopedKey));",
+        "} catch { /* Storage may be disabled; do not block sign-out. */ }",
+        "if (hasDeviceDraft && !window.confirm(",
+        "  'A device-only CV draft may contain unsaved changes. Save your CV to My Documents before signing out. Continuing will clear this device draft, but will NOT delete cloud-saved CVs. Continue?'",
+        ")) return;",
+        "const { error: draftSignOutError } = await draftAuthClient.auth.signOut();",
+        "if (draftSignOutError) {",
+        "  window.alert('Sign-out failed; your CV device draft has been kept. Please retry.');",
+        "  return;",
+        "}",
+        "if (draftScopedKey) {",
+        "  try { window.localStorage.removeItem(draftScopedKey); }",
+        "  catch { /* Storage disabled; no additional data is deleted. */ }",
+        "}",
+        "// SIRATI_PRIVACY_SIGNOUT_END",
+    ]
+    replacement = ("\n" + indent).join(lines)
+    path.write_text(
+        source[:match.start()] + indent + replacement + source[match.end():],
+        encoding="utf-8",
+    )
+    print(f"PASS: guarded active-account draft cleanup installed in {relative}")
