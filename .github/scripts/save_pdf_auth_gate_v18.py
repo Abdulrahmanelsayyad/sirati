@@ -102,7 +102,7 @@ source=source.replace(anchor,anchor+"""      let guestTransferRestored = false;
 # hydration/verified-session state without reading or overwriting cloud data.
 old="<SiratiBuilderPdfButton language={language} />"
 new="""<SiratiBuilderPdfButton language={language} data={data} template={template}
-      hydrated={hydrated} guestRestoreReady={guestRestoreReady} userId={userId}
+      hydrated={hydrated} userId={userId}
       onAuthenticated={(id, email) => { setUserId(id); setUserEmail(email); }} />"""
 if source.count(old)!=1:
     raise SystemExit('Builder PDF CTA anchor changed')
@@ -117,11 +117,34 @@ draft_replacement="""        if (!newCvRequestedRef.current && !guestTransferRes
 if source.count(draft_anchor)!=1:
     raise SystemExit('Signed-in tab draft precedence anchor changed')
 source=source.replace(draft_anchor,draft_replacement,1)
-# When the guest edits after cancelling sign-up, keep the existing transfer's
-# latest CV snapshot up to date. Never persist *new* guest content globally.
-save_anchor="""  const [guestRestoreReady, setGuestRestoreReady] = useState(false);"""
-if source.count(save_anchor)!=1:
+# The Builder stays mounted on every CV step, unlike the final-step PDF button.
+# Synchronize the existing snapshot after user input, but only AFTER guest
+# restoration is complete. Do not create new persistent/localStorage guest data.
+effect_anchor="""  const [guestRestoreReady, setGuestRestoreReady] = useState(false);"""
+if source.count(effect_anchor)!=1:
     raise SystemExit('Builder guest-ready state not found')
+effect=r'''
+  useEffect(() => {
+    if (!hydrated || !guestRestoreReady || userId) return;
+    try {
+      const key = 'sirati.guest.pdf.pending.v1';
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) return;
+      const pending = JSON.parse(raw);
+      if (pending?.version !== 1 || !Number.isFinite(pending.createdAt) ||
+          Date.now() - pending.createdAt < 0 ||
+          Date.now() - pending.createdAt >= 30 * 60 * 1000) return;
+      const updated = JSON.stringify({...pending, data, template, language});
+      if (updated.length > 1800000) throw new Error('Guest CV snapshot is too large.');
+      window.sessionStorage.setItem(key, updated);
+    } catch {
+      setCloudStatus(language === 'ar'
+        ? 'لا يمكن حفظ آخر تعديل مؤقتًا. اترك هذا التبويب مفتوحًا.'
+        : 'Latest guest edit could not be kept temporarily. Keep this tab open.');
+    }
+  }, [hydrated, guestRestoreReady, userId, data, template, language]);
+'''
+source=source.replace(effect_anchor, effect_anchor+'\n'+effect,1)
 builder_path.write_text(source,encoding='utf-8')
 
 # Keep the original PDF generator unchanged. Password auth stays on the page;
@@ -165,11 +188,11 @@ function storeTransfer(value: Transfer) {
 }
 type Props = {
   language: string; data: CvData; template: TemplateName; hydrated: boolean;
-  guestRestoreReady: boolean; userId: string | null;
+  userId: string | null;
   onAuthenticated: (id: string, email: string | null) => void;
 };
 export default function SiratiBuilderPdfButton(props: Props) {
-  const {language, data, template, hydrated, guestRestoreReady, userId, onAuthenticated} = props;
+  const {language, data, template, hydrated, userId, onAuthenticated} = props;
   const [busy,setBusy] = useState(false);
   const [open,setOpen] = useState(false);
   const [mode,setMode] = useState<'signin'|'signup'>('signup');
@@ -204,18 +227,6 @@ export default function SiratiBuilderPdfButton(props: Props) {
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
   }, [open,busy]);
-
-  // A cancelled signup must not leave an older CV snapshot behind if the
-  // guest keeps editing before email confirmation or a page reload.
-  useEffect(() => {
-    if (!hydrated || !guestRestoreReady || userId) return;
-    const transfer = readTransfer();
-    if (!transfer) return;
-    try { storeTransfer({...transfer, data, template, language}); }
-    catch { setError(arabic
-      ? 'تعذر حفظ آخر تعديل مؤقتًا. احتفظ بهذا التبويب مفتوحًا.'
-      : 'Could not keep the latest edit in this tab. Keep this tab open.'); }
-  }, [hydrated, guestRestoreReady, userId, data, template, language, arabic]);
 
   async function exportCurrentSheet() {
     const sheet = document.querySelector<HTMLElement>(
