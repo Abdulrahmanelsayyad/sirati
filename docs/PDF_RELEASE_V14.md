@@ -1,4 +1,42 @@
-# Sirati PDF remediation V15 — current report
+# V18 release preparation — 2026-10-11
+
+Owner: V18 technical execution session. **NO-GO. No merge, deployment, customer access, database or Auth changes.** This section supersedes older release/rollback advice below.
+
+## Implemented
+
+Two homepage FAQ answers now describe the actual free, direct Save PDF flow and guest editing followed by account verification. No browser print-dialog instructions. The source guard permits exactly these two substitutions; other generator edits still fail. Fresh reconstruction changes only `app/page.tsx`, excluding Next.js-generated typing configuration; auth, storage, templates and PDF exporter are byte-identical to V17. Task ownership is recorded in the board.
+
+## Verified state and evidence
+
+- Live main and latest successful GitHub Pages deployment: `54461f950554c18d64690331020596dcf79e43cb`.
+- Draft #127: `cf0bf794b7d0ef1b7be60d925a52487f6d77e189`; open, unmerged, zero submitted reviews. New V18 proposal descends from this exact head; no dependent PR is merged separately.
+- Five V17 exact-head workflow runs SUCCESS, rechecked via GitHub API. Pages run 38141652788 has deploy SKIPPED. PDF run 38141652807 completed all listed regression steps. Artifact 11703277916 is unexpired, advertised SHA-256 `e05d9b5c021d97bf3097fe6dc5babfac592647ae7cf5d4a3ad95530f203fbf45`; artifact bytes were not independently downloaded in this check.
+- Production homepage HTTP 200. Staging HTTP 401; its currently served commit cannot be verified from that response. Previously designated staging SHA is not assumed to equal this candidate.
+- Local production-path build PASS; typecheck PASS; npm audit reports zero vulnerabilities for this resolved installation. Transitive dependency resolution is still mutable.
+- Executed locally: account-storage/source logout checks and 8 synthetic draft tests PASS; duplicate ownership source check PASS; PDF-order SQL static contract PASS (legacy paid-order schema, not evidence of a payment requirement in free export); PDF boundary regressions PASS (42 fractional cases plus touching edges/cascade/fail-closed cases); production-artifact guard PASS after build.
+- Homepage defect: FAIL before correction by source inspection. Corrected generated homepage built successfully. Visual/mobile browser acceptance NOT RUN here: required browser-control capability unavailable.
+- Full browser/PDF regression on V18 must be read from exact-head CI; V17 SUCCESS is not relabelled as V18 SUCCESS. Record final SHA and CI outcomes in the Draft PR.
+- Independent human Security/QA review, authenticated synthetic A/B direct-URL/API isolation, save/restore/edit/delete/logout/multi-tab tests and physical Android download/search/copy: NOT RUN. Require isolated staging access, two synthetic identities/fixtures, named reviewers and a physical Android device. No customer records were queried.
+- Source review confirms analytics is opt-in and disabled unless explicitly enabled; no server-side analytics privilege/retention certification is implied. Existing #24/#25/#99/#113 gates stay open. Existing Modern profession-heading issue #108/#117 is not silently promoted from another PR.
+
+## Safe rollback — offline rehearsal PASS, deployment NOT RUN
+
+An exact baseline revert restores automatic main-push publication. **Do not use that old rollback advice unchanged.** Retain the candidate's manual-only `.github/workflows/pages.yml` in the rollback PR.
+
+1. With separate owner rollback authorization, branch from the actual released main and identify its reviewed release commit. Revert that commit without committing (`git revert --no-commit <squash-sha>`, or `git revert --no-commit -m 1 <merge-sha>`). Do not reset or force-push main.
+2. Before committing, restore `.github/workflows/pages.yml` from the reviewed release commit that contains the manual deployment gate. Review any intervening commits rather than overwriting them.
+3. Build and verify the rollback candidate; require baseline application parity for a direct rollback and preservation of the manual-only deployment condition. Open a Draft rollback PR for review. Obtain separate merge and deployment approvals.
+4. Only after approved rollback merge, dispatch Pages on the approved main SHA with `approve_production_deploy=true`; confirm deployment status and guest/PDF smoke. This release has no database migration to reverse.
+
+Offline index rehearsal restored every baseline tracked file except the retained candidate deployment workflow, with tree `5b37d1504b9fde80555bab1e2c95a2683355b318`. Application parity and the explicit workflow-dispatch approval condition passed. This does not test hosted rollback or future merge conflicts.
+
+## Next owner actions
+
+Review the V18 Draft proposal; separately authorize deployment of an exact reviewed SHA to Staging, provide protected staging access and two synthetic accounts through a secure channel, and assign independent Security/QA reviewers plus physical Android testing. Keep Production merge and Production deployment withheld until those gates pass. Registration remains at Save PDF; no paywall, subscription or payment introduced.
+
+---
+
+# Sirati PDF remediation V15 — historical report
 
 2026-10-11. Owner: V15 engineering session. **NO-GO; no merge or deployment performed or authorized.** This section supersedes the historical V14 report below.
 

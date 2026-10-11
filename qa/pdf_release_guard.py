@@ -8,11 +8,11 @@ repo = Path(__file__).resolve().parents[1]
 base = '54461f950554c18d64690331020596dcf79e43cb'
 staging = '78ab9519599bf3436fce4418b3fe7bdfdd8e56b7'
 runtime = {'.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_template.py',
-           '.github/scripts/pdf_text_layer_v19.py'}
+           '.github/scripts/pdf_text_layer_v19.py', '.github/scripts/minimal_home_v13.py'}
 changed = subprocess.check_output(['git', 'diff', '--name-only', base], cwd=repo, text=True).splitlines()
 for path in changed:
     assert path in runtime or path.startswith('qa/pdf_') or path in {
-        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md'}, path
+        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md'}, path
 original = subprocess.check_output(['git', 'show', base + ':.github/scripts/prepare_pages.py'], cwd=repo, text=True)
 candidate = (repo / '.github/scripts/prepare_pages.py').read_text()
 assert candidate.startswith(original), 'Original reconstruction/auth ordering changed'
@@ -22,8 +22,8 @@ assert candidate[len(original):].count('subprocess.run(') == 2
 v14 = 'c18427445bd521e0acba5ee6f6c34ae30168037b'
 followup = subprocess.check_output(['git', 'diff', '--name-only', v14], cwd=repo, text=True).splitlines()
 for path in followup:
-    assert path in {'.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py'} or path.startswith('qa/pdf_') or path in {
-        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md'}, path
+    assert path in {'.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/minimal_home_v13.py'} or path.startswith('qa/pdf_') or path in {
+        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md'}, path
 for path in ['.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_template.py']:
     expected = subprocess.check_output(['git','show',v14+':'+path],cwd=repo,text=True)
     actual = (repo/path).read_text()
@@ -38,6 +38,20 @@ for path in ['.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_te
         assert 'css_path.write_text(css, encoding="utf-8")' in tail
     else:
         assert actual == expected, 'Protected V14 generator changed: '+path
+# V18 permits exactly two homepage FAQ copy substitutions, no other generator edits.
+home_path = '.github/scripts/minimal_home_v13.py'
+expected_home = subprocess.check_output(['git', 'show', base + ':' + home_path], cwd=repo, text=True)
+for old, new in [
+    ('Yes. CV templates, smart writing tools and browser PDF export are free.',
+     'Yes. CV templates, smart writing tools and PDF downloads are free. No payment is required.'),
+    ('Yes. Choose Print / Save free PDF, then Save as PDF in your browser.',
+     'Yes. Create and edit as a guest, then choose Save PDF. Sign in or create a free account at that step to download your PDF directly.'),
+]:
+    assert expected_home.count(old) == 1
+    expected_home = expected_home.replace(old, new)
+assert (repo / home_path).read_text() == expected_home, 'Unapproved homepage generator change'
+board_before = subprocess.check_output(['git', 'show', base + ':AGENT_BOARD.md'], cwd=repo, text=True)
+assert (repo / 'AGENT_BOARD.md').read_text().startswith(board_before), 'Existing task ownership changed'
 # V17 dependency removal must leave the actual exporter byte-identical.
 import json
 assert 'jspdf' not in json.loads((root/'package.json').read_text())['dependencies']

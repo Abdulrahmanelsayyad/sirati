@@ -128,9 +128,9 @@ home, faqcount = re.subn(
     r'const faqItems = \[[\s\S]*?\n\];',
     """const faqItems = [
   { question: 'Is Sirati free?',
-    answer: 'Yes. CV templates, smart writing tools and browser PDF export are free.' },
+    answer: 'Yes. CV templates, smart writing tools and PDF downloads are free. No payment is required.' },
   { question: 'Can I download my CV as PDF?',
-    answer: 'Yes. Choose Print / Save free PDF, then Save as PDF in your browser.' },
+    answer: 'Yes. Create and edit as a guest, then choose Save PDF. Sign in or create a free account at that step to download your PDF directly.' },
   { question: 'Can I create a CV in Arabic?',
     answer: 'Yes. You can use Arabic with right-to-left layout or English.' }
 ];""",
