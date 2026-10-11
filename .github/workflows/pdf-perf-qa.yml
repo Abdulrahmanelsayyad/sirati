@@ -7,6 +7,7 @@ on:
     branches: ["docs/analytics-security-readiness-20261011"]
     paths:
       - ".github/scripts/pdf_text_layer_v19.py"
+      - ".github/scripts/compact_ats_template.py"
       - "qa/pdf_sections_check.mjs"
       - "qa/pdf_sections_fixture.py"
       - "qa/pdf_photo_check.mjs"
@@ -17,6 +18,7 @@ on:
       - "qa/pdf_metadata_fixture.py"
       - "qa/pdf_metadata_download.mjs"
       - "qa/pdf_metadata_check.py"
+      - "qa/pdf_rtl_numerals_bullets_check.py"
       - ".github/workflows/pdf-perf-qa.yml"
 
 permissions:
@@ -185,6 +187,10 @@ jobs:
           if ctime > btime * 1.20:
               raise SystemExit('FAIL: candidate worsened median synthetic PDF export time by over 20%; do not merge.')
           PY
+
+      - name: Verify Arabic-Indic numeral values and RTL Compact ATS bullets
+        shell: bash
+        run: python3 candidate/qa/pdf_rtl_numerals_bullets_check.py
 
       - name: Independently verify Poppler Unicode, fonts and PDF visual parity
         shell: bash
