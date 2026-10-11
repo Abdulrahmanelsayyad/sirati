@@ -40,6 +40,7 @@ export default function PdfMetadataFixture(){
       </div>
       <h2>الملخص المهني</h2>
       <p>خبرة مهنية في خدمة المرضى وتنسيق المهام وتطوير الجودة وسلامة الرعاية.</p>
+__PUNCTUATION_FIXTURE__
       <h2>English control</h2>
       <div dir="ltr" className="metadata-english" style={{textAlign:'left'}}>
         <span>Example Organization</span><span> | </span><span>Your City</span>
@@ -47,5 +48,5 @@ export default function PdfMetadataFixture(){
     </div>
   </main>;
 }
-""",encoding="utf-8")
+""".replace("__PUNCTUATION_FIXTURE__", '      <h2>علامات الترقيم</h2>\n      <p>التركيز المهني: أخصائي اختبار تجريبي، والتنسيق الآمن وتطوير أساليب العمل.</p>\n      <p>متابعة الحالات (اختبار) وتقييم تجريبي وتسليم المهام؛ والتوثيق الآمن.</p>\n      <p>خبرة في تمريض ICU وسلامة المرضى.</p>\n' if (root / "scripts/sirati-pdf-naskh-punctuation.woff").exists() else ""),encoding="utf-8")
 print("PASS: synthetic PDF metadata QA page installed only for isolated CI")

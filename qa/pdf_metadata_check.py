@@ -65,7 +65,9 @@ def inspect(pdf_path, strict=False):
     phrase_results={}
     for phrase in ["كلية التمريض","جامعة الزقازيق","اللغة العربية",
                    "اللغة الإنجليزية","بكالوريوس تمريض",
-                   "Example Organization","Your City"]:
+                   "Example Organization","Your City",
+                   "التركيز", "المهني", "التنسيق الآمن", "أساليب العمل",
+                   "تقييم تجريبي", "التوثيق الآمن", "ICU"]:
         phrase_results[phrase]={"poppler_raw":phrase in raw,
                                 "pymupdf_sorted":phrase in actual}
         if strict:

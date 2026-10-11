@@ -179,3 +179,10 @@ Measured root cause: page-3 boundary `2229.001846665645` CSS px; missing token t
 ## Rollback (plan only, not executed)
 
 Baseline is main `54461f950554c18d64690331020596dcf79e43cb`. If a future approved merge causes P0/P1 regression, stop rollout, revert that PDF merge through a reviewed revert PR (`git revert -m 1 <approved-merge-sha>` for a merge commit, ordinary revert for squash), rebuild and verify guest gate, save identity, A/B and baseline PDFs. Do not reset/force-push main or alter data. Main push automatically deploys via existing `pages.yml`; revert/deployment also needs owner authorization. No schema rollback is required because this release has no migrations.
+
+
+## Android punctuation follow-up — issue #130
+
+Candidate adds colon, semicolon, comma, question/exclamation marks and parentheses to a renamed OFL Arabic font derivative. Arabic sentence word order stays in one PDF text object; no exporter guard is removed. Source: @fontsource/noto-naskh-arabic, license beside the font. Rebuild offline with `python qa/pdf_punctuation_font.py` (FontTools 4.61.1 after npm reconstruction). Original Latin letters/digits remain in the separate Latin font. Internal hyphen/slash and inseparable mixed Latin/Arabic tokens remain fail-closed pending separate reader-order validation. Reader punctuation placement is not asserted as exact source punctuation placement.
+
+Synthetic mobile-width fixture reproduces the original guard error when the original Arabic font is substituted, and downloads with the derivative. Poppler raw and PyMuPDF sorted both preserve tested Arabic phrases, separate ICU, and four metadata rows without overlapping glyph bounds. No personal CV is used in fixtures. Latest exact-head authenticated A/B and physical Android download acceptance remain required. Staging/Production have not received this follow-up. This successor includes PR #129, which must not be merged separately.

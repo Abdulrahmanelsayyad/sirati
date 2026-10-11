@@ -12,7 +12,8 @@ runtime = {'.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_temp
 changed = subprocess.check_output(['git', 'diff', '--name-only', base], cwd=repo, text=True).splitlines()
 for path in changed:
     assert path in runtime or path.startswith('qa/pdf_') or path in {
-        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md'}, path
+        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md',
+        'assets/pdf-fonts/sirati-pdf-naskh-punctuation.woff', 'assets/pdf-fonts/OFL.txt'}, path
 # Regression gate: PR/build checks must never restore automatic
 # Production deployment. Only an approved manual dispatch on main can publish.
 workflow = (repo / '.github/workflows/pages.yml').read_text(encoding='utf-8')
@@ -40,7 +41,8 @@ v14 = 'c18427445bd521e0acba5ee6f6c34ae30168037b'
 followup = subprocess.check_output(['git', 'diff', '--name-only', v14], cwd=repo, text=True).splitlines()
 for path in followup:
     assert path in {'.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/minimal_home_v13.py'} or path.startswith('qa/pdf_') or path in {
-        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md'}, path
+        '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md',
+        'assets/pdf-fonts/sirati-pdf-naskh-punctuation.woff', 'assets/pdf-fonts/OFL.txt'}, path
 for path in ['.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_template.py']:
     expected = subprocess.check_output(['git','show',v14+':'+path],cwd=repo,text=True)
     actual = (repo/path).read_text()

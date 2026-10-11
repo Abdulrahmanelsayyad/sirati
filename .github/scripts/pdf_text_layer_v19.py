@@ -7,6 +7,7 @@ from pathlib import Path
 import json
 import sys
 import os
+from shutil import copyfile
 root=Path(sys.argv[1]).resolve()
 src=root/'lib/siratiPdfExport.ts'
 if not src.is_file():
@@ -316,8 +317,8 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         : hasArabic && first.rtl
           ? text.split(' ').reverse().join(' ')
           : text;
-      // The bundled Arabic subset lacks ASCII punctuation. Preserve it
-      // through the existing Latin subset instead of filtering characters.
+      // Keep the historical trailing punctuation treatment for reader parity.
+      // Internal punctuation now stays in the expanded Arabic font subset.
       const spans: { text: string; font: typeof font }[] = [];
       // Keep the entire RTL sentence in one Arabic font object. Splitting
       // it around a Latin period makes readers reorder each fragment.
@@ -403,6 +404,10 @@ data.setdefault('devDependencies',{})['pdfjs-dist']='4.10.38'
 # No network requests are made when exporting a CV in the browser.
 copy_script=root/'scripts/prepare_pdf_fonts.cjs'
 copy_script.parent.mkdir(parents=True, exist_ok=True)
+# Vendored OFL derivative adds ASCII punctuation to the Arabic subset.
+# This keeps an RTL sentence in one text object, preserving reader order.
+copyfile(Path(__file__).resolve().parents[2] / 'assets/pdf-fonts/sirati-pdf-naskh-punctuation.woff',
+         root / 'scripts/sirati-pdf-naskh-punctuation.woff')
 copy_script.write_text(r"""const { mkdirSync, copyFileSync, existsSync } = require('node:fs');
 const { join } = require('node:path');
 const root = process.cwd();
@@ -410,7 +415,9 @@ const source = join(root, 'node_modules', '@fontsource', 'noto-naskh-arabic', 'f
 const destination = join(root, 'public', 'fonts');
 mkdirSync(destination, { recursive: true });
 for (const region of ['arabic','latin']) {
-  const original = join(source, 'noto-naskh-arabic-' + region + '-400-normal.woff');
+  const original = region === 'arabic'
+    ? join(root, 'scripts', 'sirati-pdf-naskh-punctuation.woff')
+    : join(source, 'noto-naskh-arabic-' + region + '-400-normal.woff');
   if (!existsSync(original)) throw new Error('Required OFL Arabic PDF font not installed: ' + region);
   copyFileSync(original, join(destination, 'pdf-naskh-' + region + '.woff'));
 }
