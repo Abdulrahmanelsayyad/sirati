@@ -199,3 +199,10 @@ Add a fourth Sirati CV template focused on maximum ATS readability and compact p
 
 ## P1 PDF punctuation export #130 — 2026-10-11
 Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punctuation to the Arabic PDF font; retain mixed-letter guard until separately validated. No account/database changes. Draft candidate; no changed-SHA deployment or production approval.
+
+## AI architecture audit V1 — 2026-10-11
+- Owner: Codex architecture audit session.
+- Branch: `audit/agent-architecture-v1-20261011`; base `2d464852dc11a98b2ab4d1bb05388b25eaaeaaf1`.
+- Scope: QA runner and credential-boundary tests, existing QA CI wiring, agent governance and evidence documentation only. No product/PDF generator edits.
+- Status: IN REVIEW — no merge/deploy.
+- Handoff: `docs/AGENT_ARCHITECTURE_AUDIT.md`; security and QA evidence retain separate checks and unresolved gates. Historical board entries are not current live acceptance evidence.
