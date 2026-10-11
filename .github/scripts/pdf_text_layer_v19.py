@@ -25,6 +25,19 @@ type Word = { value: string; x: number; top: number; bottom: number;
               width: number; size: number; rtl: boolean };
 const PDF_WIDTH_PT = 595.2756;
 const PDF_HEIGHT_PT = 841.8898;
+const JPEG_QUALITY = 0.94;
+
+// Encode each A4 page asynchronously without a base64 PNG on the main thread.
+// The searchable Unicode text layer is embedded separately.
+async function encodePageJpeg(canvas: HTMLCanvasElement): Promise<ArrayBuffer> {
+  const image = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob?.type === 'image/jpeg' && blob.size > 0) resolve(blob);
+      else reject(new Error('Could not encode a PDF page image.'));
+    }, 'image/jpeg', JPEG_QUALITY);
+  });
+  return image.arrayBuffer();
+}
 
 // Use OFL fonts installed with npm and copied into /public at build time.
 // No third-party requests, CV uploads, browser print, or server-side PDF API.
@@ -194,7 +207,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     ctx.drawImage(canvas, 0, topPx, canvas.width, pageCanvas.height,
       0, 0, canvas.width, pageCanvas.height);
     const page = doc.addPage([PDF_WIDTH_PT, PDF_HEIGHT_PT]);
-    const image = await doc.embedPng(pageCanvas.toDataURL('image/png'));
+    const image = await doc.embedJpg(await encodePageJpeg(pageCanvas));
     const imageHeight = pageCanvas.height / pageCanvas.width * PDF_WIDTH_PT;
     page.drawImage(image, { x: 0, y: PDF_HEIGHT_PT - imageHeight,
       width: PDF_WIDTH_PT, height: imageHeight });
@@ -220,6 +233,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       embedded++;
     }
   }
+  canvas.width = 0; canvas.height = 0; // Release the full-CV bitmap before PDF serialization.
   if (embedded < Math.max(3, words.length * 0.55))
     throw new Error('Unicode PDF text coverage was insufficient; export aborted.');
   const bytes = await doc.save({ useObjectStreams: true });
