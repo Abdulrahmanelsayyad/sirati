@@ -413,3 +413,24 @@ if marker not in css:
     css_path.write_text(css, encoding="utf-8")
 
 print("Applied Compact ATS template.")
+
+# V16: narrowly scope the Arabic Experience bullet alignment; keep LTR native markers.
+# The DetailLines component renders Experience bullets using .cv-bullets,
+# not .compact-ats-list (the latter is already covered by V14).
+rtl_experience_marker = '/* V16 Compact ATS Arabic Experience bullets */'
+if rtl_experience_marker not in css:
+    css += """
+/* V16 Compact ATS Arabic Experience bullets */
+.template-compact-ats[dir="rtl"] .cv-bullets {
+  direction: rtl;
+  text-align: right;
+  padding-inline-start: 18px;
+  padding-inline-end: 0;
+  list-style-position: outside;
+}
+.template-compact-ats[dir="rtl"] .cv-bullets > li {
+  direction: rtl;
+  text-align: right;
+}
+"""
+    css_path.write_text(css, encoding="utf-8")
