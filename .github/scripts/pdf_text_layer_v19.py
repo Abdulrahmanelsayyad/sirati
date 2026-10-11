@@ -355,6 +355,11 @@ export default function QaPdfAtsFixture() {
         <p>Software Development, Debugging, Testing, Collaboration, Documentation</p>
       </section>}
       {mode !== 'short' && <>
+      {mode === 'en1' && <section>
+        <p>Healthcare professional with a focus on clear communication, accurate documentation, service quality and teamwork.</p>
+        <p>Communication, Documentation, Teamwork, Quality, Patient Support</p>
+        <p>Example Organization</p>
+      </section>}
       <h1 style={{fontSize:27,margin:'0 0 10px'}}>
         {isAr?'سيرة ذاتية تجريبية':'Synthetic Test Resume'}
       </h1>
