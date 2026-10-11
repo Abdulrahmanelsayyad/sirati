@@ -395,6 +395,20 @@ if marker not in css:
   .template-compact-ats .keep-together,
   .template-compact-ats .compact-ats-entry { break-inside:avoid; page-break-inside:avoid; }
 }
+/* RTL bullet correction: native list markers can render at the far LEFT
+   edge in an A4 html2canvas capture even when the text is right-aligned.
+   Arabic Compact ATS certifications and courses should read as aligned
+   plain entries; English list presentation is deliberately unchanged. */
+.template-compact-ats[dir="rtl"] .compact-ats-list {
+  direction:rtl;
+  list-style:none;
+  padding-inline-start:0;
+  padding-inline-end:0;
+}
+.template-compact-ats[dir="rtl"] .compact-ats-list > li {
+  list-style:none;
+  text-align:right;
+}
 '''
     css_path.write_text(css, encoding="utf-8")
 
