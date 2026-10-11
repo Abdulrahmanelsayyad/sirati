@@ -38,7 +38,11 @@ try {
       console.log('PASS Arabic Experience RTL',width,JSON.stringify(s));
     }
     // Read-only approved Staging comparison screenshots plus post-fix screenshots.
+    // The desktop fixture deliberately moves its rendering stage offscreen;
+    // return it to the visible preview only for Playwright's screenshot.
+    if (width===1440) await page.getByLabel('Documents rendering').setChecked(false);
     await page.locator('.cv-sheet').screenshot({path:`${images}/after-compact-ar-${width}.png`});
+    if (width===1440) await page.getByLabel('Documents rendering').setChecked(true);
     const list=page.locator('.cv-sheet[dir="rtl"] .compact-ats-list');
     assert.equal(await list.count(),2,'Arabic '+width+': expected 2 lists');
     for(let i=0;i<2;i++){
@@ -81,6 +85,7 @@ try {
     await page.setViewportSize({width,height:1000});
     await page.getByLabel('Language',{exact:true}).selectOption('ar');
     await page.getByLabel('Documents rendering').setChecked(width===1440);
+    if (width===1440) await page.getByLabel('Documents rendering').setChecked(false);
     await page.locator('.cv-sheet').screenshot({path:`${images}/before-staging-compact-ar-${width}.png`});
     // Restore candidate before the next width's assertions.
     await page.goto(base+'/qa-pdf-sections/');
