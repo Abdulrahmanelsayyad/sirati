@@ -22,7 +22,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { withBasePath } from '@/lib/basePath';
 
 type Word = { value: string; x: number; top: number; bottom: number;
-              width: number; size: number; rtl: boolean };
+              width: number; size: number; rtl: boolean; nodeId: number };
 const PDF_WIDTH_PT = 595.2756;
 const PDF_HEIGHT_PT = 841.8898;
 const JPEG_QUALITY = 0.94;
@@ -61,7 +61,9 @@ async function fontBytes(url: string): Promise<Uint8Array> {
 function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
   const result: Word[] = [];
   const walker = document.createTreeWalker(sheet, NodeFilter.SHOW_TEXT);
+  let nodeId = 0;
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    nodeId++;
     const parent = node.parentElement;
     if (!parent || !node.textContent) continue;
     if (parent.closest('script,style,noscript,svg,[hidden]')) continue;
@@ -86,7 +88,7 @@ function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
       result.push({
         value: match[0].normalize('NFC'),
         x: rect.left - bounds.left,
-        width: rect.width, top, bottom, size: fontSize, rtl,
+        width: rect.width, top, bottom, size: fontSize, rtl, nodeId,
       });
     }
   }
@@ -231,29 +233,42 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     pageCanvas.width = 0; pageCanvas.height = 0;
 
     const scalePt = PDF_WIDTH_PT / bounds.width;
+    // PDF extractors cannot reliably infer spaces across separately positioned
+    // one-word text objects. Keep DOM text nodes grouped into actual line runs
+    // with embedded U+0020 separators, not word-by-word. Split only at
+    // rendered line wraps and Arabic/Latin font boundaries.
+    const runs: Word[][] = [];
     for (const w of words) {
       if (w.top + 0.5 < topCss || w.bottom - 0.5 > bottomCss) continue;
-      // Keep each visual word contiguous; mixing left/right scripts inside
-      // one token is rare, but unsupported symbols are skipped explicitly.
-      const hasArabic = /[\u0600-\u08FF]/u.test(w.value);
+      const prev = runs[runs.length - 1];
+      const sameScript = prev &&
+        /[\\u0600-\\u08FF]/u.test(prev[0].value) ===
+        /[\\u0600-\\u08FF]/u.test(w.value);
+      const sameLine = prev &&
+        Math.abs(prev[0].top - w.top) <= Math.max(3, w.size * 0.35);
+      if (prev && prev[0].nodeId === w.nodeId && sameLine && sameScript) {
+        prev.push(w);
+      } else {
+        runs.push([w]);
+      }
+    }
+    for (const run of runs) {
+      const first = run[0];
+      const hasArabic = /[\\u0600-\\u08FF]/u.test(first.value);
       const font = hasArabic ? arabicFont : latinFont;
       const supported = hasArabic ? arabicChars : latinChars;
-      const token = [...w.value].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
+      const text = run.map(w => w.value).join(' ');
+      const token = [...text].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
       if (!token) continue;
-      const size = Math.max(5, Math.min(20, w.size * scalePt));
-      const x = w.rtl
-        ? (w.x + w.width) * scalePt - font.widthOfTextAtSize(token, size)
-        : w.x * scalePt;
-      const y = PDF_HEIGHT_PT - (w.top - topCss + w.size * 0.84) * scalePt;
+      const size = Math.max(5, Math.min(20, first.size * scalePt));
+      const x = first.rtl
+        ? Math.max(...run.map(w => w.x + w.width)) * scalePt -
+          font.widthOfTextAtSize(token, size)
+        : Math.min(...run.map(w => w.x)) * scalePt;
+      const y = PDF_HEIGHT_PT - (first.top - topCss + first.size * 0.84) * scalePt;
       if (y < 0 || y > PDF_HEIGHT_PT || !Number.isFinite(x)) continue;
-      // Keep a real U+0020 separator in the PDF content stream.
-      // Placing every DOM word in its own PDF drawText object *without*
-      // separators made Poppler/PyMuPDF merge adjacent words even though
-      // the raster page looked correctly spaced (issue #120).
-      // The text layer is invisible, so adding a trailing space never
-      // changes the visually rendered CV screenshot.
-      page.drawText(token + ' ', { x: Math.max(0, x), y, size, font, opacity: 0 });
-      embedded++;
+      page.drawText(token, { x: Math.max(0, x), y, size, font, opacity: 0 });
+      embedded += run.length;
     }
   }
   canvas.width = 0; canvas.height = 0; // Release the full-CV bitmap before PDF serialization.
