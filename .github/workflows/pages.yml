@@ -6,11 +6,15 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+    inputs:
+      approve_production_deploy:
+        description: "Owner explicitly approves Production deployment of the selected main SHA"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
@@ -52,8 +56,6 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
@@ -61,7 +63,11 @@ jobs:
           path: site-src/sirati-cv-source/out
 
   deploy:
-    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.approve_production_deploy == true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

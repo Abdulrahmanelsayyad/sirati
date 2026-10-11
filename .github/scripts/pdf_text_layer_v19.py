@@ -1,0 +1,508 @@
+"""Issue #97: experimental image-faithful PDF + native searchable Unicode text layer.
+The screenshot remains the original CV template; do not advertise this as certified
+ATS/PDF-UA. Fail instead of silently sending an image-only file if fonts or
+searchable text generation are unavailable. Production candidate; release remains gated by isolated QA and owner review.
+"""
+from pathlib import Path
+import json
+import sys
+import os
+from shutil import copyfile
+root=Path(sys.argv[1]).resolve()
+src=root/'lib/siratiPdfExport.ts'
+if not src.is_file():
+    raise SystemExit('FAIL #97: original shared PDF exporter was not generated')
+previous=src.read_text(encoding='utf-8')
+if "Capture the existing CV preview" not in previous or "html2canvas" not in previous:
+    raise SystemExit('FAIL #97: expected V16 exporter drift')
+src.write_text(r"""'use client';
+
+import html2canvas from 'html2canvas';
+import { PDFDocument } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import { withBasePath } from '@/lib/basePath';
+
+type Word = { value: string; x: number; top: number; bottom: number;
+              width: number; size: number; rtl: boolean; nodeId: number };
+const PDF_WIDTH_PT = 595.2756;
+const PDF_HEIGHT_PT = 841.8898;
+const JPEG_QUALITY = 0.94;
+
+// Use asynchronous binary encoding, keeping lossless PNG for text-heavy
+// CVs. Only use high-quality JPEG for images if it saves >=30% of bytes.
+async function encodePageImage(
+  canvas: HTMLCanvasElement, hasPhotograph: boolean,
+): Promise<{format: 'png' | 'jpg'; data: ArrayBuffer}> {
+  const png = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob?.type === 'image/png' && blob.size > 0) resolve(blob);
+      else reject(new Error('Could not encode a lossless PDF page image.'));
+    }, 'image/png');
+  });
+  if (hasPhotograph) {
+    const jpeg = await new Promise<Blob | null>(resolve => {
+      canvas.toBlob(blob => resolve(blob?.type === 'image/jpeg' ? blob : null),
+        'image/jpeg', JPEG_QUALITY);
+    });
+    if (jpeg && jpeg.size < png.size * 0.70) {
+      return {format: 'jpg', data: await jpeg.arrayBuffer()};
+    }
+  }
+  return {format: 'png', data: await png.arrayBuffer()};
+}
+
+// Use OFL fonts installed with npm and copied into /public at build time.
+// No third-party requests, CV uploads, browser print, or server-side PDF API.
+async function fontBytes(url: string): Promise<Uint8Array> {
+  const response = await fetch(withBasePath(url), { credentials: 'same-origin' });
+  if (!response.ok) throw new Error('A required offline PDF font is unavailable.');
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
+  const result: Word[] = [];
+  const walker = document.createTreeWalker(sheet, NodeFilter.SHOW_TEXT);
+  let nodeId = 0;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    nodeId++;
+    const parent = node.parentElement;
+    if (!parent || !node.textContent) continue;
+    if (parent.closest('script,style,noscript,svg,[hidden]')) continue;
+    const style = window.getComputedStyle(parent);
+    if (style.display === 'none' || style.visibility !== 'visible' ||
+        Number(style.opacity) === 0) continue;
+    const fontSize = Number.parseFloat(style.fontSize) || 12;
+    // Computed direction already accounts for inheritance and explicit
+    // nested dir=ltr overrides. Checking any ancestor dir=rtl made English
+    // metadata inside Arabic templates falsely RTL, causing overlapping
+    // invisible glyph runs and misplaced punctuation.
+    const rtl = style.direction === 'rtl';
+    const text = node.textContent;
+    const rex = /\S+/gu;
+    let match: RegExpExecArray | null;
+    while ((match = rex.exec(text))) {
+      const range = document.createRange();
+      range.setStart(node, match.index);
+      range.setEnd(node, match.index + match[0].length);
+      const rect = range.getBoundingClientRect();
+      range.detach();
+      if (!rect.width || !rect.height) continue;
+      const top = rect.top - bounds.top;
+      const bottom = rect.bottom - bounds.top;
+      if (top < -3 || bottom < 0 || top > sheet.scrollHeight + 15) continue;
+      result.push({
+        value: match[0].normalize('NFC'),
+        x: rect.left - bounds.left,
+        width: rect.width, top, bottom, size: fontSize, rtl, nodeId,
+      });
+    }
+  }
+  return result;
+}
+
+// Find a gap in the actual rendered word line boxes near an A4 boundary.
+// A fixed pixel crop can cut through Arabic glyphs, Latin lines or headings.
+// If both columns leave no line-safe boundary, fail rather than cut text.
+function chooseBreak(start: number, ideal: number, items: Word[], rasterScale = 1): number {
+  const floor = start + (ideal - start) * 0.70;
+  // Cuts share the bitmap's integer pixel grid. Move backwards to the
+  // start of any intersected word box until the whole row/column is safe.
+  // Touching an edge is safe; intersecting its open interior is not.
+  let candidate = Math.floor(ideal * rasterScale) / rasterScale;
+  while (candidate >= floor) {
+    const crossing = items.filter(w => w.top < candidate && candidate < w.bottom);
+    if (!crossing.length) return candidate;
+    const earlier = Math.min(...crossing.map(w => w.top));
+    candidate = Math.floor(earlier * rasterScale) / rasterScale;
+  }
+  throw new Error('Cannot split this CV safely across A4 pages. Shorten a long block.');
+}
+
+function wordsByPage(items: Word[], cuts: number[]): Word[][] {
+  const pages: Word[][] = cuts.slice(1).map(() => []);
+  for (const word of items) {
+    // Unique half-open ownership by top edge, then require the entire box
+    // to fit. No tolerance can admit a crossing word or silently drop it.
+    const index = cuts.findIndex((end, i) => i > 0 && word.top < end) - 1;
+    if (index < 0 || word.top < cuts[index] || word.bottom > cuts[index + 1])
+      throw new Error('PDF text crosses a page boundary; export aborted.');
+    pages[index].push(word);
+  }
+  return pages;
+}
+
+function downloadBlob(blob: Blob, name: string) {
+  const safe = (name || 'Sirati-CV')
+    .replace(/[^\p{L}\p{N}_. -]/gu, '').trim().slice(0, 80) || 'Sirati-CV';
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = safe + '.pdf';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  try { a.click(); }
+  finally { a.remove(); setTimeout(() => URL.revokeObjectURL(href), 20000); }
+}
+
+/** Captures the existing, chosen CV template as image while embedding a
+ * searchable, selectable (visually transparent) Unicode text layer.
+ *
+ * LIMITATION: Hybrid/image-backed PDF, not tagged PDF/UA and not a guarantee
+ * of ATS parser reading order. Text extraction and Arabic QA required.
+ */
+export async function downloadCvSheet(sheet: HTMLElement, name: string): Promise<void> {
+  // Export at A4 width independently of the responsive/mobile preview.
+  // aria-hidden prevents duplicate screen-reader content; it is not a text filter.
+  const stage = document.createElement('div');
+  stage.className = 'sirati-pdf-offscreen';
+  stage.setAttribute('aria-hidden', 'true');
+  stage.style.cssText = 'position:fixed;left:-20000px;top:0;width:210mm;pointer-events:none;';
+  const copy = sheet.cloneNode(true) as HTMLElement;
+  copy.style.setProperty('width', '210mm', 'important');
+  copy.style.setProperty('max-width', 'none', 'important');
+  copy.style.setProperty('transform', 'none', 'important');
+  copy.style.setProperty('margin', '0', 'important');
+  copy.style.setProperty('box-sizing', 'border-box', 'important');
+  if (sheet.dir === 'rtl') {
+    copy.querySelectorAll<HTMLElement>('h1,h2,h3,header p').forEach(el =>
+      el.style.setProperty('letter-spacing', 'normal', 'important'));
+  }
+  stage.appendChild(copy);
+  document.body.appendChild(stage);
+  try {
+    await document.fonts.ready;
+    await Promise.all(Array.from(copy.querySelectorAll('img')).map(img => img.decode().catch(() => undefined)));
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    await renderCvSheet(copy, name);
+  } finally { stage.remove(); }
+}
+
+async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
+  await document.fonts.ready;
+  const bounds = sheet.getBoundingClientRect();
+  if (bounds.width < 200 || sheet.scrollHeight < 100)
+    throw new Error('CV preview is not ready yet.');
+  const words = wordsFromSheet(sheet, bounds);
+  if (!words.length) throw new Error('CV has no searchable text to export.');
+  // Fail before capture if the local Arabic/Latin fonts are missing.
+  const [arabicBytes, latinBytes] = await Promise.all([
+    fontBytes('/fonts/pdf-naskh-arabic.woff'),
+    fontBytes('/fonts/pdf-naskh-latin.woff'),
+  ]);
+  const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+  const [arabicFont, latinFont] = await Promise.all([
+    doc.embedFont(arabicBytes, { subset: true, features: {
+      init: false, medi: false, fina: false, isol: false,
+      rlig: false, liga: false, calt: false, rclt: false, ccmp: false,
+    } }),
+    doc.embedFont(latinBytes, { subset: true }),
+  ]);
+  const arabicChars = new Set(arabicFont.getCharacterSet());
+  const latinChars = new Set(latinFont.getCharacterSet());
+  const canvas = await html2canvas(sheet, {
+    backgroundColor: '#ffffff', scale: 2, useCORS: true,
+    allowTaint: false, logging: false, scrollX: 0, scrollY: -window.scrollY,
+    // Keep the capture media queries identical to the measured DOM.
+    windowWidth: window.innerWidth,
+  });
+  if (!canvas.width || !canvas.height) throw new Error('Could not render the CV.');
+  const pxPerCss = canvas.width / bounds.width;
+  const cssHeight = canvas.height / pxPerCss;
+  const a4HeightCss = bounds.width * PDF_HEIGHT_PT / PDF_WIDTH_PT;
+  const pageCuts: number[] = [0];
+  // Keep original 1-page templates fully A4. For longer CVs, trim *only*
+  // obvious trailing blank space, never any visible text.
+  const lastInk = Math.max(...words.map(w => w.bottom));
+  const effectiveHeight = Math.min(cssHeight,
+    Math.max(Math.min(a4HeightCss, cssHeight), lastInk + 20));
+  let top = 0;
+  while (top + a4HeightCss < effectiveHeight - 2) {
+    const next = chooseBreak(top, top + a4HeightCss, words, pxPerCss);
+    if (next - top < a4HeightCss * 0.69)
+      throw new Error('Invalid PDF page boundary.');
+    pageCuts.push(next);
+    top = next;
+    if (pageCuts.length > 15) throw new Error('CV is too long for safe PDF export.');
+  }
+  pageCuts.push(Math.ceil(effectiveHeight * pxPerCss) / pxPerCss);
+  const pageWords = wordsByPage(words, pageCuts);
+
+  // A single check is enough for all pages of the same CV.
+  const hasPhotograph = Array.from(sheet.querySelectorAll('img'))
+    .some(img => img.naturalWidth > 0 && img.naturalHeight > 0);
+  let embedded = 0;
+  for (let pageIndex = 0; pageIndex < pageCuts.length - 1; pageIndex++) {
+    const topCss = pageCuts[pageIndex], bottomCss = pageCuts[pageIndex + 1];
+    const topPx = Math.max(0, Math.round(topCss * pxPerCss));
+    const bottomPx = Math.min(canvas.height, Math.round(bottomCss * pxPerCss));
+    if (bottomPx <= topPx) throw new Error('Invalid PDF raster boundary.');
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = canvas.width;
+    pageCanvas.height = bottomPx - topPx;
+    const ctx = pageCanvas.getContext('2d');
+    if (!ctx) throw new Error('Cannot render A4 page image.');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+    ctx.drawImage(canvas, 0, topPx, canvas.width, pageCanvas.height,
+      0, 0, canvas.width, pageCanvas.height);
+    const page = doc.addPage([PDF_WIDTH_PT, PDF_HEIGHT_PT]);
+    const encoded = await encodePageImage(pageCanvas, hasPhotograph);
+    const image = encoded.format === 'jpg'
+      ? await doc.embedJpg(encoded.data)
+      : await doc.embedPng(encoded.data);
+    const imageHeight = pageCanvas.height / pageCanvas.width * PDF_WIDTH_PT;
+    page.drawImage(image, { x: 0, y: PDF_HEIGHT_PT - imageHeight,
+      width: PDF_WIDTH_PT, height: imageHeight });
+    pageCanvas.width = 0; pageCanvas.height = 0;
+
+    const scalePt = PDF_WIDTH_PT / bounds.width;
+    // PDF extractors cannot reliably infer spaces across separately positioned
+    // one-word text objects. Keep DOM text nodes grouped into actual line runs
+    // with embedded U+0020 separators, not word-by-word. Split only at
+    // rendered line wraps and Arabic/Latin font boundaries.
+    const runs: Word[][] = [];
+    for (const w of pageWords[pageIndex]) {
+      const prev = runs[runs.length - 1];
+      const sameScript = prev &&
+        /[\u0600-\u08FF]/u.test(prev[0].value) ===
+        /[\u0600-\u08FF]/u.test(w.value);
+      const sameLine = prev &&
+        Math.abs(prev[0].top - w.top) <= Math.max(3, w.size * 0.35);
+      // Keep numeric-only RTL runs separate from adjacent Arabic prose.
+      // They use a distinct LTR ASCII PDF text encoding for stable ATS
+      // numeral value extraction, not the screenshot's glyph rendering.
+      const numericWord = /^[\u0660-\u0669\u06F0-\u06F9]+$/u;
+      const sameNumericKind = prev &&
+        numericWord.test(prev[0].value) === numericWord.test(w.value);
+      if (prev && prev[0].nodeId === w.nodeId &&
+          sameLine && sameScript && sameNumericKind) {
+        prev.push(w);
+      } else {
+        runs.push([w]);
+      }
+    }
+    // Keep neighbouring metadata fields separated in extracted text.
+    // Each drawText() carries a real glyph width from our PDF font; browser
+    // and PDF shaping metrics differ, especially for Arabic and delimiters.
+    // Invisible text objects used to overlap at "degree | year" and
+    // "school | city" boundaries despite correctly rendered bitmap output.
+    let previousRun: {
+      x: number; width: number; top: number; rtl: boolean; nodeId: number;
+    } | null = null;
+    for (const run of runs) {
+      const first = run[0];
+      const isArabicIndicNumber = run.every(w =>
+        /^[\u0660-\u0669\u06F0-\u06F9]+$/u.test(w.value));
+      const hasArabic = !isArabicIndicNumber &&
+        /[\u0600-\u08FF]/u.test(first.value);
+      const font = hasArabic ? arabicFont : latinFont;
+      const supported = hasArabic ? arabicChars : latinChars;
+      const text = run.map(w => w.value).join(' ');
+      // pdf-lib's untagged invisible RTL strings are reordered by Poppler
+      // and PyMuPDF during extraction. Reverse the *word sequence* only for
+      // Arabic RTL runs so extraction produces the original logical sentence.
+      // Do not reverse letters or modify the visible bitmap layer.
+      // Poppler -raw reverses RTL Arabic-Indic digit sequences whereas
+      // PyMuPDF may leave them in logical order. Their *numeric value*
+      // must remain stable across both readers for ATS/date parsing.
+      // The bitmap continues showing ٢٠٢٠; the invisible semantic value
+      // is the equivalent western decimal "2020", without changing dates.
+      const asciiNumber = (value: string) => value.replace(
+        /[\u0660-\u0669\u06F0-\u06F9]/gu, digit => String.fromCharCode(
+          '0'.charCodeAt(0) + digit.codePointAt(0)! -
+          (digit.codePointAt(0)! <= 0x0669 ? 0x0660 : 0x06F0)));
+      let extractionText = isArabicIndicNumber
+        ? asciiNumber(text)
+        : hasArabic && first.rtl
+          ? text.split(' ').reverse().join(' ')
+          : text;
+      // Keep the historical trailing punctuation treatment for reader parity.
+      // Internal punctuation now stays in the expanded Arabic font subset.
+      const spans: { text: string; font: typeof font }[] = [];
+      // Keep the entire RTL sentence in one Arabic font object. Splitting
+      // it around a Latin period makes readers reorder each fragment.
+      const trailing = hasArabic && first.rtl ? text.match(/[.,!?;:]+$/u)?.[0] : undefined;
+      if (trailing) {
+        extractionText = text.slice(0, -trailing.length).split(' ').reverse().join(' ');
+      }
+      if (hasArabic && first.rtl && [...extractionText].some(ch =>
+          !supported.has(ch.codePointAt(0)!) && !/\p{Cf}/u.test(ch)))
+        throw new Error('Mixed-script PDF text cannot be exported safely. Separate the text fields.');
+      for (const ch of extractionText) {
+        if (/\p{Cf}/u.test(ch)) continue;
+        const code = ch.codePointAt(0)!;
+        const selected = supported.has(code) ? font
+          : latinChars.has(code) ? latinFont : arabicChars.has(code) ? arabicFont : null;
+        if (!selected) throw new Error('A CV character is unsupported by the PDF fonts; export aborted.');
+        const previous = spans[spans.length - 1];
+        if (previous?.font === selected) previous.text += ch;
+        else spans.push({ text: ch, font: selected });
+      }
+      if (trailing) spans.push({text: trailing, font: latinFont});
+      if (!spans.length) throw new Error('PDF text is empty; export aborted.');
+      const size = Math.max(5, Math.min(20, first.size * scalePt));
+      const glyphWidth = spans.reduce((sum, span) =>
+        sum + span.font.widthOfTextAtSize(span.text, size), 0);
+      let x = first.rtl
+        ? Math.max(...run.map(w => w.x + w.width)) * scalePt - glyphWidth
+        : Math.min(...run.map(w => w.x)) * scalePt;
+      const y = PDF_HEIGHT_PT - (first.top - topCss + first.size * 0.84) * scalePt;
+      if (y < 0 || y > PDF_HEIGHT_PT || !Number.isFinite(x))
+        throw new Error('PDF text position is unsafe; export aborted.');
+      // Only pack *different* DOM text nodes sharing one rendered row.
+      // Never change the source token, word order, or screenshot. Keep a
+      // small measurable gap so independent PDF extractors do not combine
+      // a field, punctuation separator, and its adjacent value.
+      if (previousRun && previousRun.nodeId !== first.nodeId &&
+          previousRun.rtl === first.rtl &&
+          Math.abs(previousRun.top - first.top) < Math.max(3, size * 0.48)) {
+        // Wider invisible spacing is needed for extractors to recognize
+        // separators such as "degree | year" as distinct metadata fields.
+        const gapPt = Math.max(7, size * 1.1);
+        const packedX = first.rtl
+          ? Math.min(x, previousRun.x - gapPt - glyphWidth)
+          : Math.max(x, previousRun.x + previousRun.width + gapPt);
+        // Some compact ATS layouts have no free horizontal space.
+        // Leave their original invisible text position untouched rather
+        // than breaking an otherwise valid PDF export.
+        if (packedX >= 0 && packedX + glyphWidth <= PDF_WIDTH_PT) {
+          x = packedX;
+        }
+      }
+      const safeX = Math.max(0, x);
+      let spanX = safeX;
+      for (const span of spans) {
+        page.drawText(span.text, { x: spanX, y, size, font: span.font, opacity: 0 });
+        spanX += span.font.widthOfTextAtSize(span.text, size);
+      }
+      previousRun = { x: safeX, width: glyphWidth, top: first.top,
+        rtl: first.rtl, nodeId: first.nodeId };
+      embedded += run.length;
+    }
+  }
+  canvas.width = 0; canvas.height = 0; // Release the full-CV bitmap before PDF serialization.
+  if (embedded !== words.length)
+    throw new Error('Unicode PDF text coverage was insufficient; export aborted.');
+  const bytes = await doc.save({ useObjectStreams: true });
+  const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+  if (blob.size < 800) throw new Error('Generated PDF is invalid.');
+  downloadBlob(blob, name);
+}
+""", encoding='utf-8')
+
+pkg=root/'package.json'
+data=json.loads(pkg.read_text(encoding='utf-8'))
+deps=data.setdefault('dependencies',{})
+deps['pdf-lib']='1.17.1'
+# V17: the shared exporter uses pdf-lib; remove unused vulnerable legacy jsPDF.
+deps.pop('jspdf', None)
+deps['@pdf-lib/fontkit']='1.1.1'
+deps['@fontsource/noto-naskh-arabic']='5.3.0'
+data.setdefault('devDependencies',{})['pdfjs-dist']='4.10.38'
+# Font assets are copied from pinned OFL package LOCALLY before build.
+# No network requests are made when exporting a CV in the browser.
+copy_script=root/'scripts/prepare_pdf_fonts.cjs'
+copy_script.parent.mkdir(parents=True, exist_ok=True)
+# Vendored OFL derivative adds ASCII punctuation to the Arabic subset.
+# This keeps an RTL sentence in one text object, preserving reader order.
+copyfile(Path(__file__).resolve().parents[2] / 'assets/pdf-fonts/sirati-pdf-naskh-punctuation.woff',
+         root / 'scripts/sirati-pdf-naskh-punctuation.woff')
+copy_script.write_text(r"""const { mkdirSync, copyFileSync, existsSync } = require('node:fs');
+const { join } = require('node:path');
+const root = process.cwd();
+const source = join(root, 'node_modules', '@fontsource', 'noto-naskh-arabic', 'files');
+const destination = join(root, 'public', 'fonts');
+mkdirSync(destination, { recursive: true });
+for (const region of ['arabic','latin']) {
+  const original = region === 'arabic'
+    ? join(root, 'scripts', 'sirati-pdf-naskh-punctuation.woff')
+    : join(source, 'noto-naskh-arabic-' + region + '-400-normal.woff');
+  if (!existsSync(original)) throw new Error('Required OFL Arabic PDF font not installed: ' + region);
+  copyFileSync(original, join(destination, 'pdf-naskh-' + region + '.woff'));
+}
+console.log('PASS: self-hosted OFL Arabic and Latin PDF fonts copied');
+""",encoding='utf-8')
+scripts=data.setdefault('scripts',{})
+if scripts.get('prebuild') and scripts.get('prebuild') != 'node scripts/prepare_pdf_fonts.cjs':
+    raise SystemExit('FAIL #97: existing prebuild script must be composed manually')
+scripts['prebuild']='node scripts/prepare_pdf_fonts.cjs'
+pkg.write_text(json.dumps(data, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+
+# Synthetic-only PDF QA page. No accounts, network CVs, payments or personal data.
+# It exercises the EXACT shared exporter on true Arabic/Latin DOM text and A4.
+qa_page=root/'app/qa-pdf-ats/page.tsx'
+qa_page.parent.mkdir(parents=True,exist_ok=True)
+qa_page.write_text(r"""'use client';
+
+import { useRef, useState } from 'react';
+import { downloadCvSheet } from '@/lib/siratiPdfExport';
+
+export default function QaPdfAtsFixture() {
+  const [mode,setMode] = useState<'en1'|'en2'|'ar3'|'short'>('en1');
+  const [error,setError] = useState('');
+  const [busy,setBusy] = useState(false);
+  const sheet = useRef<HTMLDivElement>(null);
+  const isAr = mode === 'ar3';
+  const repetitions = mode === 'short' ? 0 : mode === 'en1' ? 7 : mode === 'en2' ? 34 : 95;
+  const line = isAr
+    ? 'الخبرة المهنية في تمريض الطوارئ ومهارات سلامة المرضى ومكافحة العدوى.'
+    : 'Professional experience, Emergency Nursing, Patient Safety, and Infection Control.';
+  const exportPdf = async () => {
+    if (!sheet.current || busy) return;
+    setBusy(true); setError('');
+    try { await downloadCvSheet(sheet.current,
+      mode === 'ar3' ? 'Synthetic-Arabic-CV' : 'Synthetic-English-CV'); }
+    catch(e) { setError(e instanceof Error ? e.message : 'PDF QA failed'); }
+    finally { setBusy(false); }
+  };
+  return <main style={{padding:16}}>
+    <h1>Sirati PDF Unicode QA — synthetic fixture only</h1>
+    <label>Test case
+      <select aria-label="PDF sample scenario" value={mode}
+        onChange={e=>setMode(e.target.value as typeof mode)}>
+        <option value="en1">English 1 page</option>
+        <option value="en2">English 2 pages</option>
+        <option value="ar3">Arabic 3+ pages</option>
+        <option value="short">Short software CV, 17px blank overhang</option>
+      </select>
+    </label>
+    <button type="button" disabled={busy} onClick={exportPdf}>
+      {busy?'Preparing test PDF…':'QA Download searchable PDF'}
+    </button>
+    {error&&<p role="alert">{error}</p>}
+    <div className="cv-sheet" ref={sheet} dir={isAr?'rtl':'ltr'}
+      style={{boxSizing:'border-box',width:794,minHeight:mode==='short'?1140:1123,
+        padding:36,fontFamily:'Arial, sans-serif', background:'#fff',
+        color:'#183e30',lineHeight:1.5}}>
+      {mode === 'short' && <section>
+        <h1>Sample Candidate</h1>
+        <h2>SOFTWARE DEVELOPER</h2>
+        <p>sample@example.com · Your City</p>
+        <h2>PROFESSIONAL SUMMARY</h2>
+        <p>Technology professional focused on practical problem-solving, reliable software delivery, testing and clear technical documentation.</p>
+        <h2>PROFESSIONAL EXPERIENCE</h2>
+        <p>Software Developer — Example Organization</p>
+        <h2>EDUCATION</h2><p>Degree — Institution</p>
+        <h2>TECHNICAL SKILLS</h2>
+        <p>Software Development, Debugging, Testing, Collaboration, Documentation</p>
+      </section>}
+      {mode !== 'short' && <>
+      <h1 style={{fontSize:27,margin:'0 0 10px'}}>
+        {isAr?'سيرة ذاتية تجريبية':'Synthetic Test Resume'}
+      </h1>
+      <h2>{isAr?'الملخص المهني':'Professional Summary'}</h2>
+      {Array.from({length:repetitions},(_,i)=>
+        <p style={{margin:'0 0 12px',fontSize:14}} key={i}>{line}</p>)}
+      </>}
+    </div>
+  </main>;
+}
+""",encoding='utf-8')
+
+# The synthetic fixture exists only in explicitly opted-in CI/QA builds.
+# Public production builds do not expose a QA export route.
+if os.environ.get('SIRATI_PDF_QA_FIXTURE') != '1':
+    qa_page.unlink(missing_ok=True)
+
+print('PASS: experimental hybrid Unicode PDF exporter generated (issue #97)')

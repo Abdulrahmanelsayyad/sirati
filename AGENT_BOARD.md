@@ -190,3 +190,12 @@ Add a fourth Sirati CV template focused on maximum ATS readability and compact p
 - A4 preview/PDF output has no clipping, overlap, broken page breaks, or hidden text in the verified test set.
 - No paid dependency or API is introduced.
 - Task is closed only after live QA and an entry in `AGENT_CHANGELOG.md`.
+
+## V18 release preparation — 2026-10-11
+- Owner: V18 technical execution session.
+- Status: draft implementation verified locally; release BLOCKED, no merge/deploy.
+- Scope: correct two obsolete homepage PDF FAQ answers; preserve strict generator scope check; rehearse rollback retaining manual deployment gate.
+- Handoff: current evidence and remaining account/device/reviewer dependencies are in the V18 section of `docs/PDF_RELEASE_V14.md`. No other agent ownership is changed. Live acceptance remains open.
+
+## P1 PDF punctuation export #130 — 2026-10-11
+Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punctuation to the Arabic PDF font; retain mixed-letter guard until separately validated. No account/database changes. Draft candidate; no changed-SHA deployment or production approval.
