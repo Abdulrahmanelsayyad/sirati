@@ -32,7 +32,7 @@ for path in ['.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_te
         assert actual.startswith(expected), 'V14 Compact ATS template was rewritten'
         tail = actual[len(expected):]
         assert tail.startswith('\n# V16: narrowly scope the Arabic Experience bullet alignment')
-        assert tail.count('/* V16 Compact ATS Arabic Experience bullets */') == 1
+        assert tail.count('/* V16 Compact ATS Arabic Experience bullets */') == 2  # Sentinel string + CSS comment
         assert '.template-compact-ats[dir="rtl"] .cv-bullets' in tail
         assert '.template-compact-ats[dir="rtl"] .cv-bullets > li' in tail
         assert 'css_path.write_text(css, encoding="utf-8")' in tail
