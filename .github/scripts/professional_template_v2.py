@@ -19,9 +19,9 @@ if "professional-v2" not in text:
     // Titles are part of the user's CV content; infer headings, never skills.
     // Unrecognized professions intentionally use neutral labels (not nursing).
     const profession = (data.title || '').toLocaleLowerCase();
-    const isClinical = /(?:^|\\W)(?:nurs(?:e|ing)|physician|doctor|surgeon|paramedic|pharmacist|midwife|dentist|clinician|medical|clinical|healthcare)(?:$|\\W)/i.test(profession)
+    const isClinical = /(?:^|\W)(?:nurs(?:e|ing)|physician|doctor|surgeon|paramedic|pharmacist|midwife|dentist|clinician|medical|clinical|healthcare)(?:$|\W)/i.test(profession)
       || /ممرض|تمريض|طبيب|دكتور|صيدلي|مسعف|قابلة|معالج|طب(?:يب)?|سريري/.test(profession);
-    const isTechnical = /(?:^|\\W)(?:software|develop(?:er|ment)|programmer|engineer|devops|data scientist|cybersecurity|web developer|information technology|it support)(?:$|\\W)/i.test(profession)
+    const isTechnical = /(?:^|\W)(?:software|develop(?:er|ment)|programmer|engineer|devops|data scientist|cybersecurity|web developer|information technology|it support)(?:$|\W)/i.test(profession)
       || /مبرمج|مهندس|مطوّر|مطور|تقنية المعلومات|برمجيات/.test(profession);
     const skillsHeading = isClinical
       ? (language === 'ar' ? 'المهارات السريرية' : 'CLINICAL SKILLS')
