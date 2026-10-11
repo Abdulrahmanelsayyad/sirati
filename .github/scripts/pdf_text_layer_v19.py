@@ -242,8 +242,8 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       if (w.top + 0.5 < topCss || w.bottom - 0.5 > bottomCss) continue;
       const prev = runs[runs.length - 1];
       const sameScript = prev &&
-        /[\\u0600-\\u08FF]/u.test(prev[0].value) ===
-        /[\\u0600-\\u08FF]/u.test(w.value);
+        /[\u0600-\u08FF]/u.test(prev[0].value) ===
+        /[\u0600-\u08FF]/u.test(w.value);
       const sameLine = prev &&
         Math.abs(prev[0].top - w.top) <= Math.max(3, w.size * 0.35);
       if (prev && prev[0].nodeId === w.nodeId && sameLine && sameScript) {
@@ -254,7 +254,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     }
     for (const run of runs) {
       const first = run[0];
-      const hasArabic = /[\\u0600-\\u08FF]/u.test(first.value);
+      const hasArabic = /[\u0600-\u08FF]/u.test(first.value);
       const font = hasArabic ? arabicFont : latinFont;
       const supported = hasArabic ? arabicChars : latinChars;
       const text = run.map(w => w.value).join(' ');
