@@ -68,7 +68,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-          cp ../../../qa/pdf_sections_check.mjs ./qa-pdf-benchmark.mjs
+          cp ../../qa/pdf_sections_check.mjs ./qa-pdf-benchmark.mjs
 
       - name: Serve local Staging builds without any deployment
         shell: bash
