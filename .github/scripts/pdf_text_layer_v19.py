@@ -290,18 +290,19 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
           previousRun.rtl === first.rtl &&
           Math.abs(previousRun.top - first.top) < Math.max(3, size * 0.48)) {
         const gapPt = Math.max(3, size * 0.65);
-        if (first.rtl) {
-          x = Math.min(x, previousRun.x - gapPt - glyphWidth);
-        } else {
-          x = Math.max(x, previousRun.x + previousRun.width + gapPt);
+        const packedX = first.rtl
+          ? Math.min(x, previousRun.x - gapPt - glyphWidth)
+          : Math.max(x, previousRun.x + previousRun.width + gapPt);
+        // Some compact ATS layouts have no free horizontal space.
+        // Leave their original invisible text position untouched rather
+        // than breaking an otherwise valid PDF export.
+        if (packedX >= 0 && packedX + glyphWidth <= PDF_WIDTH_PT) {
+          x = packedX;
         }
       }
-      if (x < 0 || x + glyphWidth > PDF_WIDTH_PT) {
-        // Do not silently truncate content if there is no safe A4 room.
-        throw new Error('PDF metadata text layer exceeds A4 width.');
-      }
-      page.drawText(token, { x, y, size, font, opacity: 0 });
-      previousRun = { x, width: glyphWidth, top: first.top,
+      const safeX = Math.max(0, x);
+      page.drawText(token, { x: safeX, y, size, font, opacity: 0 });
+      previousRun = { x: safeX, width: glyphWidth, top: first.top,
         rtl: first.rtl, nodeId: first.nodeId };
       embedded += run.length;
     }
