@@ -71,7 +71,11 @@ function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
     if (style.display === 'none' || style.visibility !== 'visible' ||
         Number(style.opacity) === 0) continue;
     const fontSize = Number.parseFloat(style.fontSize) || 12;
-    const rtl = style.direction === 'rtl' || parent.closest('[dir="rtl"]') !== null;
+    // Computed direction already accounts for inheritance and explicit
+    // nested dir=ltr overrides. Checking any ancestor dir=rtl made English
+    // metadata inside Arabic templates falsely RTL, causing overlapping
+    // invisible glyph runs and misplaced punctuation.
+    const rtl = style.direction === 'rtl';
     const text = node.textContent;
     const rex = /\S+/gu;
     let match: RegExpExecArray | null;
@@ -252,6 +256,14 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         runs.push([w]);
       }
     }
+    // Keep neighbouring metadata fields separated in extracted text.
+    // Each drawText() carries a real glyph width from our PDF font; browser
+    // and PDF shaping metrics differ, especially for Arabic and delimiters.
+    // Invisible text objects used to overlap at "degree | year" and
+    // "school | city" boundaries despite correctly rendered bitmap output.
+    let previousRun: {
+      x: number; width: number; top: number; rtl: boolean; nodeId: number;
+    } | null = null;
     for (const run of runs) {
       const first = run[0];
       const hasArabic = /[\u0600-\u08FF]/u.test(first.value);
@@ -268,13 +280,36 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       const token = [...extractionText].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
       if (!token) continue;
       const size = Math.max(5, Math.min(20, first.size * scalePt));
-      const x = first.rtl
-        ? Math.max(...run.map(w => w.x + w.width)) * scalePt -
-          font.widthOfTextAtSize(token, size)
+      const glyphWidth = font.widthOfTextAtSize(token, size);
+      let x = first.rtl
+        ? Math.max(...run.map(w => w.x + w.width)) * scalePt - glyphWidth
         : Math.min(...run.map(w => w.x)) * scalePt;
       const y = PDF_HEIGHT_PT - (first.top - topCss + first.size * 0.84) * scalePt;
       if (y < 0 || y > PDF_HEIGHT_PT || !Number.isFinite(x)) continue;
-      page.drawText(token, { x: Math.max(0, x), y, size, font, opacity: 0 });
+      // Only pack *different* DOM text nodes sharing one rendered row.
+      // Never change the source token, word order, or screenshot. Keep a
+      // small measurable gap so independent PDF extractors do not combine
+      // a field, punctuation separator, and its adjacent value.
+      if (previousRun && previousRun.nodeId !== first.nodeId &&
+          previousRun.rtl === first.rtl &&
+          Math.abs(previousRun.top - first.top) < Math.max(3, size * 0.48)) {
+        // Wider invisible spacing is needed for extractors to recognize
+        // separators such as "degree | year" as distinct metadata fields.
+        const gapPt = Math.max(7, size * 1.1);
+        const packedX = first.rtl
+          ? Math.min(x, previousRun.x - gapPt - glyphWidth)
+          : Math.max(x, previousRun.x + previousRun.width + gapPt);
+        // Some compact ATS layouts have no free horizontal space.
+        // Leave their original invisible text position untouched rather
+        // than breaking an otherwise valid PDF export.
+        if (packedX >= 0 && packedX + glyphWidth <= PDF_WIDTH_PT) {
+          x = packedX;
+        }
+      }
+      const safeX = Math.max(0, x);
+      page.drawText(token, { x: safeX, y, size, font, opacity: 0 });
+      previousRun = { x: safeX, width: glyphWidth, top: first.top,
+        rtl: first.rtl, nodeId: first.nodeId };
       embedded += run.length;
     }
   }
