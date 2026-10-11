@@ -46,7 +46,10 @@ paths = {
     "photo-profile-sidebar-en-1440": ("photo-baseline", "photo-candidate"),
 }
 def squash(s):
-    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", s).replace("\u200e","").replace("\u200f","")).strip()
+    # Remove directional formatting controls, not word-boundary whitespace.
+    clean = "".join(ch for ch in unicodedata.normalize("NFC",s)
+                    if unicodedata.category(ch) != "Cf")
+    return re.sub(r"\\s+", " ", clean).strip()
 
 def extract(pdf, mode):
     if mode.startswith("poppler"):
