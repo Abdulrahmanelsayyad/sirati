@@ -13,6 +13,7 @@ on:
       - "qa/pdf_longform_check.mjs"
       - "qa/pdf_quality_check.py"
       - "qa/pdf_word_boundaries_check.py"
+      - "qa/pdf_word_boundary_fixture.py"
       - ".github/workflows/pdf-perf-qa.yml"
 
 permissions:
@@ -61,6 +62,7 @@ jobs:
               python3 qa/print_isolation_fix.py site-src/sirati-cv-source
               # Both builds use identical synthetic QA fixture from the candidate PR.
               python3 ../candidate/qa/pdf_sections_fixture.py site-src/sirati-cv-source
+              python3 ../candidate/qa/pdf_word_boundary_fixture.py site-src/sirati-cv-source
               cd site-src/sirati-cv-source
               npm install --no-audit --no-fund
               npm run build
