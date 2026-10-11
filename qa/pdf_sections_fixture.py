@@ -45,11 +45,11 @@ const [error,setError]=useState(''); const stage=useRef<HTMLDivElement>(null);
 const ar=language==='ar';
 const data:CvData={fullName:ar?'مرشح تجريبي':'Synthetic Candidate',title:ar?'مهندس برمجيات':'Software Engineer',email:'test@example.com',phone:'01000000000',location:'Cairo',linkedin:'https://example.com',photoDataUrl:portrait?'SYNTHETIC_PORTRAIT':'',
 profile:ar?'ملخص مهني للاختبار':'SummaryMarker professional summary',skills:ar?'مهارات البرمجة':'SkillsMarker programming',languages:ar?'اللغة العربية':'LanguagesMarker English',
-experience:[{id:'1',role:ar?'خبرة عملية':'ExperienceMarker',company:'CompanyMarker',location:'Cairo',period:'2022',details:ar?'تطوير التطبيقات':'ExperienceDetailsMarker'}],
-education:[{id:'2',degree:ar?'درجة جامعية':'EducationMarker',school:'SchoolMarker',location:'Cairo',period:'2020',details:ar?'دراسة جامعية':'EducationDetailsMarker'}],
-certifications:[{id:'3',name:ar?'شهادة مهنية':'CertificationMarker',issuer:'IssuerMarker',date:'2025'}],
-courses:[{id:'4',name:ar?'دورة تدريبية':'CourseMarker',provider:'ProviderMarker',date:'2024'}],
-projects:[{id:'5',name:ar?'مشروع تطبيقي':'ProjectMarker',organization:'OrganizationMarker',period:'2023',details:ar?'تفاصيل المشروع':'ProjectDetailsMarker'}]};
+experience:[{id:'1',role:ar?'خبرة عملية':'ExperienceMarker',company:'CompanyMarker',location:'Cairo',period:ar?'٢٠٢٠':'2022',details:ar?'تطوير التطبيقات':'ExperienceDetailsMarker'}],
+education:[{id:'2',degree:ar?'درجة جامعية':'EducationMarker',school:'SchoolMarker',location:'Cairo',period:ar?'٢٠٢٢':'2020',details:ar?'دراسة جامعية':'EducationDetailsMarker'}],
+certifications:[{id:'3',name:ar?'شهادة مهنية':'CertificationMarker',issuer:'IssuerMarker',date:ar?'٢٠٢٣':'2025'}],
+courses:[{id:'4',name:ar?'دورة تدريبية':'CourseMarker',provider:'ProviderMarker',date:ar?'٣٠':'2024'}],
+projects:[{id:'5',name:ar?'مشروع تطبيقي':'ProjectMarker',organization:'OrganizationMarker',period:ar?'٢٠٢٤':'2023',details:ar?'تفاصيل المشروع':'ProjectDetailsMarker'}]};
 return <main><select aria-label="Template" value={template} onChange={e=>setTemplate(e.target.value as TemplateName)}>{['modern','classic','compact','compact-ats','healthcare-pro','executive-ats','profile-sidebar','gold-sidebar','executive-letterhead'].map(t=><option key={t}>{t}</option>)}</select>
 <select aria-label="Language" value={language} onChange={e=>setLanguage(e.target.value as CvLanguage)}><option>en</option><option>ar</option></select>
 <label><input type="checkbox" checked={offscreen} onChange={e=>setOffscreen(e.target.checked)}/>Documents rendering</label>
