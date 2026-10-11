@@ -282,3 +282,7 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('templates_guest_fi
 # V18 (#98): guest Builder; sign in/up only when requesting Save PDF.
 # Protected Auth/Browse paths stay untouched; PDF engine stays the same.
 subprocess.run([sys.executable, str(Path(__file__).with_name('save_pdf_auth_gate_v18.py')), str(root)], check=True)
+
+# Staging #97: reuse reviewed searchable Unicode PDF exporter.
+subprocess.run([sys.executable, str(Path(__file__).with_name('pdf_text_layer_v19.py')), str(root)], check=True)
+subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2] / 'qa/pdf_sections_fixture.py'), str(root)], check=True)
