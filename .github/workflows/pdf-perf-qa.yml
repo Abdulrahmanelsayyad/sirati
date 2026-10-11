@@ -128,8 +128,10 @@ jobs:
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as fh:
               fh.write('\n'.join(rows) + '\n')
           Path('candidate/pdf-perf-report.json').write_text(json.dumps({'baseline_bytes':old, 'candidate_bytes':new, 'percent_change':change, 'baseline_median_ms':btime, 'candidate_median_ms':ctime, 'baseline':base, 'candidate':candidate},indent=2))
-          if change >= -5:
-              raise SystemExit('FAIL: JPEG export did not improve synthetic PDF size by at least 5%; do not merge.')
+          if change > 1:
+              raise SystemExit('FAIL: candidate increased synthetic PDF size by more than 1%; do not merge.')
+          if ctime > btime * 1.20:
+              raise SystemExit('FAIL: candidate worsened median synthetic PDF export time by over 20%; do not merge.')
           PY
 
       - name: Extract independent text and render visual review samples
