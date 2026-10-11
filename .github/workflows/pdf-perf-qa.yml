@@ -14,6 +14,9 @@ on:
       - "qa/pdf_quality_check.py"
       - "qa/pdf_word_boundaries_check.py"
       - "qa/pdf_word_boundary_fixture.py"
+      - "qa/pdf_metadata_fixture.py"
+      - "qa/pdf_metadata_download.mjs"
+      - "qa/pdf_metadata_check.py"
       - ".github/workflows/pdf-perf-qa.yml"
 
 permissions:
@@ -63,6 +66,7 @@ jobs:
               # Both builds use identical synthetic QA fixture from the candidate PR.
               python3 ../candidate/qa/pdf_sections_fixture.py site-src/sirati-cv-source
               python3 ../candidate/qa/pdf_word_boundary_fixture.py site-src/sirati-cv-source
+              python3 ../candidate/qa/pdf_metadata_fixture.py site-src/sirati-cv-source
               cd site-src/sirati-cv-source
               npm install --no-audit --no-fund
               npm run build
@@ -79,6 +83,7 @@ jobs:
           cp ../../qa/pdf_sections_check.mjs ./qa-pdf-benchmark.mjs
           cp ../../qa/pdf_photo_check.mjs ./qa-pdf-photo.mjs
           cp ../../qa/pdf_longform_check.mjs ./qa-pdf-longform.mjs
+          cp ../../qa/pdf_metadata_download.mjs ./qa-pdf-metadata.mjs
 
       - name: Install Poppler and Pillow for independent Unicode and visual validation
         run: |
@@ -131,6 +136,18 @@ jobs:
           set -euo pipefail
           QA_PDF_BASE_URL=http://127.0.0.1:4174 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-long-baseline node ./qa-pdf-longform.mjs
           QA_PDF_BASE_URL=http://127.0.0.1:4175 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-long-candidate node ./qa-pdf-longform.mjs
+
+      - name: Verify real inline metadata PDFs from both Staging builds
+        working-directory: candidate/site-src/sirati-cv-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          QA_PDF_BASE_URL=http://127.0.0.1:4174 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-metadata-baseline node ./qa-pdf-metadata.mjs
+          QA_PDF_BASE_URL=http://127.0.0.1:4175 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-metadata-candidate node ./qa-pdf-metadata.mjs
+
+      - name: Check Arabic education and language fields have non-overlapping glyph boxes
+        shell: bash
+        run: python3 candidate/qa/pdf_metadata_check.py
 
       - name: Compare exact scenario sizes, page counts and timings
         shell: bash
@@ -205,6 +222,7 @@ jobs:
             candidate/pdf-perf-visual/
             /tmp/sirati-pdf-baseline/results.json
             /tmp/sirati-pdf-candidate/results.json
+            candidate/pdf-perf-visual/metadata-spacing-results.json
             /tmp/sirati-pdf-photo-baseline/results.json
             /tmp/sirati-pdf-photo-candidate/results.json
             /tmp/sirati-pdf-long-baseline/results.json
