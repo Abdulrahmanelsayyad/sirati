@@ -13,6 +13,23 @@ changed = subprocess.check_output(['git', 'diff', '--name-only', base], cwd=repo
 for path in changed:
     assert path in runtime or path.startswith('qa/pdf_') or path in {
         '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md'}, path
+# Regression gate: PR/build checks must never restore automatic
+# Production deployment. Only an approved manual dispatch on main can publish.
+workflow = (repo / '.github/workflows/pages.yml').read_text(encoding='utf-8')
+deploy_anchor = '\n  deploy:\n'
+assert workflow.count(deploy_anchor) == 1, 'Exactly one Pages deployment job required'
+build_section, deploy_section = workflow.split(deploy_anchor, 1)
+assert '\npermissions:\n  contents: read\n' in build_section, 'Default workflow permissions expanded'
+assert 'uses: actions/deploy-pages@' not in build_section, 'Unexpected deployment before approval'
+assert workflow.count('uses: actions/deploy-pages@') == 1, 'Additional Pages deploy action found'
+assert "workflow_dispatch:\n    inputs:\n      approve_production_deploy:" in build_section, 'Approval input removed'
+assert all(x in build_section for x in ('required: true', 'type: boolean', 'default: false')), 'Approval must be required, boolean and default denied'
+expected_gate = "    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.approve_production_deploy == true"
+assert deploy_section.count('\n    if:') == 1 and expected_gate in deploy_section, 'Pages deployment no longer requires manual approval on main'
+assert '    permissions:\n      contents: read\n      pages: write\n      id-token: write\n' in deploy_section, 'Deploy-only permissions changed'
+assert '\n    environment:\n      name: github-pages\n' in deploy_section, 'Production environment guard removed'
+print('PASS: PR/main builds cannot automatically publish; explicit main dispatch is required')
+
 original = subprocess.check_output(['git', 'show', base + ':.github/scripts/prepare_pages.py'], cwd=repo, text=True)
 candidate = (repo / '.github/scripts/prepare_pages.py').read_text()
 assert candidate.startswith(original), 'Original reconstruction/auth ordering changed'
