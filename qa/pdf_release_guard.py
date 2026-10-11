@@ -22,11 +22,22 @@ assert candidate[len(original):].count('subprocess.run(') == 2
 v14 = 'c18427445bd521e0acba5ee6f6c34ae30168037b'
 followup = subprocess.check_output(['git', 'diff', '--name-only', v14], cwd=repo, text=True).splitlines()
 for path in followup:
-    assert path == '.github/scripts/pdf_text_layer_v19.py' or path.startswith('qa/pdf_') or path in {
+    assert path in {'.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py'} or path.startswith('qa/pdf_') or path in {
         '.github/workflows/pdf-release-qa.yml', 'docs/PDF_RELEASE_V14.md'}, path
 for path in ['.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_template.py']:
     expected = subprocess.check_output(['git','show',v14+':'+path],cwd=repo,text=True)
-    assert (repo/path).read_text() == expected, 'Protected V14 generator changed: '+path
+    actual = (repo/path).read_text()
+    if path.endswith('compact_ats_template.py'):
+        # V16 is strictly additive to V14; never rewrite the validated template.
+        assert actual.startswith(expected), 'V14 Compact ATS template was rewritten'
+        tail = actual[len(expected):]
+        assert tail.startswith('\n# V16: narrowly scope the Arabic Experience bullet alignment')
+        assert tail.count('/* V16 Compact ATS Arabic Experience bullets */') == 1
+        assert '.template-compact-ats[dir="rtl"] .cv-bullets' in tail
+        assert '.template-compact-ats[dir="rtl"] .cv-bullets > li' in tail
+        assert 'css_path.write_text(css, encoding="utf-8")' in tail
+    else:
+        assert actual == expected, 'Protected V14 generator changed: '+path
 exporter=(root/'lib/siratiPdfExport.ts').read_text()
 assert 'const pageWords = wordsByPage(words, pageCuts)' in exporter
 assert 'if (embedded !== words.length)' in exporter
