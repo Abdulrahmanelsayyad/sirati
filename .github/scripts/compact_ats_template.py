@@ -427,10 +427,20 @@ if rtl_experience_marker not in css:
   padding-inline-start: 18px;
   padding-inline-end: 0;
   list-style-position: outside;
+  list-style-type: none;
 }
 .template-compact-ats[dir="rtl"] .cv-bullets > li {
   direction: rtl;
   text-align: right;
+  position: relative;
+  list-style-type: none;
+}
+/* Explicit pseudo-element avoids html2canvas's misplaced native RTL marker. */
+.template-compact-ats[dir="rtl"] .cv-bullets > li::before {
+  content: "\u2022";
+  position: absolute;
+  right: -14px;
+  top: 0;
 }
 """
     css_path.write_text(css, encoding="utf-8")

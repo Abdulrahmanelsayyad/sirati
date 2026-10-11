@@ -57,3 +57,5 @@ python3 candidate/qa/pdf_template_native_check.py || native_status=$?
 (cd "$src"; QA_PDF_EXTRA_TEMPLATES=1 QA_PDF_ALL_WIDTHS=1 QA_PDF_BASE_URL=http://127.0.0.1:4175/sirati \
   QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-extra-candidate node qa-release-sections.mjs)
 python3 candidate/qa/pdf_extra_templates_check.py
+
+python3 candidate/qa/pdf_rtl_raster_check.py
