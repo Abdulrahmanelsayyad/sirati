@@ -252,6 +252,14 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         runs.push([w]);
       }
     }
+    // Keep neighbouring metadata fields separated in extracted text.
+    // Each drawText() carries a real glyph width from our PDF font; browser
+    // and PDF shaping metrics differ, especially for Arabic and delimiters.
+    // Invisible text objects used to overlap at "degree | year" and
+    // "school | city" boundaries despite correctly rendered bitmap output.
+    let previousRun: {
+      x: number; width: number; top: number; rtl: boolean; nodeId: number;
+    } | null = null;
     for (const run of runs) {
       const first = run[0];
       const hasArabic = /[\u0600-\u08FF]/u.test(first.value);
@@ -268,13 +276,33 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       const token = [...extractionText].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
       if (!token) continue;
       const size = Math.max(5, Math.min(20, first.size * scalePt));
-      const x = first.rtl
-        ? Math.max(...run.map(w => w.x + w.width)) * scalePt -
-          font.widthOfTextAtSize(token, size)
+      const glyphWidth = font.widthOfTextAtSize(token, size);
+      let x = first.rtl
+        ? Math.max(...run.map(w => w.x + w.width)) * scalePt - glyphWidth
         : Math.min(...run.map(w => w.x)) * scalePt;
       const y = PDF_HEIGHT_PT - (first.top - topCss + first.size * 0.84) * scalePt;
       if (y < 0 || y > PDF_HEIGHT_PT || !Number.isFinite(x)) continue;
-      page.drawText(token, { x: Math.max(0, x), y, size, font, opacity: 0 });
+      // Only pack *different* DOM text nodes sharing one rendered row.
+      // Never change the source token, word order, or screenshot. Keep a
+      // small measurable gap so independent PDF extractors do not combine
+      // a field, punctuation separator, and its adjacent value.
+      if (previousRun && previousRun.nodeId !== first.nodeId &&
+          previousRun.rtl === first.rtl &&
+          Math.abs(previousRun.top - first.top) < Math.max(3, size * 0.48)) {
+        const gapPt = Math.max(3, size * 0.65);
+        if (first.rtl) {
+          x = Math.min(x, previousRun.x - gapPt - glyphWidth);
+        } else {
+          x = Math.max(x, previousRun.x + previousRun.width + gapPt);
+        }
+      }
+      if (x < 0 || x + glyphWidth > PDF_WIDTH_PT) {
+        // Do not silently truncate content if there is no safe A4 room.
+        throw new Error('PDF metadata text layer exceeds A4 width.');
+      }
+      page.drawText(token, { x, y, size, font, opacity: 0 });
+      previousRun = { x, width: glyphWidth, top: first.top,
+        rtl: first.rtl, nodeId: first.nodeId };
       embedded += run.length;
     }
   }
