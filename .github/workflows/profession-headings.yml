@@ -1,0 +1,53 @@
+name: Modern profession headings QA
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/scripts/professional_template_v2.py"
+      - "qa/profession_headings.mjs"
+      - ".github/workflows/profession-headings.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  modern-profession-headings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Reconstruct and build generated source
+        run: |
+          cat source.part1 source.part2 source.part3 source.part4a source.part4b source.part4c source.part5 source.part6 source.part7 | base64 -d > /tmp/sirati.zip
+          mkdir -p site-src
+          unzip -q /tmp/sirati.zip -d site-src
+          python3 .github/scripts/prepare_pages.py site-src/sirati-cv-source
+          python3 qa/print_isolation_fix.py site-src/sirati-cv-source
+          cd site-src/sirati-cv-source
+          NEXT_PUBLIC_BASE_PATH=/sirati npm install
+          NEXT_PUBLIC_BASE_PATH=/sirati npm run build
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Serve generated production build
+        run: |
+          mkdir -p qa-root
+          ln -s "$GITHUB_WORKSPACE/site-src/sirati-cv-source/out" qa-root/sirati
+          python3 -m http.server 4173 --directory qa-root >/tmp/sirati-profession-qa-server.log 2>&1 &
+          echo $! > /tmp/sirati-profession-qa-server.pid
+          sleep 2
+          curl --fail http://127.0.0.1:4173/sirati/builder/ >/dev/null
+
+      - name: Run profession-aware heading regression
+        working-directory: site-src/sirati-cv-source
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/profession_headings.mjs" ./qa-profession-headings.mjs
+          node ./qa-profession-headings.mjs
