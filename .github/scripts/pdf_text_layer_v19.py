@@ -27,16 +27,27 @@ const PDF_WIDTH_PT = 595.2756;
 const PDF_HEIGHT_PT = 841.8898;
 const JPEG_QUALITY = 0.94;
 
-// Encode each A4 page asynchronously without a base64 PNG on the main thread.
-// The searchable Unicode text layer is embedded separately.
-async function encodePageJpeg(canvas: HTMLCanvasElement): Promise<ArrayBuffer> {
-  const image = await new Promise<Blob>((resolve, reject) => {
+// Use asynchronous binary encoding, keeping lossless PNG for text-heavy
+// CVs. Only use high-quality JPEG for images if it saves >=30% of bytes.
+async function encodePageImage(
+  canvas: HTMLCanvasElement, hasPhotograph: boolean,
+): Promise<{format: 'png' | 'jpg'; data: ArrayBuffer}> {
+  const png = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(blob => {
-      if (blob?.type === 'image/jpeg' && blob.size > 0) resolve(blob);
-      else reject(new Error('Could not encode a PDF page image.'));
-    }, 'image/jpeg', JPEG_QUALITY);
+      if (blob?.type === 'image/png' && blob.size > 0) resolve(blob);
+      else reject(new Error('Could not encode a lossless PDF page image.'));
+    }, 'image/png');
   });
-  return image.arrayBuffer();
+  if (hasPhotograph) {
+    const jpeg = await new Promise<Blob | null>(resolve => {
+      canvas.toBlob(blob => resolve(blob?.type === 'image/jpeg' ? blob : null),
+        'image/jpeg', JPEG_QUALITY);
+    });
+    if (jpeg && jpeg.size < png.size * 0.70) {
+      return {format: 'jpg', data: await jpeg.arrayBuffer()};
+    }
+  }
+  return {format: 'png', data: await png.arrayBuffer()};
 }
 
 // Use OFL fonts installed with npm and copied into /public at build time.
@@ -207,7 +218,13 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     ctx.drawImage(canvas, 0, topPx, canvas.width, pageCanvas.height,
       0, 0, canvas.width, pageCanvas.height);
     const page = doc.addPage([PDF_WIDTH_PT, PDF_HEIGHT_PT]);
-    const image = await doc.embedJpg(await encodePageJpeg(pageCanvas));
+    const encoded = await encodePageImage(
+      pageCanvas, Array.from(sheet.querySelectorAll('img'))
+        .some(img => img.naturalWidth > 0 && img.naturalHeight > 0),
+    );
+    const image = encoded.format === 'jpg'
+      ? await doc.embedJpg(encoded.data)
+      : await doc.embedPng(encoded.data);
     const imageHeight = pageCanvas.height / pageCanvas.width * PDF_WIDTH_PT;
     page.drawImage(image, { x: 0, y: PDF_HEIGHT_PT - imageHeight,
       width: PDF_WIDTH_PT, height: imageHeight });
