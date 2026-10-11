@@ -1,6 +1,12 @@
 name: Modern profession headings QA
 
 on:
+  push:
+    branches: ["fix/modern-profession-headings-20261011"]
+    paths:
+      - ".github/scripts/professional_template_v2.py"
+      - "qa/profession_headings.mjs"
+      - ".github/workflows/profession-headings.yml"
   pull_request:
     branches: ["main"]
     paths:
