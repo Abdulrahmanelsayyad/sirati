@@ -18,7 +18,7 @@ def chunk(tag, data):
 width = height = 96
 rows = []
 for y in range(height):
-    row = bytearray(b"\\x00")
+    row = bytearray([0])
     for x in range(width):
         face = ((x - 48) / 31) ** 2 + ((y - 43) / 38) ** 2 < 1
         if face:
@@ -28,7 +28,7 @@ for y in range(height):
         row.extend(rgb)
     rows.append(bytes(row))
 raw = b"".join(rows)
-png = (b"\\x89PNG\\r\\n\\x1a\\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+png = (bytes([137, 80, 78, 71, 13, 10, 26, 10]) + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
        + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
 portrait = "data:image/png;base64," + base64.b64encode(png).decode("ascii")
 p.write_text(''' 'use client';
