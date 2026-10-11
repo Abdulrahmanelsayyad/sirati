@@ -10,11 +10,15 @@ fs.mkdirSync(dir,{recursive:true});
 const results=[];
 try {
 await page.goto(base+'/qa-pdf-sections/');
+const coreTemplates=['modern','classic','compact','compact-ats','healthcare-pro','executive-ats','profile-sidebar','gold-sidebar','executive-letterhead'];
+const extraTemplates=await page.getByLabel('Template',{exact:true}).locator('option').evaluateAll(options=>options.map(option=>option.value));
+const testedTemplates=process.env.QA_PDF_EXTRA_TEMPLATES ? extraTemplates.filter(name=>!coreTemplates.includes(name)) : coreTemplates;
+if(process.env.QA_PDF_EXTRA_TEMPLATES) assert.equal(testedTemplates.length,24,'Expected all 24 additional current template variants');
 for(const width of (process.env.QA_SMOKE ? [390] : (process.env.QA_PDF_ALL_WIDTHS ? [1440,390,360] : [1440,390]))){
 await page.setViewportSize({width,height:1000});
 for(const language of (process.env.QA_SMOKE ? ['ar'] : ['en','ar'])){
 await page.getByLabel('Language',{exact:true}).selectOption(language);
-for(const template of (process.env.QA_SMOKE ? ['gold-sidebar'] : ['modern','classic','compact','compact-ats','healthcare-pro','executive-ats','profile-sidebar','gold-sidebar','executive-letterhead'])){
+for(const template of (process.env.QA_SMOKE ? ['gold-sidebar'] : testedTemplates)){
 await page.getByLabel('Template',{exact:true}).selectOption(template);
 await page.getByLabel('Documents rendering').setChecked(width===1440);
 const id=`${template}-${language}-${width}`;

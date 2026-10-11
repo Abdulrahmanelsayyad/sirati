@@ -52,3 +52,8 @@ long_status=0
 native_status=0
 python3 candidate/qa/pdf_template_native_check.py || native_status=$?
 [[ "$long_status" == 0 && "$native_status" == 0 ]]
+
+# V17: explicit bilingual download/text coverage for all 24 extra variants.
+(cd "$src"; QA_PDF_EXTRA_TEMPLATES=1 QA_PDF_ALL_WIDTHS=1 QA_PDF_BASE_URL=http://127.0.0.1:4175/sirati \
+  QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-extra-candidate node qa-release-sections.mjs)
+python3 candidate/qa/pdf_extra_templates_check.py
