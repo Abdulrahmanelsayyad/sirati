@@ -1,0 +1,4280 @@
+{
+  "runtime_head": "a46339d07761f88d7d187b38106090444e036aaa",
+  "main": "54461f950554c18d64690331020596dcf79e43cb",
+  "approved_staging": "78ab9519599bf3436fce4418b3fe7bdfdd8e56b7",
+  "decision": "NO-GO",
+  "date": "2026-10-11",
+  "methods": {
+    "browser": "Playwright 1.55.0 Chromium emulation",
+    "local_node": "24.19.0",
+    "build": "Next 16.3.8 webpack locally; normal Node22 CI PASS at runtime head",
+    "readers": [
+      "PDF.js 4.10.38",
+      "Poppler raw/layout",
+      "PyMuPDF"
+    ],
+    "no_backend": true
+  },
+  "summary": {
+    "long_cases": 162,
+    "long_pass": 91,
+    "long_fail": 71,
+    "page_counts": {
+      "2": 54,
+      "3": 54,
+      "5": 54
+    },
+    "duplicated_marker_cases": 0,
+    "native_reader_observations": 324,
+    "native_pass": 182,
+    "native_fail": 142,
+    "short_families_language_width_cases": 54,
+    "paired_staging_candidate_cases": 48,
+    "sampled_pixel_comparisons": 17,
+    "word_boundary_observations": 54,
+    "arabic_numeric_observations_390_1440": 180,
+    "additional_arabic_numeric_observations_360": 90
+  },
+  "source_integrity": {
+    "status": "PASS",
+    "main_source": "54461f950554c18d64690331020596dcf79e43cb",
+    "changed_generated_existing_files": [
+      "next-env.d.ts",
+      "tsconfig.json",
+      "package.json",
+      "app/globals.css",
+      "lib/siratiPdfExport.ts"
+    ],
+    "compiler_generated_files": [
+      "next-env.d.ts",
+      "tsconfig.json"
+    ],
+    "protected_saved_document_auth_and_data_source": "byte-identical",
+    "new_build_only_file": "scripts/prepare_pdf_fonts.cjs",
+    "runtime_algorithm_parity": "78ab9519599bf3436fce4418b3fe7bdfdd8e56b7"
+  },
+  "performance": {
+    "comparison": "approved Staging vs main-derived PDF candidate",
+    "baseline_bytes": 4436129,
+    "candidate_bytes": 4436141,
+    "baseline_median_ms": 640.0,
+    "candidate_median_ms": 636.5
+  },
+  "boundary_reproduction": [
+    {
+      "variant": "baseline",
+      "pages": 3,
+      "pdfjs": "FAIL (missing BoundaryToken108)",
+      "poppler_token108_count": 0,
+      "pymupdf_token108_count": 0,
+      "unique_markers": 122,
+      "expected": 123
+    },
+    {
+      "variant": "candidate",
+      "pages": 3,
+      "pdfjs": "FAIL (missing BoundaryToken108)",
+      "poppler_token108_count": 0,
+      "pymupdf_token108_count": 0,
+      "unique_markers": 122,
+      "expected": 123
+    }
+  ],
+  "boundary_geometry": {
+    "cuts": [
+      0,
+      1116.5009233328226,
+      2229.001846665645
+    ],
+    "word": {
+      "token": "BoundaryToken108",
+      "top": 2228.421875,
+      "bottom": 2241.421875
+    },
+    "start_page3": 2229.001846665645,
+    "delta_word_top_from_page3": -0.5799716656451892,
+    "excluded_from_page3": true,
+    "excluded_from_page2": true
+  },
+  "long_template_results": [
+    {
+      "id": "modern-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 686156,
+      "errors": []
+    },
+    {
+      "id": "modern-en-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 123,
+      "sizeBytes": 1114836,
+      "errors": [
+        "Missing BoundaryToken108"
+      ]
+    },
+    {
+      "id": "modern-en-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 240,
+      "sizeBytes": 2055489,
+      "errors": [
+        "Missing BoundaryToken108",
+        "Missing BoundaryToken169",
+        "Missing BoundaryToken230"
+      ]
+    },
+    {
+      "id": "classic-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 35,
+      "sizeBytes": 607124,
+      "errors": []
+    },
+    {
+      "id": "classic-en-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 79,
+      "sizeBytes": 1153246,
+      "errors": []
+    },
+    {
+      "id": "classic-en-360-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 158,
+      "sizeBytes": 2122973,
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 51,
+      "sizeBytes": 641403,
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 94,
+      "sizeBytes": 1062718,
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 175,
+      "sizeBytes": 1839225,
+      "errors": [
+        "Missing BoundaryToken136"
+      ]
+    },
+    {
+      "id": "compact-ats-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 718727,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 124,
+      "sizeBytes": 1178815,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "compact-ats-en-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 246,
+      "sizeBytes": 2210906,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 718884,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 122,
+      "sizeBytes": 1162212,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 244,
+      "sizeBytes": 2194814,
+      "errors": [
+        "Missing BoundaryToken181"
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 773859,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1097905,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 242,
+      "sizeBytes": 2344282,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "profile-sidebar-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 57,
+      "sizeBytes": 660950,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1112789,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 200,
+      "sizeBytes": 2003964,
+      "errors": [
+        "Missing BoundaryToken193"
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 58,
+      "sizeBytes": 676260,
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1126757,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 207,
+      "sizeBytes": 2083883,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "executive-letterhead-en-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 39,
+      "sizeBytes": 562421,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 68,
+      "sizeBytes": 891282,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-360-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 126,
+      "sizeBytes": 1556449,
+      "errors": []
+    },
+    {
+      "id": "modern-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 625390,
+      "errors": []
+    },
+    {
+      "id": "modern-ar-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 123,
+      "sizeBytes": 1029469,
+      "errors": [
+        "Missing BoundaryToken108"
+      ]
+    },
+    {
+      "id": "modern-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 240,
+      "sizeBytes": 1915824,
+      "errors": [
+        "Missing BoundaryToken108",
+        "Missing BoundaryToken169",
+        "Missing BoundaryToken230"
+      ]
+    },
+    {
+      "id": "classic-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 35,
+      "sizeBytes": 498413,
+      "errors": []
+    },
+    {
+      "id": "classic-ar-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 79,
+      "sizeBytes": 984961,
+      "errors": []
+    },
+    {
+      "id": "classic-ar-360-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 158,
+      "sizeBytes": 1844944,
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 51,
+      "sizeBytes": 570767,
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 94,
+      "sizeBytes": 969499,
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 175,
+      "sizeBytes": 1702406,
+      "errors": [
+        "Missing BoundaryToken136"
+      ]
+    },
+    {
+      "id": "compact-ats-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 687229,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 124,
+      "sizeBytes": 1144606,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "compact-ats-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 246,
+      "sizeBytes": 2169742,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 687249,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 122,
+      "sizeBytes": 1127708,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 244,
+      "sizeBytes": 2152908,
+      "errors": [
+        "Missing BoundaryToken181"
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 687365,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 984560,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 242,
+      "sizeBytes": 2126652,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "profile-sidebar-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 57,
+      "sizeBytes": 606026,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1030111,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 200,
+      "sizeBytes": 1848534,
+      "errors": [
+        "Missing BoundaryToken193"
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 58,
+      "sizeBytes": 606939,
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-360-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1019521,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 207,
+      "sizeBytes": 1895444,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-360-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 711170,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-360-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1021420,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-360-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 223,
+      "sizeBytes": 2059000,
+      "errors": [
+        "Missing BoundaryToken149"
+      ]
+    },
+    {
+      "id": "modern-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 686155,
+      "errors": []
+    },
+    {
+      "id": "modern-en-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 123,
+      "sizeBytes": 1114835,
+      "errors": [
+        "Missing BoundaryToken108"
+      ]
+    },
+    {
+      "id": "modern-en-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 240,
+      "sizeBytes": 2055489,
+      "errors": [
+        "Missing BoundaryToken108",
+        "Missing BoundaryToken169",
+        "Missing BoundaryToken230"
+      ]
+    },
+    {
+      "id": "classic-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 35,
+      "sizeBytes": 607125,
+      "errors": []
+    },
+    {
+      "id": "classic-en-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 79,
+      "sizeBytes": 1153245,
+      "errors": []
+    },
+    {
+      "id": "classic-en-390-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 158,
+      "sizeBytes": 2122974,
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 51,
+      "sizeBytes": 641404,
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 94,
+      "sizeBytes": 1062719,
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 175,
+      "sizeBytes": 1839224,
+      "errors": [
+        "Missing BoundaryToken136"
+      ]
+    },
+    {
+      "id": "compact-ats-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 718727,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 124,
+      "sizeBytes": 1178814,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "compact-ats-en-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 246,
+      "sizeBytes": 2210904,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 718884,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 122,
+      "sizeBytes": 1162214,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 244,
+      "sizeBytes": 2194813,
+      "errors": [
+        "Missing BoundaryToken181"
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 773859,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1097905,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 242,
+      "sizeBytes": 2344282,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "profile-sidebar-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 57,
+      "sizeBytes": 660951,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1112789,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 200,
+      "sizeBytes": 2003964,
+      "errors": [
+        "Missing BoundaryToken193"
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 58,
+      "sizeBytes": 676263,
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1126757,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 207,
+      "sizeBytes": 2083883,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "executive-letterhead-en-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 39,
+      "sizeBytes": 562420,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 68,
+      "sizeBytes": 891282,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-390-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 126,
+      "sizeBytes": 1556449,
+      "errors": []
+    },
+    {
+      "id": "modern-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 625390,
+      "errors": []
+    },
+    {
+      "id": "modern-ar-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 123,
+      "sizeBytes": 1029467,
+      "errors": [
+        "Missing BoundaryToken108"
+      ]
+    },
+    {
+      "id": "modern-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 240,
+      "sizeBytes": 1915824,
+      "errors": [
+        "Missing BoundaryToken108",
+        "Missing BoundaryToken169",
+        "Missing BoundaryToken230"
+      ]
+    },
+    {
+      "id": "classic-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 35,
+      "sizeBytes": 498412,
+      "errors": []
+    },
+    {
+      "id": "classic-ar-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 79,
+      "sizeBytes": 984959,
+      "errors": []
+    },
+    {
+      "id": "classic-ar-390-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 158,
+      "sizeBytes": 1844944,
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 51,
+      "sizeBytes": 570768,
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 94,
+      "sizeBytes": 969501,
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 175,
+      "sizeBytes": 1702407,
+      "errors": [
+        "Missing BoundaryToken136"
+      ]
+    },
+    {
+      "id": "compact-ats-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 687230,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 124,
+      "sizeBytes": 1144607,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "compact-ats-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 246,
+      "sizeBytes": 2169742,
+      "errors": [
+        "Missing BoundaryToken116"
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 687250,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 122,
+      "sizeBytes": 1127710,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 244,
+      "sizeBytes": 2152910,
+      "errors": [
+        "Missing BoundaryToken181"
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 687364,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 984561,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 242,
+      "sizeBytes": 2126653,
+      "errors": [
+        "Missing BoundaryToken049"
+      ]
+    },
+    {
+      "id": "profile-sidebar-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 57,
+      "sizeBytes": 606027,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1030112,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 200,
+      "sizeBytes": 1848535,
+      "errors": [
+        "Missing BoundaryToken193"
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 58,
+      "sizeBytes": 606939,
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-390-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1019521,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 207,
+      "sizeBytes": 1895444,
+      "errors": [
+        "Missing BoundaryToken094"
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-390-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 711170,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-390-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1021420,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-390-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 223,
+      "sizeBytes": 2059000,
+      "errors": [
+        "Missing BoundaryToken149"
+      ]
+    },
+    {
+      "id": "modern-en-1440-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 765976,
+      "errors": [
+        "Missing BoundaryToken041"
+      ]
+    },
+    {
+      "id": "modern-en-1440-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1086840,
+      "errors": [
+        "Missing BoundaryToken041"
+      ]
+    },
+    {
+      "id": "modern-en-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 217,
+      "sizeBytes": 2094781,
+      "errors": [
+        "Missing BoundaryToken041"
+      ]
+    },
+    {
+      "id": "classic-en-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 38,
+      "sizeBytes": 641126,
+      "errors": []
+    },
+    {
+      "id": "classic-en-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 81,
+      "sizeBytes": 1175267,
+      "errors": []
+    },
+    {
+      "id": "classic-en-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 160,
+      "sizeBytes": 2144290,
+      "errors": [
+        "Missing BoundaryToken154"
+      ]
+    },
+    {
+      "id": "compact-en-1440-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 52,
+      "sizeBytes": 648527,
+      "errors": [
+        "Missing BoundaryToken036"
+      ]
+    },
+    {
+      "id": "compact-en-1440-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1167104,
+      "errors": [
+        "Missing BoundaryToken036"
+      ]
+    },
+    {
+      "id": "compact-en-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 191,
+      "sizeBytes": 1990257,
+      "errors": [
+        "Missing BoundaryToken036"
+      ]
+    },
+    {
+      "id": "compact-ats-en-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 719744,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 125,
+      "sizeBytes": 1188632,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 247,
+      "sizeBytes": 2222741,
+      "errors": [
+        "Missing BoundaryToken181"
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 720948,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 123,
+      "sizeBytes": 1172837,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-1440-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 245,
+      "sizeBytes": 2206047,
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 775934,
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 121,
+      "sizeBytes": 1243983,
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 242,
+      "sizeBytes": 2347701,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 54,
+      "sizeBytes": 670151,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1153530,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 194,
+      "sizeBytes": 1977325,
+      "errors": [
+        "Missing BoundaryToken189"
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 29,
+      "sizeBytes": 483113,
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 56,
+      "sizeBytes": 795192,
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-1440-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 118,
+      "sizeBytes": 1522229,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 39,
+      "sizeBytes": 562419,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 68,
+      "sizeBytes": 891282,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 126,
+      "sizeBytes": 1556449,
+      "errors": []
+    },
+    {
+      "id": "modern-ar-1440-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 716875,
+      "errors": [
+        "Missing BoundaryToken041"
+      ]
+    },
+    {
+      "id": "modern-ar-1440-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1028083,
+      "errors": [
+        "Missing BoundaryToken041"
+      ]
+    },
+    {
+      "id": "modern-ar-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 217,
+      "sizeBytes": 2004485,
+      "errors": [
+        "Missing BoundaryToken041"
+      ]
+    },
+    {
+      "id": "classic-ar-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 38,
+      "sizeBytes": 529788,
+      "errors": []
+    },
+    {
+      "id": "classic-ar-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 81,
+      "sizeBytes": 1004839,
+      "errors": []
+    },
+    {
+      "id": "classic-ar-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 160,
+      "sizeBytes": 1864473,
+      "errors": [
+        "Missing BoundaryToken154"
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target2",
+      "status": "FAIL",
+      "pages": 2,
+      "lines": 52,
+      "sizeBytes": 577726,
+      "errors": [
+        "Missing BoundaryToken036"
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1068644,
+      "errors": [
+        "Missing BoundaryToken036"
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 191,
+      "sizeBytes": 1845987,
+      "errors": [
+        "Missing BoundaryToken036"
+      ]
+    },
+    {
+      "id": "compact-ats-ar-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 687007,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 125,
+      "sizeBytes": 1151739,
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 247,
+      "sizeBytes": 2176662,
+      "errors": [
+        "Missing BoundaryToken181"
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 686910,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 123,
+      "sizeBytes": 1135490,
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 245,
+      "sizeBytes": 2159430,
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 688133,
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 121,
+      "sizeBytes": 1117505,
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target5",
+      "status": "PASS",
+      "pages": 5,
+      "lines": 242,
+      "sizeBytes": 2127140,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 54,
+      "sizeBytes": 604393,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1053000,
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 194,
+      "sizeBytes": 1834355,
+      "errors": [
+        "Missing BoundaryToken189"
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 55,
+      "sizeBytes": 602826,
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target3",
+      "status": "FAIL",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1045387,
+      "errors": [
+        "Missing BoundaryToken088"
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 200,
+      "sizeBytes": 1867470,
+      "errors": [
+        "Missing BoundaryToken088"
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target2",
+      "status": "PASS",
+      "pages": 2,
+      "lines": 70,
+      "sizeBytes": 711171,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target3",
+      "status": "PASS",
+      "pages": 3,
+      "lines": 105,
+      "sizeBytes": 1021421,
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target5",
+      "status": "FAIL",
+      "pages": 5,
+      "lines": 223,
+      "sizeBytes": 2059003,
+      "errors": [
+        "Missing BoundaryToken149"
+      ]
+    }
+  ],
+  "native_reader_results": [
+    {
+      "id": "modern-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-360-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-en-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-en-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-360-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-360-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-360-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-360-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-360-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-360-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-360-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken149",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-360-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken149",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-390-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-en-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-en-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-en-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-390-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-390-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken108",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken169",
+          "count": 0
+        },
+        {
+          "token": "BoundaryToken230",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken136",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken116",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-ats-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken049",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken193",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken094",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-390-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-390-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-390-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-390-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-390-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken149",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-390-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken149",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken154",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken154",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken189",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken189",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-en-1440-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "modern-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "modern-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken041",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "classic-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken154",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "classic-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken154",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken036",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "compact-ats-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "compact-ats-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken181",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "healthcare-pro-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-ats-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken189",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "profile-sidebar-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken189",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken088",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken088",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken088",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "gold-sidebar-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken088",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target2",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target2",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target3",
+      "reader": "poppler-raw",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target3",
+      "reader": "pymupdf",
+      "status": "PASS",
+      "errors": []
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target5",
+      "reader": "poppler-raw",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken149",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "executive-letterhead-ar-1440-target5",
+      "reader": "pymupdf",
+      "status": "FAIL",
+      "errors": [
+        {
+          "token": "BoundaryToken149",
+          "count": 0
+        }
+      ]
+    }
+  ],
+  "blocked": [
+    "independent human QA/Security review",
+    "real authenticated Save PDF/document identity/restore",
+    "shared-browser real A/B confidentiality"
+  ],
+  "not_run": [
+    "physical Android search/copy",
+    "screen-reader/PDF-UA certification",
+    "external ATS parsing certification"
+  ],
+  "qa_workflow": "https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38135044451",
+  "ci_build": "https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38135044370",
+  "ci_e2e": "https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38135044399"
+}

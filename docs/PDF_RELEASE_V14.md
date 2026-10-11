@@ -19,13 +19,13 @@ Dependency order: source archive -> existing prepare hooks -> V16 shared PDF cal
 
 PDF-only QA files carried from Staging: `qa/pdf_sections_fixture.py`, `qa/pdf_sections_check.mjs`, `qa/pdf_photo_check.mjs`, `qa/pdf_longform_check.mjs`, `qa/pdf_quality_check.py`, `qa/pdf_word_boundary_fixture.py`, `qa/pdf_word_boundaries_check.py`, `qa/pdf_metadata_fixture.py`, `qa/pdf_metadata_download.mjs`, `qa/pdf_metadata_check.py`, `qa/pdf_rtl_list_style_check.mjs`, `qa/pdf_rtl_numerals_bullets_check.py`.
 
-New/adapted release QA: `qa/pdf_release_guard.py`, `qa/pdf_release_run.sh`, `qa/pdf_template_longform_check.mjs`, `.github/workflows/pdf-release-qa.yml`, this report. Tests use local `/sirati` and a pinned approved Staging comparator, never a real backend. Extend short fixtures to 360px and add long real-template markers. Fixed-baseline numeral comparison explicitly allows zero baseline failures; numeric correctness assertions remain strict. Original Staging workflow is not copied.
+New/adapted release QA: `qa/pdf_release_guard.py`, `qa/pdf_release_run.sh`, `qa/pdf_template_longform_check.mjs`, `qa/pdf_template_native_check.py`, `qa/pdf_release_evidence.json`, `.github/workflows/pdf-release-qa.yml`, this report. Tests use local `/sirati` and a pinned approved Staging comparator, never a real backend. Extend short fixtures to 360px and add long real-template markers. Fixed-baseline numeral comparison explicitly allows zero baseline failures; numeric correctness assertions remain strict. Original Staging workflow is not copied.
 
 Explicitly excluded: all three Staging migrations, Analytics activation/retention/ACL changes, Supabase/Auth/RLS/payments/secrets, Staging smoke edits, unrelated feature/template-heading work and Staging documentation. Existing main `netlify.toml` is already a Staging-only configuration; it is unchanged and is not used by GitHub Pages or isolated release QA.
 
 ## Test evidence
 
-Results below distinguish execution from planned checks. Final exact PR CI links and counts are recorded in the PR description after execution.
+Results below distinguish execution from planned checks. Runtime exporter and template port are byte-identical to the reviewed Staging algorithm (apart from its introductory documentation). GitHub validated runtime head `a46339d07761f88d7d187b38106090444e036aaa`; later changes only add QA/evidence/report material. Full sanitized records are in `qa/pdf_release_evidence.json` and reproducible from the no-deploy workflow.
 
 | Check | Status | Evidence / limit |
 |---|---|---|
@@ -34,9 +34,17 @@ Results below distinguish execution from planned checks. Final exact PR CI links
 | Account draft safeguards | PASS synthetic | Existing `account_storage_check.py`: eight draft cases, logout cleanup/failure retention, source invariants. Does not establish server-side live account isolation. |
 | Duplicate saved-document safety | PASS static | Existing `multi_cv_duplicate_check.py`; owner-scoped data copy invariants. No actual authenticated save performed. |
 | Existing guest/browser E2E | PASS locally | Original `qa/e2e.mjs` completed against production artifact, including guest Save PDF gate, cancel/edit/reload, bilingual preview, navigation and templates. |
-| PDF sections, A4, photos, Unicode, metadata, Arabic numbers and visual comparison | NOT RUN final gate | Execution in progress; update exact downloaded-output results before review. |
-| All-template 360/390/desktop long PDFs | NOT RUN final gate | New synthetic paragraph-marker matrix; results pending. |
-| Normal Node 22 GitHub build/QA at exact PR HEAD | NOT RUN | Await PR CI; earlier Staging successes are historical, not acceptance of candidate. |
+| PDF short sections, A4 and photos | PASS | 48 matched baseline/candidate cases (96 PDFs): 36 bilingual nine-family section pairs, 8 photo/sidebar pairs, 4 long synthetic controls. Independent Poppler Unicode/fonts; 17 sampled pixel comparisons passed. |
+| Metadata and word spacing | PASS | Arabic education/language glyph boxes non-overlapping; 54 phrase assertions through Poppler raw/layout and PyMuPDF. |
+| Arabic numeric values / list styles | PASS | 180 numeric reader observations at 390/1440px; Arabic Compact ATS markers removed, English retained. 90 additional numeric observations at 360px plus all sections in both native readers PASS. |
+| All nine short families, both languages, 360/390/1440px | PASS | 54 PDFs, all eight populated sections via PDF.js, A4. Chromium emulation only. |
+| PDF size / local latency vs approved Staging | PASS descriptive parity | 4,436,129 -> 4,436,141 bytes (+0.0003%); median 640 -> 636.5ms in one local run. No real-device performance claim. |
+| Sampled human visual inspection | PASS limited samples | Rendered Modern EN, Compact ATS AR and photo Gold Sidebar AR inspected. Failing boundary sample confirms paragraph is visually present despite absent native text. All-family independent human review NOT RUN. |
+| All-template 360/390/desktop long PDFs | FAIL | All 162 cases executed: nine families x EN/AR x three widths x 2/3/5 pages. A4 counts correct in all; 91 passed exact paragraph identity, 71 lost one or more native-text markers; zero duplicate markers. Both native readers reproduce the same failures: 182 PASS / 142 FAIL observations across 162 PDFs. |
+| Missing paragraph reproduction on approved Staging | FAIL | Modern EN, 360px, 123 paragraphs, 3 pages: BoundaryToken108 absent in PDF.js, Poppler raw and PyMuPDF on both approved Staging and candidate. Visible bitmap retains it; no saved customer data touched. |
+| Normal Node 22 GitHub production-path build | PASS at runtime head | [38135044370](https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38135044370), build success; deploy SKIPPED. This clears the local Turbopack-environment limitation for runtime head. |
+| GitHub original E2E | PASS at runtime head | [38135044399](https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38135044399), success. Build-only Staging smoke [38135044404](https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38135044404) success. |
+| New expanded PDF release workflow | NOT RUN final conclusion | [38135044451](https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38135044451) was executing at report preparation. Its long-template assertion must fail on unchanged exporter; inspect final PR checks on the final documentation/QA head. Do not classify pending CI as PASS. |
 | Real authenticated Save PDF + My Documents identity/restore | BLOCKED | Dedicated isolated accounts/session not supplied; local build intentionally has no real backend. |
 | Real shared-browser A -> logout -> B isolation | BLOCKED | Same dependency; user-reported earlier success is not independent exact-candidate evidence. #24/#25 remain gates. |
 | Independent human Security/QA signoff | BLOCKED | No separate reviewer signoff on candidate. Automated native-reader independence does not substitute for it. |
@@ -51,14 +59,17 @@ The PDF is a bitmap-faithful hybrid with transparent searchable Unicode text, no
 ## Outstanding priorities and decision
 
 - P0: no confirmed new P0 in completed checks; do not infer absence from blocked tests.
-- P1: #24/#25 independent authenticated A/B and save/restore confidentiality gates; exact-candidate reviewer signoff and normal production CI.
+- P1 CONFIRMED: native-text paragraph loss at page boundaries in 71/162 expanded cases, affecting every family in at least one synthetic scenario. All are 2/3/5 A4 pages; this can harm copy/search/ATS despite visible content.
+- P1 BLOCKED: #24/#25 independent authenticated A/B and save/restore confidentiality gates; exact-candidate reviewer signoff and final-head CI.
 - P1: #97/#120 real Android search/copy, long-template visuals and reading-order acceptance remain until final evidence is reviewed.
 - P2: existing hybrid PDF accessibility/selection limitations; no tagged PDF/UA or external ATS certification.
 - P2: pre-existing Modern profession headings in #117 are outside this PDF scope.
 - P3: emulated/local timing is not representative of every phone.
 - #87/#99 Analytics security/activation remain a separate NO-GO and are excluded from this release.
 
-**NO-GO for Production merge/release until exact-head build/PDF QA, independent review, manual device acceptance and explicit owner approval.** Draft candidate may be reviewed while remaining gates are blocked.
+**NO-GO for Production merge/release.** The confirmed P1 native-text loss must be corrected and retested before approval, in addition to independent review, actual account tests and manual device acceptance. This task intentionally ports only validated Staging runtime changes; it does not silently amend the exporter beyond that scope. Draft #124 is ready for failure review and focused remediation.
+
+Measured root cause: page-3 boundary `2229.001846665645` CSS px; missing token top `2228.421875` and bottom `2241.421875`. `chooseBreak` allows a 1px overlap but text inclusion uses 0.5px tolerance, excluding this word from both pages. This is directly measured DOM geometry, not an assumption about Auth or database behavior. Proposed next scope: harmonize text-safe boundary/inclusion logic, then require zero missing/duplicate markers in the full matrix and rerun visual parity. No runtime fix was applied here.
 
 ## Final manual QA and owner release gate
 

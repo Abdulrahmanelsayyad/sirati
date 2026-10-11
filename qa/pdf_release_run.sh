@@ -46,4 +46,8 @@ assert result['candidate_bytes'] <= result['baseline_bytes'] * 1.01
 PY
 
 cp candidate/qa/pdf_template_longform_check.mjs "$src/qa-release-template-long.mjs"
-(cd "$src"; QA_PDF_BASE_URL=http://127.0.0.1:4175/sirati node qa-release-template-long.mjs)
+long_status=0
+(cd "$src"; QA_PDF_BASE_URL=http://127.0.0.1:4175/sirati node qa-release-template-long.mjs) || long_status=$?
+native_status=0
+python3 candidate/qa/pdf_template_native_check.py || native_status=$?
+[[ "$long_status" == 0 && "$native_status" == 0 ]]
