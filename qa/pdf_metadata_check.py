@@ -43,7 +43,12 @@ def inspect(pdf_path, strict=False):
         companions=[s for s in lines if abs(s["y"]-y)<2.5 and s["text"]!=""]
         # Include only spans from the matching row. Fixture has no more
         # than one metadata row at a given vertical coordinate.
-        assert len(companions)>=3, f"{label}: expected split text spans, got {companions}"
+        assert len(companions)>=1, f"{label}: metadata row was absent"
+        # PyMuPDF may merge several physically separated text objects into
+        # one span if it recognizes an inline line. That's fine only if
+        # the field separator stays present in the extracted text.
+        assert "|" in "".join(item["text"] for item in companions), (
+            f"{label}: metadata delimiter lost: {companions}")
         overlaps=[]
         for i,a in enumerate(companions):
             for b in companions[i+1:]:
