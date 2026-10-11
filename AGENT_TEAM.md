@@ -1,13 +1,23 @@
 # Sirati Agent Team
 
-Sirati is operated by a coordinated multi-agent team. All agents must follow `AGENT_POLICY.md`.
+The names below are contributor roles and historical playbooks, not nine implemented autonomous AI services. Repository audit at `2d46485` found no model client, inference endpoint, scheduler, or executable agent manager in the reconstructed app. All contributors must follow `AGENT_POLICY.md`.
 
-## Hierarchy
+## Current execution architecture
+- One task owner coordinates implementation and handoff in one branch/PR. Manager and Deputy are one coordination responsibility; retain historical names for continuity only.
+- Product work uses the existing deterministic generators and editable browser content libraries. Design, Bug Fixer, CV Expert and Performance/SEO are review specialties, not separately deployed agents.
+- Quality verification uses existing build/browser/PDF tests plus `qa/verification.py`; Security uses independent boundary, dependency and authorization checks. These remain separate acceptance results, not producer self-approval.
+- Customer Liaison is a manual support responsibility. A mailto link is not a monitored inbox or an autonomous reply service. Do not send customer messages without explicit authorization.
+- No deployment, merge, database/auth/payment mutation or secret access is granted by a role name, board status or passing test. Each needs separate owner authorization.
+- Handoff: one owner, scope/files, base/head SHA, reproducible commands, evidence, failures/not-run checks and next reviewer. An unresolved check blocks the claim it would establish.
+- See `docs/AGENT_ARCHITECTURE_AUDIT.md` for inventory, scores, evidence and limitations.
+
+
+## Historical role names (not executable agents)
 1. **Sirati Manager** — coordinates the whole team, resolves priorities, prevents conflicting work, reviews outcomes, and reports only meaningful issues or progress to the owner.
 2. **Sirati Deputy Manager** — maintains the shared work board, detects overlaps/blockers, prepares handoffs, and acts as continuity backup for the Manager.
 3. **Sirati Design Agent** — improves visual design, spacing, layout, mobile responsiveness, Arabic RTL/English consistency, and CV template presentation. Runs daily.
 4. **Sirati Security Agent** — reviews repository/deployment security posture, dependency alerts, accidental exposure risks, public assets, and configuration hygiene. It may make only low-risk security hardening changes allowed by AGENT_POLICY.md. Protected settings always require owner approval.
-5. **Sirati Bug Fixer** — detects and fixes reproducible low-risk defects in navigation, forms, rendering, persistence, responsive behavior, and deployment output. It must verify build/deploy success.
+5. **Sirati Bug Fixer** — detects and fixes reproducible low-risk defects in navigation, forms, rendering, persistence, responsive behavior, and deployment output. It must verify the build and affected behavior; deployment requires separate owner authorization.
 6. **Sirati Customer Liaison** — monitors customer-facing requests, PDF-order/support signals, and connected communication channels. It replies only through an explicitly connected customer communication channel and escalates payment, disputes, privacy, abuse, or ambiguous cases to the owner.
 7. **Sirati CV Expert** — helps customers build stronger CVs using factual information supplied by the customer. It improves wording, structure, ATS clarity, and section guidance without inventing qualifications, jobs, dates, licenses, or achievements.
 8. **Sirati QA & Release Agent** — owns end-to-end testing before a task is considered complete. It checks landing → sign in → template → builder → save/restore → preview → PDF order on desktop and mobile, records reproducible failures, and verifies the live deployment after fixes.
@@ -41,7 +51,7 @@ Sirati is operated by a coordinated multi-agent team. All agents must follow `AG
 - If two agents detect overlapping work, both stop changes and the Deputy resolves ownership before either continues.
 - The Deputy maintains a conflict map for active tasks and flags shared files/components before work starts.
 - The Manager is the only role that may reprioritize or reassign overlapping tasks.
-- No task is marked complete until QA verifies the live user flow and the Manager confirms board/changelog closure.
+- A PR can be implementation-complete after local/CI checks; release-complete additionally requires separately authorized deployment and live acceptance. Never deploy merely to close a board entry.
 - If a deployment fails, the active owner pauses related downstream work until the failure is understood or rolled back.
 - Protected areas (auth, RLS, secrets, payment rules, repo/security settings) remain owner-approval gated regardless of agent ownership.
 
