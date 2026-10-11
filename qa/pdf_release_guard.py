@@ -17,11 +17,21 @@ original = subprocess.check_output(['git', 'show', base + ':.github/scripts/prep
 candidate = (repo / '.github/scripts/prepare_pages.py').read_text()
 assert candidate.startswith(original), 'Original reconstruction/auth ordering changed'
 assert candidate[len(original):].count('subprocess.run(') == 2
-staged = subprocess.check_output(['git', 'show', staging + ':.github/scripts/pdf_text_layer_v19.py'], cwd=repo, text=True)
-current = (repo / '.github/scripts/pdf_text_layer_v19.py').read_text()
-assert staged.replace('Intended for isolated Staging QA.',
-    'Production candidate; release remains gated by isolated QA and owner review.') == current
-print('PASS: unchanged staged PDF algorithm; main reconstruction preserved; scoped tracked diff')
+# V15 is an intentional remediation of the staged algorithm. Protect all
+# non-exporter generated application sources against the verified V14 head.
+v14 = 'c18427445bd521e0acba5ee6f6c34ae30168037b'
+followup = subprocess.check_output(['git', 'diff', '--name-only', v14], cwd=repo, text=True).splitlines()
+for path in followup:
+    assert path == '.github/scripts/pdf_text_layer_v19.py' or path.startswith('qa/pdf_') or path in {
+        '.github/workflows/pdf-release-qa.yml', 'docs/PDF_RELEASE_V14.md'}, path
+for path in ['.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_template.py']:
+    expected = subprocess.check_output(['git','show',v14+':'+path],cwd=repo,text=True)
+    assert (repo/path).read_text() == expected, 'Protected V14 generator changed: '+path
+exporter=(root/'lib/siratiPdfExport.ts').read_text()
+assert 'const pageWords = wordsByPage(words, pageCuts)' in exporter
+assert 'if (embedded !== words.length)' in exporter
+assert 'w.top + 0.5' not in exporter and 'w.top + 1' not in exporter
+print('PASS: scoped V15 remediation; V14 auth/reconstruction/templates preserved; exact text coverage guard')
 if '--production' in sys.argv:
     out = root / 'out'
     assert out.is_dir(), 'No production artifact'

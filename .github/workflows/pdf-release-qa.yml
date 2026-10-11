@@ -1,7 +1,7 @@
 name: PDF-only release candidate QA (no deploy)
 on:
   pull_request:
-    branches: [main]
+    branches: [main, release/pdf-only-v14-20261011]
     paths: ['.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/prepare_pages.py', 'qa/pdf_*', '.github/workflows/pdf-release-qa.yml']
 permissions:
   contents: read
@@ -30,6 +30,7 @@ jobs:
         working-directory: candidate
         run: |
           bash build.sh
+          node qa/pdf_boundary_check.mjs
           python3 qa/pdf_release_guard.py site-src/sirati-cv-source --production
           python3 qa/account_storage_check.py site-src/sirati-cv-source
           python3 qa/multi_cv_duplicate_check.py site-src/sirati-cv-source
@@ -78,6 +79,13 @@ jobs:
           npm install --no-save playwright@1.55.0
           cp ../../qa/e2e.mjs ./qa-e2e.mjs
           node qa-e2e.mjs
+      - name: Existing Staging build-only smoke (no credentials or deploy)
+        working-directory: candidate
+        run: |
+          python3 qa/pdf_staging_build.py
+          cp qa/staging_preview_smoke.mjs production-src/sirati-cv-source/qa-staging-smoke.mjs
+          cd production-src/sirati-cv-source
+          node qa-staging-smoke.mjs
       - name: Preserve synthetic evidence (not a website publication)
         if: always()
         uses: actions/upload-artifact@v4

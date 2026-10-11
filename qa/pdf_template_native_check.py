@@ -22,7 +22,26 @@ for item in cases:
             token='BoundaryToken'+str(n).zfill(3)
             count=text.count(token)
             if count!=1: errors.append({'token':token,'count':count})
-        results.append({'id':item['id'],'reader':reader,'status':'FAIL' if errors else 'PASS','errors':errors})
+        clean=''.join(ch for ch in unicodedata.normalize('NFC',text) if unicodedata.category(ch)!='Cf')
+        clean=re.sub(r'\s+',' ',clean)
+        phrase=('خبرة مهنية في تطوير التطبيقات وسلامة العمل' if '-ar-' in item['id']
+                else 'Professional experience in reliable software delivery')
+        count=clean.count(phrase)
+        if count!=item['lines']: errors.append({'paragraph_phrase_count':count,'expected':item['lines']})
+        # The marker must belong to one page and its source order must progress
+        # monotonically, including the previously omitted boundary paragraph.
+        with fitz.open(pdf) as document:
+            if reader=='pymupdf': chunks=[p.get_text(sort=True) for p in document]
+            else: chunks=[subprocess.check_output(['pdftotext','-raw','-f',str(i+1),'-l',str(i+1),str(pdf),'-'],text=True) for i in range(len(document))]
+        ownership=[]
+        for n in range(item['lines']):
+            token='BoundaryToken'+str(n).zfill(3)
+            owners=[i for i,chunk in enumerate(chunks) if token in chunk]
+            if len(owners)!=1: errors.append({'token':token,'page_owners':owners})
+            else: ownership.append(owners[0])
+        if ownership!=sorted(ownership): errors.append({'page_order':'nonmonotonic'})
+        results.append({'id':item['id'],'reader':reader,'status':'FAIL' if errors else 'PASS',
+                        'phrase_count':count,'page_ownership':ownership,'errors':errors})
 # Short 360px data must preserve all sections and equivalent Arabic numeric values.
 for pdf in Path('/tmp/sirati-pdf-candidate-widths').glob('*-360.pdf'):
     with fitz.open(pdf) as doc:

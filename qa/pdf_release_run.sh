@@ -2,6 +2,7 @@
 # Run from workspace parent containing baseline/ and candidate/ repo checkouts.
 # Baseline is approved Staging, NOT main's image-only PDF.
 set -euo pipefail
+node candidate/qa/pdf_boundary_check.mjs candidate/site-src/sirati-cv-source/lib/siratiPdfExport.ts
 export QA_PDF_FIXED_BASELINE=1
 export GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/tmp/sirati-pdf-release-summary.md}"
 for variant in baseline candidate; do

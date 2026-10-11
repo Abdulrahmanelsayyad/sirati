@@ -102,14 +102,32 @@ function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
 // Find a gap in the actual rendered word line boxes near an A4 boundary.
 // A fixed pixel crop can cut through Arabic glyphs, Latin lines or headings.
 // If both columns leave no line-safe boundary, fail rather than cut text.
-function chooseBreak(start: number, ideal: number, items: Word[]): number {
+function chooseBreak(start: number, ideal: number, items: Word[], rasterScale = 1): number {
   const floor = start + (ideal - start) * 0.70;
-  for (let offset = 0; offset <= ideal - floor; offset += 2) {
-    const candidate = ideal - offset;
-    const cutsText = items.some(w => w.top + 1 < candidate && w.bottom - 1 > candidate);
-    if (!cutsText) return candidate;
+  // Cuts share the bitmap's integer pixel grid. Move backwards to the
+  // start of any intersected word box until the whole row/column is safe.
+  // Touching an edge is safe; intersecting its open interior is not.
+  let candidate = Math.floor(ideal * rasterScale) / rasterScale;
+  while (candidate >= floor) {
+    const crossing = items.filter(w => w.top < candidate && candidate < w.bottom);
+    if (!crossing.length) return candidate;
+    const earlier = Math.min(...crossing.map(w => w.top));
+    candidate = Math.floor(earlier * rasterScale) / rasterScale;
   }
   throw new Error('Cannot split this CV safely across A4 pages. Shorten a long block.');
+}
+
+function wordsByPage(items: Word[], cuts: number[]): Word[][] {
+  const pages: Word[][] = cuts.slice(1).map(() => []);
+  for (const word of items) {
+    // Unique half-open ownership by top edge, then require the entire box
+    // to fit. No tolerance can admit a crossing word or silently drop it.
+    const index = cuts.findIndex((end, i) => i > 0 && word.top < end) - 1;
+    if (index < 0 || word.top < cuts[index] || word.bottom > cuts[index + 1])
+      throw new Error('PDF text crosses a page boundary; export aborted.');
+    pages[index].push(word);
+  }
+  return pages;
 }
 
 function downloadBlob(blob: Blob, name: string) {
@@ -199,14 +217,15 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     Math.max(Math.min(a4HeightCss, cssHeight), lastInk + 20));
   let top = 0;
   while (top + a4HeightCss < effectiveHeight - 2) {
-    const next = chooseBreak(top, top + a4HeightCss, words);
+    const next = chooseBreak(top, top + a4HeightCss, words, pxPerCss);
     if (next - top < a4HeightCss * 0.69)
       throw new Error('Invalid PDF page boundary.');
     pageCuts.push(next);
     top = next;
     if (pageCuts.length > 15) throw new Error('CV is too long for safe PDF export.');
   }
-  pageCuts.push(effectiveHeight);
+  pageCuts.push(Math.ceil(effectiveHeight * pxPerCss) / pxPerCss);
+  const pageWords = wordsByPage(words, pageCuts);
 
   // A single check is enough for all pages of the same CV.
   const hasPhotograph = Array.from(sheet.querySelectorAll('img'))
@@ -214,9 +233,9 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
   let embedded = 0;
   for (let pageIndex = 0; pageIndex < pageCuts.length - 1; pageIndex++) {
     const topCss = pageCuts[pageIndex], bottomCss = pageCuts[pageIndex + 1];
-    const topPx = Math.max(0, Math.floor(topCss * pxPerCss));
-    const bottomPx = Math.min(canvas.height, Math.ceil(bottomCss * pxPerCss));
-    if (bottomPx <= topPx) continue;
+    const topPx = Math.max(0, Math.round(topCss * pxPerCss));
+    const bottomPx = Math.min(canvas.height, Math.round(bottomCss * pxPerCss));
+    if (bottomPx <= topPx) throw new Error('Invalid PDF raster boundary.');
     const pageCanvas = document.createElement('canvas');
     pageCanvas.width = canvas.width;
     pageCanvas.height = bottomPx - topPx;
@@ -242,8 +261,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     // with embedded U+0020 separators, not word-by-word. Split only at
     // rendered line wraps and Arabic/Latin font boundaries.
     const runs: Word[][] = [];
-    for (const w of words) {
-      if (w.top + 0.5 < topCss || w.bottom - 0.5 > bottomCss) continue;
+    for (const w of pageWords[pageIndex]) {
       const prev = runs[runs.length - 1];
       const sameScript = prev &&
         /[\u0600-\u08FF]/u.test(prev[0].value) ===
@@ -298,15 +316,29 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         : hasArabic && first.rtl
           ? text.split(' ').reverse().join(' ')
           : text;
-      const token = [...extractionText].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
-      if (!token) continue;
+      // The bundled Arabic subset lacks ASCII punctuation. Preserve it
+      // through the existing Latin subset instead of filtering characters.
+      const spans: { text: string; font: typeof font }[] = [];
+      for (const ch of extractionText) {
+        if (/\p{Cf}/u.test(ch)) continue;
+        const code = ch.codePointAt(0)!;
+        const selected = supported.has(code) ? font
+          : latinChars.has(code) ? latinFont : arabicChars.has(code) ? arabicFont : null;
+        if (!selected) throw new Error('A CV character is unsupported by the PDF fonts; export aborted.');
+        const previous = spans[spans.length - 1];
+        if (previous?.font === selected) previous.text += ch;
+        else spans.push({ text: ch, font: selected });
+      }
+      if (!spans.length) throw new Error('PDF text is empty; export aborted.');
       const size = Math.max(5, Math.min(20, first.size * scalePt));
-      const glyphWidth = font.widthOfTextAtSize(token, size);
+      const glyphWidth = spans.reduce((sum, span) =>
+        sum + span.font.widthOfTextAtSize(span.text, size), 0);
       let x = first.rtl
         ? Math.max(...run.map(w => w.x + w.width)) * scalePt - glyphWidth
         : Math.min(...run.map(w => w.x)) * scalePt;
       const y = PDF_HEIGHT_PT - (first.top - topCss + first.size * 0.84) * scalePt;
-      if (y < 0 || y > PDF_HEIGHT_PT || !Number.isFinite(x)) continue;
+      if (y < 0 || y > PDF_HEIGHT_PT || !Number.isFinite(x))
+        throw new Error('PDF text position is unsafe; export aborted.');
       // Only pack *different* DOM text nodes sharing one rendered row.
       // Never change the source token, word order, or screenshot. Keep a
       // small measurable gap so independent PDF extractors do not combine
@@ -328,14 +360,18 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         }
       }
       const safeX = Math.max(0, x);
-      page.drawText(token, { x: safeX, y, size, font, opacity: 0 });
+      let spanX = safeX;
+      for (const span of spans) {
+        page.drawText(span.text, { x: spanX, y, size, font: span.font, opacity: 0 });
+        spanX += span.font.widthOfTextAtSize(span.text, size);
+      }
       previousRun = { x: safeX, width: glyphWidth, top: first.top,
         rtl: first.rtl, nodeId: first.nodeId };
       embedded += run.length;
     }
   }
   canvas.width = 0; canvas.height = 0; // Release the full-CV bitmap before PDF serialization.
-  if (embedded < Math.max(3, words.length * 0.55))
+  if (embedded !== words.length)
     throw new Error('Unicode PDF text coverage was insufficient; export aborted.');
   const bytes = await doc.save({ useObjectStreams: true });
   const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
