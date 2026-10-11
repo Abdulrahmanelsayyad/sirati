@@ -99,7 +99,7 @@ for kind, key, before, after, pages in pairs:
             assert ink_ratio(tail)>0.0005,f"{key}: near-blank trailing A4 page"
     reports.append(entry)
     print("PASS",key,"pages",pages,"Poppler UTF-8 extraction, fonts, visual gate" if key in visuals else "Poppler UTF-8 extraction")
-assert len(reports)==56, f"Expected 36 section + 8 portrait + 4 long baseline comparisons, got {len(reports)}"
+assert len(reports)==48, f"Expected 36 section + 8 portrait + 4 long baseline comparisons, got {len(reports)}"
 (OUTPUT/"quality-summary.json").write_text(json.dumps(reports,indent=2,ensure_ascii=False))
 with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as out:
     out.write("\n## Independent PDF quality gates\n")
