@@ -289,7 +289,9 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       if (previousRun && previousRun.nodeId !== first.nodeId &&
           previousRun.rtl === first.rtl &&
           Math.abs(previousRun.top - first.top) < Math.max(3, size * 0.48)) {
-        const gapPt = Math.max(3, size * 0.65);
+        // Wider invisible spacing is needed for extractors to recognize
+        // separators such as "degree | year" as distinct metadata fields.
+        const gapPt = Math.max(7, size * 1.1);
         const packedX = first.rtl
           ? Math.min(x, previousRun.x - gapPt - glyphWidth)
           : Math.max(x, previousRun.x + previousRun.width + gapPt);
