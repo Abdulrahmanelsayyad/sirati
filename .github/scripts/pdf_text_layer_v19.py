@@ -250,7 +250,14 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         /[\u0600-\u08FF]/u.test(w.value);
       const sameLine = prev &&
         Math.abs(prev[0].top - w.top) <= Math.max(3, w.size * 0.35);
-      if (prev && prev[0].nodeId === w.nodeId && sameLine && sameScript) {
+      // Keep numeric-only RTL runs separate from adjacent Arabic prose.
+      // They use a distinct LTR ASCII PDF text encoding for stable ATS
+      // numeral value extraction, not the screenshot's glyph rendering.
+      const numericWord = /^[\u0660-\u0669\u06F0-\u06F9]+$/u;
+      const sameNumericKind = prev &&
+        numericWord.test(prev[0].value) === numericWord.test(w.value);
+      if (prev && prev[0].nodeId === w.nodeId &&
+          sameLine && sameScript && sameNumericKind) {
         prev.push(w);
       } else {
         runs.push([w]);
@@ -266,7 +273,10 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     } | null = null;
     for (const run of runs) {
       const first = run[0];
-      const hasArabic = /[\u0600-\u08FF]/u.test(first.value);
+      const isArabicIndicNumber = run.every(w =>
+        /^[\u0660-\u0669\u06F0-\u06F9]+$/u.test(w.value));
+      const hasArabic = !isArabicIndicNumber &&
+        /[\u0600-\u08FF]/u.test(first.value);
       const font = hasArabic ? arabicFont : latinFont;
       const supported = hasArabic ? arabicChars : latinChars;
       const text = run.map(w => w.value).join(' ');
@@ -274,9 +284,20 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       // and PyMuPDF during extraction. Reverse the *word sequence* only for
       // Arabic RTL runs so extraction produces the original logical sentence.
       // Do not reverse letters or modify the visible bitmap layer.
-      const extractionText = hasArabic && first.rtl
-        ? text.split(' ').reverse().join(' ')
-        : text;
+      // Poppler -raw reverses RTL Arabic-Indic digit sequences whereas
+      // PyMuPDF may leave them in logical order. Their *numeric value*
+      // must remain stable across both readers for ATS/date parsing.
+      // The bitmap continues showing ٢٠٢٠; the invisible semantic value
+      // is the equivalent western decimal "2020", without changing dates.
+      const asciiNumber = (value: string) => value.replace(
+        /[\u0660-\u0669\u06F0-\u06F9]/gu, digit => String.fromCharCode(
+          '0'.charCodeAt(0) + digit.codePointAt(0)! -
+          (digit.codePointAt(0)! <= 0x0669 ? 0x0660 : 0x06F0)));
+      const extractionText = isArabicIndicNumber
+        ? asciiNumber(text)
+        : hasArabic && first.rtl
+          ? text.split(' ').reverse().join(' ')
+          : text;
       const token = [...extractionText].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
       if (!token) continue;
       const size = Math.max(5, Math.min(20, first.size * scalePt));

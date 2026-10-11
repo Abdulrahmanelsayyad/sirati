@@ -62,6 +62,7 @@ def ink_ratio(image):
 reports = []
 visuals = {
     "modern-en-1440", "modern-ar-390", "compact-ats-en-390",
+    "compact-ats-ar-1440", "compact-ats-ar-390",
     "profile-sidebar-en-1440", "gold-sidebar-ar-390",
     "executive-letterhead-en-390", "healthcare-pro-ar-1440",
     "classic-en-390", "executive-ats-en-1440",
