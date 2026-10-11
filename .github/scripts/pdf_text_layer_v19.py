@@ -394,6 +394,8 @@ pkg=root/'package.json'
 data=json.loads(pkg.read_text(encoding='utf-8'))
 deps=data.setdefault('dependencies',{})
 deps['pdf-lib']='1.17.1'
+# V17: the shared exporter uses pdf-lib; remove unused vulnerable legacy jsPDF.
+deps.pop('jspdf', None)
 deps['@pdf-lib/fontkit']='1.1.1'
 deps['@fontsource/noto-naskh-arabic']='5.3.0'
 data.setdefault('devDependencies',{})['pdfjs-dist']='4.10.38'
