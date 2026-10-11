@@ -202,6 +202,9 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
   }
   pageCuts.push(effectiveHeight);
 
+  // A single check is enough for all pages of the same CV.
+  const hasPhotograph = Array.from(sheet.querySelectorAll('img'))
+    .some(img => img.naturalWidth > 0 && img.naturalHeight > 0);
   let embedded = 0;
   for (let pageIndex = 0; pageIndex < pageCuts.length - 1; pageIndex++) {
     const topCss = pageCuts[pageIndex], bottomCss = pageCuts[pageIndex + 1];
@@ -218,10 +221,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     ctx.drawImage(canvas, 0, topPx, canvas.width, pageCanvas.height,
       0, 0, canvas.width, pageCanvas.height);
     const page = doc.addPage([PDF_WIDTH_PT, PDF_HEIGHT_PT]);
-    const encoded = await encodePageImage(
-      pageCanvas, Array.from(sheet.querySelectorAll('img'))
-        .some(img => img.naturalWidth > 0 && img.naturalHeight > 0),
-    );
+    const encoded = await encodePageImage(pageCanvas, hasPhotograph);
     const image = encoded.format === 'jpg'
       ? await doc.embedJpg(encoded.data)
       : await doc.embedPng(encoded.data);
