@@ -49,7 +49,7 @@ def squash(s):
     # Remove directional formatting controls, not word-boundary whitespace.
     clean = "".join(ch for ch in unicodedata.normalize("NFC",s)
                     if unicodedata.category(ch) != "Cf")
-    return re.sub(r"\\s+", " ", clean).strip()
+    return re.sub(r"\s+", " ", clean).strip()
 
 def extract(pdf, mode):
     if mode.startswith("poppler"):
@@ -74,8 +74,17 @@ for name in [*samples, *arabic_phrases]:
         old = extract(before,mode)
         for phrase in phrases:
             phrase = squash(phrase)
-            ok = phrase in actual
-            before_ok = phrase in old
+            # pdftotext -layout intentionally prints RTL in *visual*
+            # word order, unlike -raw and PyMuPDF's logical reading order.
+            # Verify the visual sequence retains spaces rather than pretending
+            # this extractor gives a logical-order Arabic ATS text stream.
+            check_phrase = (
+                " ".join(reversed(phrase.split(" ")))
+                if name in arabic_phrases and mode == "poppler-layout"
+                else phrase
+            )
+            ok = check_phrase in actual
+            before_ok = check_phrase in old
             baselineFailures += int(not before_ok)
             reports.append({"id":name,"tool":mode,"phrase":phrase,"pass":ok,"baseline_pass":before_ok})
             if not ok:
