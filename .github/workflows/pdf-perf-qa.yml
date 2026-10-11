@@ -1,0 +1,166 @@
+name: Sirati PDF Size & Unicode QA (Staging-only)
+
+# Compare identical synthetic CVs on isolated, locally served build artifacts.
+# No publish/deploy; does not access private documents or Production Supabase.
+on:
+  pull_request:
+    branches: ["docs/analytics-security-readiness-20261011"]
+    paths:
+      - ".github/scripts/pdf_text_layer_v19.py"
+      - "qa/pdf_sections_check.mjs"
+      - ".github/workflows/pdf-perf-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pdf-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      NEXT_PUBLIC_BASE_PATH: ""
+      NEXT_PUBLIC_SUPABASE_URL: https://ykfxcxhozqqsvhtdyxho.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_WJRNf7gnhrggw8r-XB85gw_MmRvwkVt
+      SIRATI_PDF_QA_FIXTURE: "1"
+      NEXT_PUBLIC_ANALYTICS_ENABLED: "false"
+
+    steps:
+      - name: Checkout exact baseline Staging SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline
+
+      - name: Checkout exact experimental PDF SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Reconstruct, prepare and build both variants without deploying
+        shell: bash
+        run: |
+          set -euo pipefail
+          for variant in baseline candidate; do
+            (
+              cd "$variant"
+              cat source.part1 source.part2 source.part3 source.part4a source.part4b source.part4c source.part5 source.part6 source.part7 | base64 -d > "/tmp/sirati-$variant.zip"
+              mkdir -p site-src
+              unzip -q "/tmp/sirati-$variant.zip" -d site-src
+              python3 .github/scripts/prepare_pages.py site-src/sirati-cv-source
+              python3 qa/render_staging_patch.py site-src/sirati-cv-source
+              python3 qa/print_isolation_fix.py site-src/sirati-cv-source
+              python3 qa/pdf_sections_fixture.py site-src/sirati-cv-source
+              cd site-src/sirati-cv-source
+              npm install --no-audit --no-fund
+              npm run build
+            )
+            python3 "$variant/qa/staging_bundle_guard.py" "$variant/site-src/sirati-cv-source/out"
+          done
+
+      - name: Install one browser and PDF parser for both benchmark runs
+        working-directory: candidate/site-src/sirati-cv-source
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          cp ../../../qa/pdf_sections_check.mjs ./qa-pdf-benchmark.mjs
+
+      - name: Serve local Staging builds without any deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4174 --directory baseline/site-src/sirati-cv-source/out >/tmp/sirati-baseline-http.log 2>&1 &
+          python3 -m http.server 4175 --directory candidate/site-src/sirati-cv-source/out >/tmp/sirati-candidate-http.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4174/qa-pdf-sections/ >/dev/null && curl -fsS http://127.0.0.1:4175/qa-pdf-sections/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/sirati-baseline-http.log /tmp/sirati-candidate-http.log
+          exit 1
+
+      - name: Download and extract 36 baseline English/Arabic PDFs
+        working-directory: candidate/site-src/sirati-cv-source
+        env:
+          QA_PDF_BASE_URL: http://127.0.0.1:4174
+          QA_PDF_RESULTS_DIR: /tmp/sirati-pdf-baseline
+        run: node ./qa-pdf-benchmark.mjs
+
+      - name: Download and extract 36 candidate English/Arabic PDFs
+        working-directory: candidate/site-src/sirati-cv-source
+        env:
+          QA_PDF_BASE_URL: http://127.0.0.1:4175
+          QA_PDF_RESULTS_DIR: /tmp/sirati-pdf-candidate
+        run: node ./qa-pdf-benchmark.mjs
+
+      - name: Compare exact scenario sizes, page counts and timings
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, statistics
+          from pathlib import Path
+          base = {r['id']:r for r in json.loads(Path('/tmp/sirati-pdf-baseline/results.json').read_text())}
+          candidate = {r['id']:r for r in json.loads(Path('/tmp/sirati-pdf-candidate/results.json').read_text())}
+          assert len(base) == len(candidate) == 36 and base.keys() == candidate.keys(), 'Missing scenario pairs'
+          for key in base:
+              b, c = base[key], candidate[key]
+              assert b['pages'] == c['pages'], f'Changed A4 page count: {key}'
+              assert b['sections'] == c['sections'] == 8, f'Missing content sections: {key}'
+          old = sum(x['sizeBytes'] for x in base.values())
+          new = sum(x['sizeBytes'] for x in candidate.values())
+          change = (new / old - 1) * 100
+          btime = statistics.median(x['elapsedMs'] for x in base.values())
+          ctime = statistics.median(x['elapsedMs'] for x in candidate.values())
+          rows = ['## Synthetic PDF size and performance comparison',
+                  f'- 36 matched scenarios: 9 CV templates × Arabic/English × desktop/mobile',
+                  f'- Total baseline size: {old:,} bytes',
+                  f'- Total candidate size: {new:,} bytes',
+                  f'- Size difference: {change:+.1f}%',
+                  f'- Median baseline export latency: {btime:,.0f} ms',
+                  f'- Median candidate export latency: {ctime:,.0f} ms',
+                  '- A4 page count and 8 Unicode content sections verified per PDF',
+                  '- Visual review and physical Android validation still REQUIRED']
+          for row in rows: print(row)
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as fh:
+              fh.write('\n'.join(rows) + '\n')
+          Path('candidate/pdf-perf-report.json').write_text(json.dumps({'baseline_bytes':old, 'candidate_bytes':new, 'percent_change':change, 'baseline_median_ms':btime, 'candidate_median_ms':ctime, 'baseline':base, 'candidate':candidate},indent=2))
+          if change >= -5:
+              raise SystemExit('FAIL: JPEG export did not improve synthetic PDF size by at least 5%; do not merge.')
+          PY
+
+      - name: Extract independent text and render visual review samples
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p candidate/pdf-perf-visual
+          for variant in baseline candidate; do
+            for fixture in modern-en-1440 gold-sidebar-ar-390 executive-letterhead-en-390; do
+              file="/tmp/sirati-pdf-$variant/$fixture.pdf"
+              if [ -f "$file" ]; then
+                pdftotext -layout "$file" "candidate/pdf-perf-visual/$variant-$fixture.txt" || true
+                if command -v pdftoppm >/dev/null; then
+                  pdftoppm -f 1 -l 1 -scale-to 1400 -png -singlefile "$file" "candidate/pdf-perf-visual/$variant-$fixture" || true
+                fi
+              fi
+            done
+          done
+
+      - name: Upload synthetic QA evidence for review (not a website deploy)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirati-staging-pdf-perf-qa
+          path: |
+            candidate/pdf-perf-report.json
+            candidate/pdf-perf-visual/
+            /tmp/sirati-pdf-baseline/results.json
+            /tmp/sirati-pdf-candidate/results.json
+            /tmp/sirati-baseline-http.log
+            /tmp/sirati-candidate-http.log
+          if-no-files-found: ignore
+          retention-days: 7
