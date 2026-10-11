@@ -190,3 +190,7 @@ Add a fourth Sirati CV template focused on maximum ATS readability and compact p
 - A4 preview/PDF output has no clipping, overlap, broken page breaks, or hidden text in the verified test set.
 - No paid dependency or API is introduced.
 - Task is closed only after live QA and an entry in `AGENT_CHANGELOG.md`.
+
+## PDF Staging integration — 2026-10-11
+- Owner: Codex / Bug Fixer. Status: LOCAL QA PASS / STAGING PUBLISH PENDING OWNER APPROVAL.
+- Scope: reuse PR #114 exporter on analytics Staging branch; verify native text and populated CV sections. No Production or deployment authorization.
