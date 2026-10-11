@@ -1,0 +1,90 @@
+name: PDF-only release candidate QA (no deploy)
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/prepare_pages.py', 'qa/pdf_*', '.github/workflows/pdf-release-qa.yml']
+permissions:
+  contents: read
+jobs:
+  isolated-pdf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      NEXT_PUBLIC_BASE_PATH: /sirati
+      NEXT_PUBLIC_ANALYTICS_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 78ab9519599bf3436fce4418b3fe7bdfdd8e56b7
+          path: baseline
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Production reconstruction and build (no QA fixture, no backend)
+        working-directory: candidate
+        run: |
+          bash build.sh
+          python3 qa/pdf_release_guard.py site-src/sirati-cv-source --production
+          python3 qa/account_storage_check.py site-src/sirati-cv-source
+          python3 qa/multi_cv_duplicate_check.py site-src/sirati-cv-source
+          python3 qa/pdf_order_policy_static_check.py
+          mv site-src production-src
+      - name: Build approved Staging and exact candidate with identical synthetic fixtures
+        env:
+          SIRATI_PDF_QA_FIXTURE: '1'
+        run: |
+          set -euo pipefail
+          for variant in baseline candidate; do
+            (cd "$variant"; bash build.sh)
+            python3 candidate/qa/pdf_sections_fixture.py "$variant/site-src/sirati-cv-source"
+            python3 candidate/qa/pdf_word_boundary_fixture.py "$variant/site-src/sirati-cv-source"
+            python3 candidate/qa/pdf_metadata_fixture.py "$variant/site-src/sirati-cv-source"
+            (cd "$variant/site-src/sirati-cv-source"; npm run build)
+          done
+      - name: Install independent PDF readers and local browser
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils python3-pil
+          python3 -m pip install --user --quiet pymupdf==1.26.5
+          (cd candidate/site-src/sirati-cv-source; npm install --no-save playwright@1.55.0; npx playwright install --with-deps chromium)
+          ln -s "$GITHUB_WORKSPACE/candidate/site-src/sirati-cv-source/node_modules/playwright" baseline/site-src/sirati-cv-source/node_modules/playwright
+          ln -s "$GITHUB_WORKSPACE/candidate/site-src/sirati-cv-source/node_modules/playwright-core" baseline/site-src/sirati-cv-source/node_modules/playwright-core
+      - name: Serve isolated production-path builds
+        run: |
+          mkdir -p serve-baseline serve-candidate serve-production
+          ln -s "$GITHUB_WORKSPACE/baseline/site-src/sirati-cv-source/out" serve-baseline/sirati
+          ln -s "$GITHUB_WORKSPACE/candidate/site-src/sirati-cv-source/out" serve-candidate/sirati
+          ln -s "$GITHUB_WORKSPACE/candidate/production-src/sirati-cv-source/out" serve-production/sirati
+          python3 -m http.server 4174 --directory serve-baseline >/tmp/baseline-http.log 2>&1 &
+          python3 -m http.server 4175 --directory serve-candidate >/tmp/candidate-http.log 2>&1 &
+          python3 -m http.server 4173 --directory serve-production >/tmp/production-http.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4175/sirati/qa-pdf-sections/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4174/sirati/qa-pdf-sections/ >/dev/null
+          curl -fsS http://127.0.0.1:4173/sirati/templates/ >/dev/null
+      - name: Bilingual PDF, fonts, A4, photo, numeric and visual parity
+        run: bash candidate/qa/pdf_release_run.sh
+      - name: Existing production-path guest journey regression
+        working-directory: candidate/production-src/sirati-cv-source
+        run: |
+          npm install --no-save playwright@1.55.0
+          cp ../../qa/e2e.mjs ./qa-e2e.mjs
+          node qa-e2e.mjs
+      - name: Preserve synthetic evidence (not a website publication)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirati-pdf-release-v14
+          path: |
+            candidate/pdf-perf-visual/
+            /tmp/sirati-pdf-*/
+            /tmp/*-http.log
+          retention-days: 7
