@@ -26,11 +26,14 @@ page.waitForFunction(()=>document.querySelector('[role=alert]')?.textContent,{ti
 page.getByRole('button',{name:'Download fixture'}).click().then(()=>new Promise(()=>{}))]);
 if(outcome.error)throw Error(id+' '+await page.locator('p[role=alert]').innerText());
 const path='/tmp/sirati-pdf-section-qa/'+id+'.pdf'; await outcome.d.saveAs(path);
+const sizeBytes = fs.statSync(path).size;
+assert(sizeBytes > 800 && sizeBytes < 3_500_000,
+  id+' PDF output is empty or unexpectedly large: '+sizeBytes+' bytes');
 const pdf=await getDocument({data:new Uint8Array(fs.readFileSync(path)),useSystemFonts:true}).promise;
 let text='';
 for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n);const v=p.getViewport({scale:1});assert(Math.abs(v.width-595.28)<2&&Math.abs(v.height-841.89)<2);text+=(await p.getTextContent()).items.map(i=>i.str||'').join(' ')+' ';}
 for(const token of expected)assert(text.includes(token),id+' PDF missing '+token);
-fs.writeFileSync(path+'.txt',text); results.push({id,pages:pdf.numPages,sections:expected.length});console.log('PASS',id,pdf.numPages,'pages',expected.length,'sections');await pdf.destroy();
+fs.writeFileSync(path+'.txt',text); results.push({id,pages:pdf.numPages,sections:expected.length,sizeBytes});console.log('PASS',id,pdf.numPages,'pages',expected.length,'sections',sizeBytes,'bytes');await pdf.destroy();
 }
 }
 }
