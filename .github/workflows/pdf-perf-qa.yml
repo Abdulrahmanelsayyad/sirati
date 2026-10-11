@@ -8,6 +8,10 @@ on:
     paths:
       - ".github/scripts/pdf_text_layer_v19.py"
       - "qa/pdf_sections_check.mjs"
+      - "qa/pdf_sections_fixture.py"
+      - "qa/pdf_photo_check.mjs"
+      - "qa/pdf_longform_check.mjs"
+      - "qa/pdf_quality_check.py"
       - ".github/workflows/pdf-perf-qa.yml"
 
 permissions:
@@ -54,7 +58,8 @@ jobs:
               python3 .github/scripts/prepare_pages.py site-src/sirati-cv-source
               python3 qa/render_staging_patch.py site-src/sirati-cv-source
               python3 qa/print_isolation_fix.py site-src/sirati-cv-source
-              python3 qa/pdf_sections_fixture.py site-src/sirati-cv-source
+              # Both builds use identical synthetic QA fixture from the candidate PR.
+              python3 ../candidate/qa/pdf_sections_fixture.py site-src/sirati-cv-source
               cd site-src/sirati-cv-source
               npm install --no-audit --no-fund
               npm run build
@@ -69,6 +74,15 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
           cp ../../qa/pdf_sections_check.mjs ./qa-pdf-benchmark.mjs
+          cp ../../qa/pdf_photo_check.mjs ./qa-pdf-photo.mjs
+          cp ../../qa/pdf_longform_check.mjs ./qa-pdf-longform.mjs
+
+      - name: Install Poppler and Pillow for independent Unicode and visual validation
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils python3-pil
+          python3 -c "from PIL import Image; print('Pillow ready')"
+          pdftotext -v 2>&1 | head -1
 
       - name: Serve local Staging builds without any deployment
         shell: bash
@@ -96,6 +110,22 @@ jobs:
           QA_PDF_BASE_URL: http://127.0.0.1:4175
           QA_PDF_RESULTS_DIR: /tmp/sirati-pdf-candidate
         run: node ./qa-pdf-benchmark.mjs
+
+      - name: Verify photo/sidebar PDF on both variants (8 scenarios each)
+        working-directory: candidate/site-src/sirati-cv-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          QA_PDF_BASE_URL=http://127.0.0.1:4174 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-photo-baseline node ./qa-pdf-photo.mjs
+          QA_PDF_BASE_URL=http://127.0.0.1:4175 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-photo-candidate node ./qa-pdf-photo.mjs
+
+      - name: Verify English/Arabic page-break scenarios on both variants
+        working-directory: candidate/site-src/sirati-cv-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          QA_PDF_BASE_URL=http://127.0.0.1:4174 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-long-baseline node ./qa-pdf-longform.mjs
+          QA_PDF_BASE_URL=http://127.0.0.1:4175 QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-long-candidate node ./qa-pdf-longform.mjs
 
       - name: Compare exact scenario sizes, page counts and timings
         shell: bash
@@ -134,6 +164,10 @@ jobs:
               raise SystemExit('FAIL: candidate worsened median synthetic PDF export time by over 20%; do not merge.')
           PY
 
+      - name: Independently verify Poppler Unicode, fonts and PDF visual parity
+        shell: bash
+        run: python3 candidate/qa/pdf_quality_check.py
+
       - name: Extract independent text and render visual review samples
         if: always()
         shell: bash
@@ -162,6 +196,10 @@ jobs:
             candidate/pdf-perf-visual/
             /tmp/sirati-pdf-baseline/results.json
             /tmp/sirati-pdf-candidate/results.json
+            /tmp/sirati-pdf-photo-baseline/results.json
+            /tmp/sirati-pdf-photo-candidate/results.json
+            /tmp/sirati-pdf-long-baseline/results.json
+            /tmp/sirati-pdf-long-candidate/results.json
             /tmp/sirati-baseline-http.log
             /tmp/sirati-candidate-http.log
           if-no-files-found: ignore
