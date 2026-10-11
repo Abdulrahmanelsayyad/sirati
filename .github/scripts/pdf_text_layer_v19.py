@@ -258,7 +258,14 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       const font = hasArabic ? arabicFont : latinFont;
       const supported = hasArabic ? arabicChars : latinChars;
       const text = run.map(w => w.value).join(' ');
-      const token = [...text].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
+      // pdf-lib's untagged invisible RTL strings are reordered by Poppler
+      // and PyMuPDF during extraction. Reverse the *word sequence* only for
+      // Arabic RTL runs so extraction produces the original logical sentence.
+      // Do not reverse letters or modify the visible bitmap layer.
+      const extractionText = hasArabic && first.rtl
+        ? text.split(' ').reverse().join(' ')
+        : text;
+      const token = [...extractionText].filter(ch => supported.has(ch.codePointAt(0)!)).join('');
       if (!token) continue;
       const size = Math.max(5, Math.min(20, first.size * scalePt));
       const x = first.rtl
