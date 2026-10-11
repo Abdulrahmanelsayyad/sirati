@@ -246,7 +246,13 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         : w.x * scalePt;
       const y = PDF_HEIGHT_PT - (w.top - topCss + w.size * 0.84) * scalePt;
       if (y < 0 || y > PDF_HEIGHT_PT || !Number.isFinite(x)) continue;
-      page.drawText(token, { x: Math.max(0, x), y, size, font, opacity: 0 });
+      // Keep a real U+0020 separator in the PDF content stream.
+      // Placing every DOM word in its own PDF drawText object *without*
+      // separators made Poppler/PyMuPDF merge adjacent words even though
+      // the raster page looked correctly spaced (issue #120).
+      // The text layer is invisible, so adding a trailing space never
+      // changes the visually rendered CV screenshot.
+      page.drawText(token + ' ', { x: Math.max(0, x), y, size, font, opacity: 0 });
       embedded++;
     }
   }
