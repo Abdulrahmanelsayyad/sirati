@@ -1,5 +1,7 @@
 """Local/CI synthetic fixture: real CvPreview and shared exporter; never customer data."""
 import os
+import json
+import re
 import sys
 import base64
 import struct
@@ -10,6 +12,9 @@ if os.environ.get('SIRATI_PDF_QA_FIXTURE') != '1':
     p.unlink(missing_ok=True)
     raise SystemExit(0)
 p.parent.mkdir(parents=True,exist_ok=True)
+template_union = (Path(sys.argv[1])/'lib/types.ts').read_text().split('export type TemplateName = ',1)[1].split(';',1)[0]
+templates = re.findall(r"'([^']+)'", template_union)
+assert len(templates) == len(set(templates)) and len(templates) >= 33
 # Generate a deterministic illustrated portrait using only stdlib (synthetic,
 # no personal photographs, network, image service or user data).
 def chunk(tag, data):
@@ -60,4 +65,4 @@ return <main><select aria-label="Template" value={template} onChange={e=>setTemp
 <label><input type="checkbox" checked={portrait} onChange={e=>setPortrait(e.target.checked)}/>Portrait</label>
 <button onClick={async()=>{setError('');try{await downloadCvSheet(stage.current!.querySelector<HTMLElement>('.cv-sheet')!,'sections');}catch(e){setError(String(e));}}}>Download fixture</button><p role="alert">{error}</p>
 <div className={offscreen?'sirati-pdf-offscreen':'wizard-preview-wrap'} aria-hidden={offscreen||undefined} ref={stage}><div className="preview-stage"><CvPreview data={data} template={template} language={language} watermarked={false}/></div></div></main>;
-}'''.replace('SYNTHETIC_PORTRAIT',portrait))
+}'''.replace('SYNTHETIC_PORTRAIT',portrait).replace("['modern','classic','compact','compact-ats','healthcare-pro','executive-ats','profile-sidebar','gold-sidebar','executive-letterhead']", json.dumps(templates)))

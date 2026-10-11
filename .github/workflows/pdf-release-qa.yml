@@ -1,8 +1,8 @@
 name: PDF-only release candidate QA (no deploy)
 on:
   pull_request:
-    branches: [main, release/pdf-only-v14-20261011, fix/pdf-boundary-v15-20261011]
-    paths: ['.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/prepare_pages.py', 'qa/pdf_*', '.github/workflows/pdf-release-qa.yml']
+    branches: [main, release/pdf-only-v14-20261011, fix/pdf-boundary-v15-20261011, fix/compact-ats-arabic-experience-v16-20261011]
+    paths: ['.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/prepare_pages.py', 'qa/pdf_*', '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml']
 permissions:
   contents: read
 jobs:

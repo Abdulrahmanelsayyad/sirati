@@ -26,7 +26,9 @@ try {
         const cs=getComputedStyle(ul),lc=li&&getComputedStyle(li);
         return {dir:cs.direction,align:cs.textAlign,position:cs.listStylePosition,
           padStart:cs.paddingInlineStart,padEnd:cs.paddingInlineEnd,
-          marker:lc?.listStyleType,liDir:lc?.direction,liAlign:lc?.textAlign};
+          marker:lc?.listStyleType,liDir:lc?.direction,liAlign:lc?.textAlign,
+          pseudo:li&&getComputedStyle(li,'::before').content,
+          pseudoRight:li&&getComputedStyle(li,'::before').right};
       });
       assert.equal(s.dir,'rtl','Arabic Experience list direction at '+width);
       assert.equal(s.liDir,'rtl','Arabic Experience item direction at '+width);
@@ -34,7 +36,9 @@ try {
       assert.equal(s.position,'outside','Arabic Experience marker position at '+width);
       assert(parseFloat(s.padStart)>=16,'Arabic Experience padding at '+width);
       assert.equal(parseFloat(s.padEnd),0,'Arabic Experience opposite padding at '+width);
-      assert.notEqual(s.marker,'none','Arabic Experience bullet disappeared at '+width);
+      assert.equal(s.marker,'none','Native RTL markers must be suppressed at '+width);
+      assert.equal(s.pseudo,'"•"','Explicit Arabic Experience bullet disappeared at '+width);
+      assert.equal(s.pseudoRight,'-14px','Explicit bullet placement at '+width);
       console.log('PASS Arabic Experience RTL',width,JSON.stringify(s));
     }
     // Read-only approved Staging comparison screenshots plus post-fix screenshots.
