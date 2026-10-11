@@ -71,7 +71,11 @@ function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
     if (style.display === 'none' || style.visibility !== 'visible' ||
         Number(style.opacity) === 0) continue;
     const fontSize = Number.parseFloat(style.fontSize) || 12;
-    const rtl = style.direction === 'rtl' || parent.closest('[dir="rtl"]') !== null;
+    // Computed direction already accounts for inheritance and explicit
+    // nested dir=ltr overrides. Checking any ancestor dir=rtl made English
+    // metadata inside Arabic templates falsely RTL, causing overlapping
+    // invisible glyph runs and misplaced punctuation.
+    const rtl = style.direction === 'rtl';
     const text = node.textContent;
     const rex = /\S+/gu;
     let match: RegExpExecArray | null;
