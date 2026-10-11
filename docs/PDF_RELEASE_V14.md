@@ -1,3 +1,62 @@
+# Sirati PDF remediation V15 — current report
+
+2026-10-11. Owner: V15 engineering session. **NO-GO; no merge or deployment performed or authorized.** This section supersedes the historical V14 report below.
+
+## Candidate and cause
+
+Dependent [Draft #125](https://github.com/Abdulrahmanelsayyad/sirati/pull/125) targets `release/pdf-only-v14-20261011` at `c18427445bd521e0acba5ee6f6c34ae30168037b`. Main remains `54461f950554c18d64690331020596dcf79e43cb`; approved comparator remains `78ab9519599bf3436fce4418b3fe7bdfdd8e56b7`. The final candidate is the commit containing this report/evidence; exact SHA is recorded in the PR body/checks. Historical intermediate head `94b1587adefde74a5abb338443d610dd86544982` is NOT the final validation target.
+
+Recorded word `[2228.421875,2241.421875]` straddles old cut `2229.001846665645`. Break selection permitted 1px intersection, whereas page text inclusion permitted only 0.5px: the same word was owned by neither page. Fresh old-candidate Modern EN360/123-paragraph reproduction failed in PDF.js, Poppler and PyMuPDF; the final exporter places BoundaryToken108 exactly once on page3.
+
+The fix computes cuts on the bitmap integer-pixel grid and retreats to the start of every crossing word box, including overlapping columns. A word's top edge selects exactly one half-open page interval; its whole box must fit or export rejects. The same cuts crop the bitmap without overlapping raster rows. All source words must be embedded, replacing the old 55% acceptance threshold. Unsafe geometry, unsupported glyphs and empty runs reject with an understandable error; no image-only fallback.
+
+A stricter glyph check exposed the inherited removal of ASCII punctuation from Arabic font subsets. Existing Latin font now supplies terminal punctuation while the entire Arabic sentence stays in one text object. Tests verify 95 complete Arabic sentences with punctuation in both readers. Unsafe embedded mixed-script runs and unsupported alphabets reject rather than silently lose characters. Arabic-Indic values still extract as equivalent ASCII numerals. This does not certify universal mixed-script selection, external ATS compatibility or PDF/UA.
+
+## Scope
+
+Runtime change: `.github/scripts/pdf_text_layer_v19.py` only. Protected generated application source parity: 34 existing TS/TSX/CSS files match the PR124 reconstruction; only `lib/siratiPdfExport.ts` differs. No fonts/templates/auth/data/schema/dependency/payment/Analytics configuration changed.
+
+QA: `qa/pdf_boundary_check.mjs`, `qa/pdf_staging_build.py`, `qa/pdf_release_guard.py`, `qa/pdf_release_run.sh`, `qa/pdf_template_longform_check.mjs`, `qa/pdf_template_native_check.py`, `qa/pdf_release_evidence.json`. Report: this file. Workflow: `.github/workflows/pdf-release-qa.yml` additionally targets the dependent base branch, executes exact-head boundary tests and reuses existing Staging build settings for a build-only smoke. Permissions stay `contents: read`; no deployment jobs or new credentials. Existing deploy workflows are unchanged. Every commit/title carries `[skip netlify]`.
+
+## Results on final source
+
+| Check | Before | After locally | Limits |
+|---|---|---|---|
+| Nine families × EN/AR × 360/390/1440 × 2/3/5 pages | 91 PASS / 71 FAIL | **162/162 PASS** | All 54 cases per page count match exact target; no missing/duplicate markers |
+| Independent native readers | 182 PASS /142 FAIL | **324/324 PASS** | 40,052 complete paragraph-reader observations; full sentence count, unique markers, monotonic page ownership |
+| Fractional boundary regression | Recorded failure | 42 PASS + touching edges, multi-column cascade and rejection cases | Executes actual generated TypeScript functions |
+| All nine short families/EN/AR/three widths/eight sections | PASS historical | 54/54 PASS | Chromium emulation |
+| Approved Staging paired PDFs | PASS historical | 48 pairs PASS | 36 sections,8 photos,4 synthetic long controls |
+| Pixel comparisons / fonts / photos / A4 | PASS historical | 17 samples PASS | Additional fresh Modern boundary and Arabic/photo inspection; not an all-page human review |
+| Word boundaries / metadata | PASS historical | 54 phrase assertions PASS; metadata non-overlap PASS | Poppler raw/layout and PyMuPDF |
+| Arabic numerals / existing list-style checks | PASS historical | 270 numeric observations PASS; cert/course list checks PASS | ASCII-equivalent native numeric extraction retained |
+| Original guest E2E / Smart CV / navigation | PASS historical | PASS | Save PDF gate retained; no authenticated server-side verification |
+| Production build and scope guard | PASS historical | PASS | Normal Turbopack Node24; /sirati, offline fonts, no fixture routes or Staging backend |
+| Existing Staging build/boot smoke | PASS historical | PASS | Existing config and bundle guard; no deploy, no actual login |
+| Account draft/logout/duplicates | PASS synthetic | PASS synthetic/static | Eight draft cases; not real account isolation |
+| Real login/logout/save/restore/multiple-document/A-B tests | BLOCKED | **BLOCKED** | Dedicated isolated accounts/session unavailable |
+| Human Security and QA signoff | BLOCKED | **BLOCKED** | Automated reader independence is not human signoff |
+| Physical Android copy/search; external ATS; PDF/UA | NOT RUN | **NOT RUN** | No certification claimed |
+| Final-head CI | Not applicable | **PENDING at report commit** | [Current exact-head checks](https://github.com/Abdulrahmanelsayyad/sirati/pull/125/checks); PR body records final run conclusion |
+
+Sanitized full matrix and reader records are in `qa/pdf_release_evidence.json`; the V14 evidence is retained under `historical_v14`. Exporter SHA256 binds locally tested output to the commit source; CI checks `github.event.pull_request.head.sha`. The no-deploy workflow archives synthetic PDFs/results. Intermediate [CI38136488878](https://github.com/Abdulrahmanelsayyad/sirati/actions/runs/38136488878) is historical and must not be called final-head PASS. Normal Pages/E2E/Staging workflows target main only; the dependent PR uses the expanded read-only workflow to execute their relevant non-deploy validation route.
+
+## Visual findings and remaining gates
+
+Fresh Compact ATS Arabic 5-page Experience inspection shows bullet marks at the far left while prose is right aligned: **FAIL / P2**, inherited list styling (generated CSS byte-identical to PR124). Existing cert/course marker correction passes. No template redesign/CSS expansion was made. This should have a separately scoped visual follow-up. The previously omitted Modern boundary line is now intact/searchable on page3; page2 ends with token107. Pixel parity is sampled, not a claim of exhaustive human visual approval.
+
+Own scoped security inspection: PASS for no auth/RLS/data/dependency/secret/Analytics/payment changes, same-origin PDF fonts, no customer test data, byte-identical protected sources and read-only no-deploy CI. Independent human Security/QA remains BLOCKED. No confirmed new P0/P1 text-loss defect remains in the validated synthetic matrix, but real-account confidentiality gates and independent signoff remain release blockers. PDF export deliberately rejects unrepresentable/unsafe text; hybrid text selection and untested mixed-script strings remain limits.
+
+**NO-GO** until final-head CI succeeds, dedicated real-account save/restore/A-B confidentiality checks complete, independent human Security/QA signoff is obtained and manual Android/reading-order acceptance is recorded. Owner approval on the exact final SHA remains required. Neither #124 nor #125 is merged; Production and Staging are not published.
+
+## Rollback readiness
+
+Rollback baseline is unchanged main `54461f950554c18d64690331020596dcf79e43cb`. This fix is isolated above #124, so abandoning its draft needs no production rollback. If a future owner-approved release regresses, prepare a reviewed revert PR (`git revert -m 1` for a merge, ordinary revert for squash), rebuild and verify PDF/guest gate/save identity/A-B. Never force-push/reset main or modify customer data. Revert publication also requires owner approval; main pushes deploy automatically. No database/schema rollback is needed. Rollback is documented, not executed.
+
+---
+
+# Historical V14 report (retained for before evidence)
+
 # Sirati PDF-only Production Release Candidate V14
 
 Date: 2026-10-11. Owner: this V14 engineering session. Status: draft; no merge or deployment authorized.

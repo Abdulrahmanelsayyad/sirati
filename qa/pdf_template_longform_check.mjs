@@ -48,7 +48,7 @@ try {
           await (await download).saveAs(path);
           const doc=await getDocument({data:new Uint8Array(fs.readFileSync(path))}).promise;
           const errors=[];
-          if(doc.numPages<target||doc.numPages>target+1) errors.push('Unexpected page count '+doc.numPages);
+          if(doc.numPages!==target) errors.push('Unexpected page count '+doc.numPages);
           let text='';
           for(let n=1;n<=doc.numPages;n++) {
             const p=await doc.getPage(n),v=p.getViewport({scale:1});

@@ -311,7 +311,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         /[\u0660-\u0669\u06F0-\u06F9]/gu, digit => String.fromCharCode(
           '0'.charCodeAt(0) + digit.codePointAt(0)! -
           (digit.codePointAt(0)! <= 0x0669 ? 0x0660 : 0x06F0)));
-      const extractionText = isArabicIndicNumber
+      let extractionText = isArabicIndicNumber
         ? asciiNumber(text)
         : hasArabic && first.rtl
           ? text.split(' ').reverse().join(' ')
@@ -319,6 +319,15 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       // The bundled Arabic subset lacks ASCII punctuation. Preserve it
       // through the existing Latin subset instead of filtering characters.
       const spans: { text: string; font: typeof font }[] = [];
+      // Keep the entire RTL sentence in one Arabic font object. Splitting
+      // it around a Latin period makes readers reorder each fragment.
+      const trailing = hasArabic && first.rtl ? text.match(/[.,!?;:]+$/u)?.[0] : undefined;
+      if (trailing) {
+        extractionText = text.slice(0, -trailing.length).split(' ').reverse().join(' ');
+      }
+      if (hasArabic && first.rtl && [...extractionText].some(ch =>
+          !supported.has(ch.codePointAt(0)!) && !/\p{Cf}/u.test(ch)))
+        throw new Error('Mixed-script PDF text cannot be exported safely. Separate the text fields.');
       for (const ch of extractionText) {
         if (/\p{Cf}/u.test(ch)) continue;
         const code = ch.codePointAt(0)!;
@@ -329,6 +338,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         if (previous?.font === selected) previous.text += ch;
         else spans.push({ text: ch, font: selected });
       }
+      if (trailing) spans.push({text: trailing, font: latinFont});
       if (!spans.length) throw new Error('PDF text is empty; export aborted.');
       const size = Math.max(5, Math.min(20, first.size * scalePt));
       const glyphWidth = spans.reduce((sum, span) =>
