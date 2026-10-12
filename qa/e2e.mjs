@@ -27,6 +27,26 @@ assert(guestTemplateSource.includes('function continueToBuilder()') &&
   'guest-first fix must preserve onboarding, gallery and template carousel');
 console.log('PASS: guest CV gallery has no account-loading state or auth redirect');
 
+// The saved-CV download must use recoverable bilingual notices, not expose
+// raw Supabase/browser errors in the UI. Run its actual generated mapper.
+const savedPdfSource = fs.readFileSync('components/SiratiPdfDownload.tsx','utf8');
+const mapperSource = savedPdfSource.match(/function pdfDownloadError\(error: unknown\): string \{[\s\S]*?\n\}/)?.[0];
+assert(mapperSource,'saved PDF failure-message function is missing');
+const {transpileModule:transpilePdfMessage, ScriptTarget:PdfScriptTarget} = await import('typescript');
+const pdfMessageJS = transpilePdfMessage(mapperSource,{compilerOptions:{target:PdfScriptTarget.ES2020}}).outputText;
+const pdfDownloadError = new Function(pdfMessageJS+';return pdfDownloadError;')();
+assert.match(pdfDownloadError(new Error('Sign in required.')), /سجّل الدخول.*Sign in/);
+assert.match(pdfDownloadError(new Error('Saved CV not available for this account.')), /غير متاحة.*unavailable/);
+assert.match(pdfDownloadError(new Error('Saved CV content is missing.')), /غير متاح.*missing/);
+assert.match(pdfDownloadError(new Error('Private server credentials: example')), /أعد المحاولة.*Retry/);
+assert(!pdfDownloadError(new Error('Private server credentials: example')).includes('Private server credentials'));
+assert.equal((savedPdfSource.match(/setErrorText\(pdfDownloadError\(e\)\)/g)||[]).length,2,
+  'both saved-CV PDF failure paths must show safe bilingual messages');
+assert(savedPdfSource.includes('aria-busy={busy}') &&
+       savedPdfSource.includes("aria-label={'تنزيل PDF · Download PDF · ' + title}"),
+  'download state and document-specific bilingual accessible name must be preserved');
+console.log('PASS: saved PDF download notices are bilingual, retryable and hide backend details');
+
 const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
 // Every account-owned saved CV card should expose the already implemented
 // Smart CV and Quality journeys, without going through Templates or auth.
