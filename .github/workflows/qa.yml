@@ -11,12 +11,13 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Verify PDF order security SQL (static only)
-        run: python3 qa/pdf_order_policy_static_check.py
+      - name: Verify runner failure and credential-boundary contracts
+        run: python3 -m unittest discover -s qa -p test_verification.py -v
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -32,11 +33,17 @@ jobs:
           python .github/scripts/prepare_pages.py site-src/sirati-cv-source
           python qa/print_isolation_fix.py site-src/sirati-cv-source
 
-      - name: Check account draft isolation
-        run: python qa/account_storage_check.py site-src/sirati-cv-source
+      - name: Bounded synthetic and source verification (not live security approval)
+        run: python3 qa/verification.py site-src/sirati-cv-source --output /tmp/sirati-verification.json
 
-      - name: Check duplicate CV safety
-        run: python qa/multi_cv_duplicate_check.py site-src/sirati-cv-source
+      - name: Preserve credential-free verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirati-verification
+          path: /tmp/sirati-verification.json
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Install and build
         working-directory: site-src/sirati-cv-source
@@ -44,6 +51,7 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /sirati
         run: |
           npm install
+          npm audit --audit-level=high
           npm run build
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium

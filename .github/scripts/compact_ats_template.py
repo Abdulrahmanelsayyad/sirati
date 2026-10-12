@@ -395,7 +395,52 @@ if marker not in css:
   .template-compact-ats .keep-together,
   .template-compact-ats .compact-ats-entry { break-inside:avoid; page-break-inside:avoid; }
 }
+/* RTL bullet correction: native list markers can render at the far LEFT
+   edge in an A4 html2canvas capture even when the text is right-aligned.
+   Arabic Compact ATS certifications and courses should read as aligned
+   plain entries; English list presentation is deliberately unchanged. */
+.template-compact-ats[dir="rtl"] .compact-ats-list {
+  direction:rtl;
+  list-style:none;
+  padding-inline-start:0;
+  padding-inline-end:0;
+}
+.template-compact-ats[dir="rtl"] .compact-ats-list > li {
+  list-style:none;
+  text-align:right;
+}
 '''
     css_path.write_text(css, encoding="utf-8")
 
 print("Applied Compact ATS template.")
+
+# V16: narrowly scope the Arabic Experience bullet alignment; keep LTR native markers.
+# The DetailLines component renders Experience bullets using .cv-bullets,
+# not .compact-ats-list (the latter is already covered by V14).
+rtl_experience_marker = '/* V16 Compact ATS Arabic Experience bullets */'
+if rtl_experience_marker not in css:
+    css += """
+/* V16 Compact ATS Arabic Experience bullets */
+.template-compact-ats[dir="rtl"] .cv-bullets {
+  direction: rtl;
+  text-align: right;
+  padding-inline-start: 18px;
+  padding-inline-end: 0;
+  list-style-position: outside;
+  list-style-type: none;
+}
+.template-compact-ats[dir="rtl"] .cv-bullets > li {
+  direction: rtl;
+  text-align: right;
+  position: relative;
+  list-style-type: none;
+}
+/* Explicit pseudo-element avoids html2canvas's misplaced native RTL marker. */
+.template-compact-ats[dir="rtl"] .cv-bullets > li::before {
+  content: "\u2022";
+  position: absolute;
+  right: -14px;
+  top: 0;
+}
+"""
+    css_path.write_text(css, encoding="utf-8")

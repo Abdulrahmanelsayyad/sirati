@@ -190,3 +190,43 @@ Add a fourth Sirati CV template focused on maximum ATS readability and compact p
 - A4 preview/PDF output has no clipping, overlap, broken page breaks, or hidden text in the verified test set.
 - No paid dependency or API is introduced.
 - Task is closed only after live QA and an entry in `AGENT_CHANGELOG.md`.
+
+## V18 release preparation — 2026-10-11
+- Owner: V18 technical execution session.
+- Status: draft implementation verified locally; release BLOCKED, no merge/deploy.
+- Scope: correct two obsolete homepage PDF FAQ answers; preserve strict generator scope check; rehearse rollback retaining manual deployment gate.
+- Handoff: current evidence and remaining account/device/reviewer dependencies are in the V18 section of `docs/PDF_RELEASE_V14.md`. No other agent ownership is changed. Live acceptance remains open.
+
+## P1 PDF punctuation export #130 — 2026-10-11
+Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punctuation to the Arabic PDF font; retain mixed-letter guard until separately validated. No account/database changes. Draft candidate; no changed-SHA deployment or production approval.
+
+## AI architecture audit V1 — 2026-10-11
+- Owner: Codex architecture audit session.
+- Branch: `audit/agent-architecture-v1-20261011`; base `2d464852dc11a98b2ab4d1bb05388b25eaaeaaf1`.
+- Scope: QA runner and credential-boundary tests, existing QA CI wiring, agent governance and evidence documentation only. No product/PDF generator edits.
+- Status: IN REVIEW — no merge/deploy.
+- Handoff: `docs/AGENT_ARCHITECTURE_AUDIT.md`; security and QA evidence retain separate checks and unresolved gates. Historical board entries are not current live acceptance evidence.
+
+## V21 PDF QA compatibility follow-up — 2026-10-12
+- Owner: Codex continuation session; PR #133, runtime pinned at d909eba.
+- Scope: PDF source-scope guard and adversarial regression only; no runtime/workflow changes.
+- Finding: historical V14 whitelist rejected the approved session patch before PDF tests ran.
+- Rule: use an explicit reviewed source snapshot for this successor; retain original historical checks, manual deployment gate, PDF invariants and production artifact checks.
+- Status: local production build/artifact gate, 10 guard regressions, account suite, bounded verifier, 10 verifier contracts and 42 PDF boundary cases PASS. Exact-head CI pending; no merge/deploy or independent release approval.
+
+## Menu accessibility continuation — 2026-10-12
+- Owner: Codex; branch `fix/mobile-menu-focus-20261012`, base `ff5e597` (merged V21).
+- Scope: existing navigation generator and E2E only; background isolation, focus containment and restoration. No overlapping template/Smart CV work.
+- Evidence before: generated drawer declares `aria-modal` but only locks scrolling and boundary Tab; background elements remain interactive to programmatic/assistive focus.
+- Reference: W3C APG modal dialog pattern, https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/ .
+- Reusable rule: pair modal semantics with actual background isolation, preserve prior inert/scroll state, restore it before returning focus, and exercise filtered results.
+- Status: local production build/typecheck, bounded verification and generated-source comparison PASS (only SiratiSiteMenu.tsx changed; app/lib/public byte-identical). Existing CI now exercises modal isolation, Tab wrapping, filtered results and all dismissals at five widths. Exact-head browser CI pending; local browser unavailable. No merge/deploy; physical Android and assistive technology acceptance remain separate.
+
+## Modern headings continuation — 2026-10-12
+- Owner: Codex; existing Draft PR #117, branch `fix/modern-profession-headings-20261011`; updated onto main `ba1eb05`. Reuses the existing implementation and workflow, no duplicate PR.
+- Scope: profession-heading generator and its existing regression. Unknown roles remain neutral; Arabic word boundaries/diacritic normalization prevent kitchen titles matching medicine; healthcare industry words alone do not prove a clinical occupation. No user CV content rewritten.
+- Benchmark principle: standard, relevant section headings (CareerOneStop Resume Guide / Veterans resume format); no ATS certification claim.
+- Local evidence: production build/TypeScript PASS; 26 real generated-component renders PASS (both headings, content unchanged, empty sections hidden); bounded account/draft, duplicate, SQL-static, PDF boundary and credential-boundary checks PASS. The expanded test rejects the old candidate. Initial candidate build attempt failed on a local dependency symlink; using the same dependencies as regular files passed without configuration changes.
+- Browser matrix reuses #117 workflow and now covers 13 titles in EN/AR at 360/390/1440 widths. Exact-head CI pending. Browser unavailable locally; no new native-PDF/device/live-account acceptance claimed.
+- Reusable lesson: test complete Arabic words and ambiguous industry/job combinations, not only obvious role examples. Keep nonclinical headings neutral when classification is uncertain.
+- No merge to main or publication; existing PDF/account/menu changes retained. Release acceptance remains separate.

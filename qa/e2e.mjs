@@ -304,8 +304,22 @@ for (const width of [320,360,390,768,1440]) {
   assert((await drawer.locator('a[href*="career-tools"]').count())>=3,'career tools deep links missing');
   const dimensions = await drawer.boundingBox();
   assert(dimensions && dimensions.width<=width+1,'sidebar overflows at '+width);
+  // A modal must isolate the page, not merely announce aria-modal.
+  assert(await page.locator('.marketing-page').evaluate(el => !!el.closest('[inert]')),
+    'drawer leaves background content interactive at '+width);
+  const closeMenu = drawer.getByRole('button',{name:'Close Sirati menu'});
+  assert(await closeMenu.evaluate(el => el === document.activeElement), 'initial modal focus');
+  await page.locator('.marketing-hero .hero-actions a').first().evaluate(el => el.focus());
+  assert(await closeMenu.evaluate(el => el === document.activeElement), 'background must reject focus');
+  await page.keyboard.press('Shift+Tab');
+  assert(await drawer.evaluate(el => el.contains(document.activeElement)), 'reverse Tab escaped');
+  await page.keyboard.press('Tab');
+  assert(await closeMenu.evaluate(el => el === document.activeElement), 'Tab must wrap to close');
   await page.keyboard.press('Escape');
   assert.equal(await drawer.count(),0,'Escape must dismiss drawer');
+  assert(await opener.evaluate(el => el === document.activeElement), 'focus must return to opener');
+  assert.equal(await page.locator('.marketing-page').evaluate(el => !!el.closest('[inert]')),false,
+    'closing drawer must restore page interaction');
   const over = await page.evaluate(() => document.documentElement.scrollWidth-innerWidth);
   assert(over<=2,'homepage overflows with side navigation at '+width+'px');
 }
@@ -334,6 +348,12 @@ assert(visibleFeatures[0].includes('Cover Letter Pro'),'Arabic search filtered w
 await featureSearch.fill('this-feature-does-not-exist-987');
 assert.equal(await featureDialog.locator('.sirati-menu-item').count(),0,'nonexistent feature query must remove all feature results');
 assert(await featureDialog.getByText('لا توجد أدوات مطابقة').isVisible(),'empty state message missing');
+await featureDialog.getByRole('button',{name:'Close Sirati menu'}).focus();
+await page.keyboard.press('Shift+Tab');
+assert(await featureDialog.evaluate(el => el.contains(document.activeElement)), 'empty search focus escaped');
+await page.keyboard.press('Tab');
+assert(await featureDialog.getByRole('button',{name:'Close Sirati menu'}).evaluate(el => el === document.activeElement),
+  'filtered menu must recompute its focus boundary');
 await featureDialog.getByRole('button',{name:'إظهار كل الأدوات · Show all'}).click();
 assert.equal(await featureSearch.inputValue(),'','Show all must reset the query');
 assert((await featureDialog.locator('.sirati-menu-item').count())>=8,'clearing query must restore the menu');
@@ -341,6 +361,22 @@ await page.keyboard.press('Escape');
 assert.equal(await featureDialog.count(),0,'Escape must still dismiss the searched menu');
 assert(await opener.evaluate(el => el === document.activeElement),'closing the menu must restore keyboard focus');
 log('Sidebar V2: Arabic/English filtering, direct links, empty state, reset and focus restoration');
+// Preserve pre-existing inert state and restore scrolling for pointer dismissal too.
+await page.evaluate(() => {
+  document.body.style.overflow = 'auto';
+  const marker = document.createElement('div');
+  marker.id = 'qa-inert-marker'; marker.inert = true; document.body.append(marker);
+});
+await opener.click();
+await featureDialog.getByRole('button',{name:'Close Sirati menu'}).click();
+assert(await page.locator('#qa-inert-marker').evaluate(el => el.inert), 'pre-existing inert lost');
+assert.equal(await page.evaluate(() => document.body.style.overflow),'auto', 'scroll state lost');
+await opener.click();
+await page.locator('.sirati-menu-backdrop').click({position:{x:5,y:400}});
+assert.equal(await featureDialog.count(),0,'backdrop must still close the drawer');
+assert(await opener.evaluate(el => el === document.activeElement),'pointer dismissal focus');
+await page.evaluate(() => { document.getElementById('qa-inert-marker').remove(); document.body.style.overflow = ''; });
+log('Modal background isolation, bidirectional Tab, filtered results and all dismissals PASS');
 await page.setViewportSize({width:1440,height:1000});
 
 

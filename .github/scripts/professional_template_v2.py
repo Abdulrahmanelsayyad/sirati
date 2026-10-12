@@ -18,9 +18,9 @@ if "professional-v2" not in text:
 
     // Titles are part of the user's CV content; infer headings, never skills.
     // Unrecognized professions intentionally use neutral labels (not nursing).
-    const profession = (data.title || '').toLocaleLowerCase();
-    const isClinical = /(?:^|\W)(?:nurs(?:e|ing)|physician|doctor|surgeon|paramedic|pharmacist|midwife|dentist|clinician|medical|clinical|healthcare)(?:$|\W)/i.test(profession)
-      || /ممرض|تمريض|طبيب|دكتور|صيدلي|مسعف|قابلة|معالج|طب(?:يب)?|سريري/.test(profession);
+    const profession = (data.title || '').normalize('NFKC').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '');
+    const isClinical = /(?:^|\W)(?:nurs(?:e|ing)|physician|doctor|surgeon|paramedic|pharmacist|midwife|dentist|clinician|physiotherapist)(?:$|\W)/i.test(profession)
+      || /(?:^|[^\p{L}])(?:ممرض(?:ة)?|تمريض|طبيب(?:ة)?|دكتور(?:ة)?|صيدل(?:ي|ية)|مسعف(?:ة)?|قابلة|معالج(?:ة)?)(?=$|[^\p{L}])/u.test(profession);
     const isTechnical = /(?:^|\W)(?:software|develop(?:er|ment)|programmer|engineer|devops|data scientist|cybersecurity|web developer|information technology|it support)(?:$|\W)/i.test(profession)
       || /مبرمج|مهندس|مطوّر|مطور|تقنية المعلومات|برمجيات/.test(profession);
     const skillsHeading = isClinical

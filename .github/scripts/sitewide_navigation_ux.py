@@ -34,6 +34,53 @@ swap("  const [open, setOpen] = useState(false);",
 swap("const focusable = menu?.querySelectorAll<HTMLElement>('a[href],button:not([disabled])');",
 "const focusable = menu?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])');",
 "keyboard focus trap handles input")
+swap("""    closeButton.current?.focus();
+    function handleKeys""",
+"""    const menu = document.getElementById('sirati-site-menu');
+    const layer = menu?.closest<HTMLElement>('.sirati-menu-layer');
+    // aria-modal describes the drawer; inert also blocks background interaction.
+    // Walk ancestor siblings so this remains correct inside a layout wrapper.
+    const background = new Map<HTMLElement, boolean>();
+    let branch: HTMLElement | null = layer ?? null;
+    while (branch && branch !== document.body) {
+      const parent: HTMLElement | null = branch.parentElement;
+      if (!parent) break;
+      for (const sibling of Array.from(parent.children)) {
+        if (sibling instanceof HTMLElement && sibling !== branch &&
+            !['SCRIPT', 'STYLE', 'LINK'].includes(sibling.tagName)) {
+          background.set(sibling, sibling.inert);
+          sibling.inert = true;
+        }
+      }
+      branch = parent;
+    }
+    closeButton.current?.focus({ preventScroll: true });
+    function containFocus(event: FocusEvent) {
+      if (event.target instanceof Node && !menu?.contains(event.target)) {
+        closeButton.current?.focus({ preventScroll: true });
+      }
+    }
+    document.addEventListener('focusin', containFocus);
+    function handleKeys""", "isolate modal background")
+swap("if (event.key === 'Escape') setOpen(false);",
+     "if (event.key === 'Escape') { event.preventDefault(); setOpen(false); return; }",
+     "consume modal escape")
+swap("""      const focusable = menu?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])');""",
+"""      const focusable = Array.from(menu?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])') ?? [])
+        .filter(el => el.tabIndex >= 0 && !el.closest('[inert]') &&
+          el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible');""",
+"skip unavailable focus targets")
+swap("""    return () => { document.body.style.overflow = prior; document.removeEventListener('keydown', handleKeys); opener.current?.focus(); };""",
+"""    return () => {
+      document.removeEventListener('focusin', containFocus);
+      document.removeEventListener('keydown', handleKeys);
+      background.forEach((wasInert, el) => { el.inert = wasInert; });
+      document.body.style.overflow = prior;
+      opener.current?.focus({ preventScroll: true });
+    };""", "restore background and focus without scroll jumps")
+swap('className="sirati-menu-backdrop" type="button"',
+     'className="sirati-menu-backdrop" type="button" tabIndex={-1}',
+     "backdrop is pointer dismissal, not an extra tab stop")
 swap("""  return <>
     <button ref={opener} type="button" className="sirati-menu-trigger no-print" """.rstrip(),
 """  return <>
