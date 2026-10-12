@@ -45,6 +45,13 @@ assert.equal((savedPdfSource.match(/setErrorText\(pdfDownloadError\(e\)\)/g)||[]
 assert(savedPdfSource.includes('aria-busy={busy}') &&
        savedPdfSource.includes("aria-label={'تنزيل PDF · Download PDF · ' + title}"),
   'download state and document-specific bilingual accessible name must be preserved');
+assert(savedPdfSource.includes("import { withBasePath } from '@/lib/basePath';") &&
+       savedPdfSource.includes("href={withBasePath('/builder?doc=' + encodeURIComponent(documentId))}") &&
+       savedPdfSource.includes("aria-label={'فتح السيرة في المحرر · Open CV editor · ' + title}"),
+  'failed saved-CV download must offer an accessible, account-owned editor fallback');
+assert(fs.readFileSync('app/globals.css','utf8').includes(
+  '.sirati-direct-pdf-action .sirati-pdf-recovery-link'),
+  'saved-CV PDF recovery action must have responsive touch sizing');
 console.log('PASS: saved PDF download notices are bilingual, retryable and hide backend details');
 
 const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
