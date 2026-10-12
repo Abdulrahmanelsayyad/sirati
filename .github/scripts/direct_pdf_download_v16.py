@@ -151,6 +151,7 @@ widget.write_text(r"""'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { withBasePath } from '@/lib/basePath';
 import type { CvData, CvLanguage, TemplateName } from '@/lib/types';
 import CvPreview from '@/components/CvPreview';
 import { downloadCvSheet } from '@/lib/siratiPdfExport';
@@ -231,7 +232,14 @@ export default function SiratiPdfDownload({ documentId, title }: {
         aria-label={'تنزيل PDF · Download PDF · ' + title}>
         {busy ? 'جارٍ إعداد PDF… · Preparing PDF…' : 'تنزيل PDF · Download PDF'}
       </button>
-      {errorText && <span className="sirati-pdf-error" role="alert">{errorText}</span>}
+      {errorText && <span className="sirati-pdf-error" role="alert">
+        <span>{errorText}</span>
+        <a className="btn btn-secondary sirati-pdf-recovery-link"
+          href={withBasePath('/builder?doc=' + encodeURIComponent(documentId))}
+          aria-label={'فتح السيرة في المحرر · Open CV editor · ' + title}>
+          فتح المحرر · Open editor
+        </a>
+      </span>}
     </span>
     {selected && <div className="sirati-pdf-offscreen" ref={stage} aria-hidden="true">
       <CvPreview
@@ -309,6 +317,12 @@ css += r"""
     display: inline-flex; flex-direction: column; gap: 6px; max-width: 100%; }
   .sirati-direct-pdf-action button, .sirati-builder-pdf-action button { min-height: 44px; }
   .sirati-pdf-error { color: #9a2f27; font-size: 12px; max-width: 36ch; overflow-wrap: anywhere; }
+  .sirati-direct-pdf-action .sirati-pdf-error { display: grid; justify-items: start; gap: 8px; }
+  .sirati-direct-pdf-action .sirati-pdf-recovery-link {
+    display: inline-flex; box-sizing: border-box; align-items: center;
+    justify-content: center; min-height: 44px; max-width: 100%;
+    white-space: normal; text-align: center;
+  }
   .sirati-pdf-offscreen {
     position: fixed !important; top: 0 !important; left: -20000px !important;
     pointer-events: none; z-index: -200 !important;
