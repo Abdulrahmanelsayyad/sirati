@@ -286,3 +286,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('save_pdf_auth_gate
 # PDF #97: shared Unicode exporter after the unchanged Save PDF auth gate.
 subprocess.run([sys.executable, str(Path(__file__).with_name('pdf_text_layer_v19.py')), str(root)], check=True)
 subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2] / 'qa/pdf_sections_fixture.py'), str(root)], check=True)
+
+# Owner-approved V21: terminate prior-account client state on auth identity loss.
+subprocess.run([sys.executable, str(Path(__file__).with_name('session_boundary_v21.py')), str(root)], check=True)
