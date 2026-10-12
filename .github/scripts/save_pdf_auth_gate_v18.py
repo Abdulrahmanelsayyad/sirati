@@ -16,7 +16,7 @@ source=builder_path.read_text(encoding='utf-8')
 ready_ref='  const cloudReadyRef = useRef(false);'
 if source.count(ready_ref)!=1:
     raise SystemExit('Builder cloud readiness anchor missing')
-source=source.replace(ready_ref, ready_ref + '\n  const [guestRestoreReady, setGuestRestoreReady] = useState(false);', 1)
+source=source.replace(ready_ref, ready_ref + '\n  const [emailReturnMissing, setEmailReturnMissing] = useState(false);\n  const [guestRestoreReady, setGuestRestoreReady] = useState(false);', 1)
 configured_anchor='''    if (!isSupabaseConfigured()) {
       cloudReadyRef.current = true;
       return;
@@ -96,6 +96,8 @@ source=source.replace(anchor,anchor+"""      let guestTransferRestored = false;
           }
         } catch { /* The existing editor remains usable without device storage. */ }
       }
+      setEmailReturnMissing(Boolean(user) && !guestTransferRestored &&
+        new URLSearchParams(window.location.search).has('resume_pdf'));
 """,1)
 
 # Existing Builder PDF button must receive the current editable data and
@@ -145,6 +147,29 @@ effect=r'''
   }, [hydrated, guestRestoreReady, userId, data, template, language]);
 '''
 source=source.replace(effect_anchor, effect_anchor+'\n'+effect,1)
+# Keep every Save CV entry point in the mounted editor, reusing the auth dialog.
+source=source.replace(ready_ref, ready_ref + "\n  const [saveAuthRequest, setSaveAuthRequest] = useState(0);\n  const saveVersionRequested = useRef(true);", 1)
+old_save="""    if (!activeUserId) {
+      window.location.href = withBasePath('/auth');
+      return null;
+    }"""
+if source.count(old_save)!=1:
+    raise SystemExit('Guest Save CV redirect anchor changed')
+source=source.replace(old_save,"""    if (!activeUserId) {
+      saveVersionRequested.current = createVersion;
+      setSaveAuthRequest(request => request + 1);
+      return null;
+    }""",1)
+source=source.replace('<main className="builder-page wizard-builder-page">',
+    '''<main className="builder-page wizard-builder-page">
+      {emailReturnMissing && <aside className="container" role="alert">
+        <p dir="rtl">لو سيرتك مش ظاهرة بعد تأكيد البريد، ارجع لتبويب المحرر الأصلي وسجّل الدخول هناك لإكمال الحفظ. المسودة المؤقتة لا تنتقل بين التبويبات.</p>
+        <p>If your CV is missing after email confirmation, return to the original editor tab and sign in there to finish saving. Temporary drafts do not transfer between tabs.</p>
+      </aside>}
+      <SiratiBuilderPdfButton language={language} data={data} template={template}
+        hydrated={hydrated} userId={userId} saveRequest={saveAuthRequest}
+        onSave={() => saveToAccount(saveVersionRequested.current)}
+        onAuthenticated={(id, email) => { setUserId(id); setUserEmail(email); }} />''',1)
 builder_path.write_text(source,encoding='utf-8')
 
 # Keep the original PDF generator unchanged. Password auth stays on the page;
@@ -152,7 +177,8 @@ builder_path.write_text(source,encoding='utf-8')
 # session snapshot can resume after redirect; never transmit CV content in URLs.
 button_path.write_text(r"""'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { isSessionBoundaryBlocked } from '@/lib/sessionBoundary';
 import { createClient } from '@/lib/supabase/client';
 import { withBasePath } from '@/lib/basePath';
 import { downloadCvSheet } from '@/lib/siratiPdfExport';
@@ -161,7 +187,7 @@ import type { CvData, TemplateName } from '@/lib/types';
 const PENDING_KEY = 'sirati.guest.pdf.pending.v1';
 const MAX_AGE = 30 * 60 * 1000;
 type Transfer = {
-  version: 1; createdAt: number; email: string | null; requested: boolean;
+  version: 1; createdAt: number; email: string | null; requested: boolean; action?: 'pdf' | 'save';
   data: CvData; template: TemplateName; language: string;
 };
 function readTransfer(): Transfer | null {
@@ -189,6 +215,8 @@ function storeTransfer(value: Transfer) {
 type Props = {
   language: string; data: CvData; template: TemplateName; hydrated: boolean;
   userId: string | null;
+  saveRequest?: number;
+  onSave?: () => Promise<string | null>;
   onAuthenticated: (id: string, email: string | null) => void;
 };
 export default function SiratiBuilderPdfButton(props: Props) {
@@ -205,6 +233,10 @@ export default function SiratiBuilderPdfButton(props: Props) {
   const trigger = useRef<HTMLButtonElement>(null);
   const firstField = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
+  const saving = props.saveRequest !== undefined;
+  const action = saving ? 'save' : 'pdf';
+  const dialogId = useId();
+  const returnFocus = useRef<HTMLElement | null>(null);
   const arabic = language === 'ar';
 
   useEffect(() => {
@@ -228,7 +260,19 @@ export default function SiratiBuilderPdfButton(props: Props) {
     return () => window.removeEventListener('keydown', escape);
   }, [open,busy]);
 
+  // Open the shared gate only in response to an explicit Save CV request.
+  useEffect(() => {
+    if (props.saveRequest) void begin();
+  }, [props.saveRequest]);
+
   async function exportCurrentSheet() {
+    if (isSessionBoundaryBlocked()) throw new Error('Session changed. Reopen your CV.');
+    if (saving) {
+      const id = await props.onSave?.();
+      if (!id) throw new Error(arabic ? 'تعذّر الحفظ. بياناتك ما زالت في المحرر؛ حاول مجددًا.' : 'Save failed. Your CV is still in the editor; please retry.');
+      try { window.sessionStorage.removeItem(PENDING_KEY); } catch {}
+      return;
+    }
     const sheet = document.querySelector<HTMLElement>(
       '.wizard-preview-wrap .preview-stage > .cv-sheet'
     );
@@ -241,20 +285,22 @@ export default function SiratiBuilderPdfButton(props: Props) {
   }
 
   async function begin() {
-    if (active.current) return;
+    if (active.current || isSessionBoundaryBlocked()) return;
     active.current = true;
+    returnFocus.current = document.activeElement as HTMLElement;
     setBusy(true); setError(''); setNotice('');
     try {
       if (!hydrated) throw new Error('CV is still loading. Try again.');
       const client = createClient();
       const result = client ? await client.auth.getUser() : null;
+      if (isSessionBoundaryBlocked()) return;
       if (result && !result.error && result.data.user) {
         onAuthenticated(result.data.user.id, result.data.user.email || null);
         await exportCurrentSheet();
         return;
       }
       // Preserve exact editable CV, language, template and photo data in this tab.
-      storeTransfer({version:1,createdAt:Date.now(),email:null,requested:true,
+      storeTransfer({version:1,createdAt:Date.now(),email:null,requested:true,action,
         data,template,language});
       setOpen(true);
     } catch(e: unknown) {
@@ -264,24 +310,24 @@ export default function SiratiBuilderPdfButton(props: Props) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (active.current) return;
+    if (active.current || isSessionBoundaryBlocked()) return;
     active.current=true; setBusy(true); setError(''); setNotice('');
     try {
       if (password.length < 8) throw new Error('Use a password of at least 8 characters.');
       const client=createClient();
       if (!client) throw new Error('Account service unavailable.');
       const transfer=readTransfer();
-      if (!transfer) throw new Error('Guest draft expired. Your CV is still in the editor; click Save PDF again.');
+      if (!transfer) throw new Error('Guest draft expired. Your CV is still in the editor; click Save again.');
       const expectedEmail=email.trim().toLowerCase();
       if (!expectedEmail) throw new Error('Enter your email.');
-      storeTransfer({...transfer,email:expectedEmail,requested:true});
+      storeTransfer({...transfer,email:expectedEmail,requested:true,action});
       if (mode==='signin') {
         const {error:signinError}=await client.auth.signInWithPassword({
           email:expectedEmail,password
         });
         if (signinError) throw signinError;
         const {data:auth,error:userError}=await client.auth.getUser();
-        if (userError || !auth.user || auth.user.email?.toLowerCase()!==expectedEmail)
+        if (isSessionBoundaryBlocked() || userError || !auth.user || auth.user.email?.toLowerCase()!==expectedEmail)
           throw new Error('Account verification failed. Try signing in again.');
         onAuthenticated(auth.user.id,auth.user.email||null);
         await exportCurrentSheet();
@@ -297,15 +343,15 @@ export default function SiratiBuilderPdfButton(props: Props) {
         if (signupError) throw signupError;
         if (created.session) {
           const {data:confirmed,error:checkError}=await client.auth.getUser();
-          if (checkError || !confirmed.user || confirmed.user.email?.toLowerCase()!==expectedEmail)
+          if (isSessionBoundaryBlocked() || checkError || !confirmed.user || confirmed.user.email?.toLowerCase()!==expectedEmail)
             throw new Error('Account verification failed. Please sign in again.');
           onAuthenticated(confirmed.user.id,confirmed.user.email||null);
           await exportCurrentSheet();
           setOpen(false); setPassword('');
         } else {
           setNotice(arabic
-            ? 'راجع بريدك لتأكيد الحساب. اترك هذا التبويب مفتوحًا، ثم ارجع له وسجّل الدخول بنفس البريد لإكمال تنزيل PDF.'
-            : 'Check your email to confirm your account. Keep this tab open, then sign in here with the same email to finish your PDF.');
+            ? 'راجع بريدك لتأكيد الحساب. اترك هذا التبويب مفتوحًا، ثم ارجع له وسجّل الدخول بنفس البريد لإكمال الحفظ.'
+            : 'Check your email to confirm your account. Keep this tab open, then sign in here with the same email to finish saving your CV.');
           setMode('signin');
         }
       }
@@ -317,9 +363,9 @@ export default function SiratiBuilderPdfButton(props: Props) {
   // Only resume an expressly requested PDF after a verified account sign-in
   // matching the signup email; never attach a guest draft to another user.
   useEffect(() => {
-    if (!hydrated || !userId || autoResumed.current) return;
+    if (saving || !hydrated || !userId || autoResumed.current || isSessionBoundaryBlocked()) return;
     const transfer=readTransfer();
-    if (!transfer?.requested || !transfer.email) return;
+    if (!transfer?.requested || !transfer.email || transfer.action === 'save') return;
     autoResumed.current=true;
     let disposed=false;
     (async()=>{
@@ -334,7 +380,7 @@ export default function SiratiBuilderPdfButton(props: Props) {
           : 'Please sign in using the same email you used to start the CV.');
         return;
       }
-      if (active.current) return;
+      if (active.current || isSessionBoundaryBlocked()) return;
       active.current=true; setBusy(true);
       try { await exportCurrentSheet(); }
       catch(e:unknown) { if (!disposed) setError(e instanceof Error ? e.message : 'PDF export failed.'); }
@@ -349,23 +395,24 @@ export default function SiratiBuilderPdfButton(props: Props) {
     const transfer=readTransfer();
     if (transfer) try {storeTransfer({...transfer,requested:false});} catch {}
     setOpen(false);setPassword('');setNotice('');
-    trigger.current?.focus();
+    (saving ? returnFocus.current : trigger.current)?.focus();
   }
 
   return <span className="sirati-builder-pdf-action">
-    <button ref={trigger} type="button" className="btn btn-secondary btn-lg"
+    {!saving && <button ref={trigger} type="button" className="btn btn-secondary btn-lg"
       disabled={busy} onClick={begin}>
       {busy ? (arabic?'جارٍ إعداد PDF…':'Preparing PDF…')
         : (arabic?'حفظ PDF':'Save PDF')}
-    </button>
+    </button>}
     {error && <small role="alert" className="sirati-pdf-error">{error}</small>}
     {open && <div className="sirati-pdf-auth-overlay">
-      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="sirati-pdf-auth-heading"
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={dialogId}
         className="sirati-pdf-auth-dialog" dir={arabic?'rtl':'ltr'}>
         <button type="button" className="sirati-pdf-auth-close" aria-label="Close"
           disabled={busy} onClick={cancel}>×</button>
-        <h2 id="sirati-pdf-auth-heading">
-          {arabic?'أنشئ حسابًا مجانيًا لحفظ سيرتك PDF':'Create a free account to save your CV as PDF'}
+        <h2 id={dialogId}>
+          {saving ? (arabic?'سجّل الدخول لحفظ سيرتك':'Sign in to save your CV')
+            : (arabic?'أنشئ حسابًا مجانيًا لحفظ سيرتك PDF':'Create a free account to save your CV as PDF')}
         </h2>
         <p>{arabic?'سيرتك وقالبك سيظلان كما هما. لا توجد رسوم.':'Your CV and selected template stay intact. No payment required.'}</p>
         <div className="sirati-pdf-auth-modes">
@@ -375,18 +422,18 @@ export default function SiratiBuilderPdfButton(props: Props) {
             onClick={()=>{setMode('signin');setError('')}}>{arabic?'تسجيل الدخول':'Sign in'}</button>
         </div>
         <form onSubmit={submit}>
-          <label htmlFor="sirati-pdf-email">{arabic?'البريد الإلكتروني':'Email'}</label>
-          <input ref={firstField} id="sirati-pdf-email" type="email" required
+          <label htmlFor={dialogId + '-email'}>{arabic?'البريد الإلكتروني':'Email'}</label>
+          <input ref={firstField} id={dialogId + '-email'} type="email" required
             autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}
             disabled={busy}/>
-          <label htmlFor="sirati-pdf-password">{arabic?'كلمة المرور':'Password'}</label>
-          <input id="sirati-pdf-password" type="password" minLength={8} required
+          <label htmlFor={dialogId + '-password'}>{arabic?'كلمة المرور':'Password'}</label>
+          <input id={dialogId + '-password'} type="password" minLength={8} required
             autoComplete={mode==='signup'?'new-password':'current-password'}
             value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/>
           <button className="btn btn-primary" type="submit" disabled={busy}>
             {busy?(arabic?'جارٍ المعالجة…':'Please wait…')
               :(mode==='signup'?(arabic?'إنشاء حساب ومتابعة':'Create account and continue')
-                :(arabic?'دخول وتنزيل PDF':'Sign in and download PDF'))}
+                :(saving ? (arabic?'دخول وحفظ السيرة':'Sign in and save CV') : (arabic?'دخول وتنزيل PDF':'Sign in and download PDF')))}
           </button>
         </form>
         {notice&&<p role="status">{notice}</p>}
