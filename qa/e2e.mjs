@@ -35,9 +35,11 @@ for (const tool of ['smart','quality']) {
   assert.equal(docsSource.split(href).length - 1, 1,
     'saved CV must have exactly one direct '+tool+' contextual action');
 }
-assert(docsSource.includes("aria-label={'Smart CV · ' + (doc.title || 'CV')}") &&
-  docsSource.includes("aria-label={'CV Quality · ' + (doc.title || 'CV')}"),
-  'saved CV contextual actions need document-specific accessible names');
+assert(docsSource.includes("aria-label={'مساعد الكتابة · Smart CV · ' + (doc.title || 'CV')}") &&
+  docsSource.includes("aria-label={'مراجعة الجودة · CV Quality · ' + (doc.title || 'CV')}"),
+  'saved CV tools need bilingual document-specific accessible names');
+assert.equal((docsSource.match(/className="btn btn-secondary sirati-doc-tool-link"/g) || []).length,2,
+  'the two contextual actions must share the responsive touch target styling');
 console.log('PASS: account-owned document cards expose Smart CV/Quality direct actions');
 
 assert.equal((docsSource.match(/data-testid="career-tools-entry"/g) || []).length, 1,
@@ -82,6 +84,37 @@ const page = await context.newPage();
 // Premium Minimal V1: verify the actual rendered landing page before other E2E.
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 assert.equal(await page.locator('.marketing-page').count(), 1, 'Sirati landing page missing');
+// A synthetic card exercises real emitted CSS without reading another
+// customer's saved documents or pretending this is authenticated A/B QA.
+await page.evaluate(() => {
+  const fixture = document.createElement('div');
+  fixture.id = 'qa-document-tool-fixture';
+  fixture.className = 'sirati-documents-page';
+  fixture.style.cssText = 'position:absolute;left:0;top:0;z-index:-1;width:300px;';
+  fixture.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+    '<a class="btn btn-secondary sirati-doc-tool-link" href="#">' +
+    'مساعد الكتابة · Smart CV</a>' +
+    '<a class="btn btn-secondary sirati-doc-tool-link" href="#">' +
+    'مراجعة الجودة · CV Quality</a></div>';
+  document.body.append(fixture);
+});
+for (const width of [360,390,1440]) {
+  await page.setViewportSize({width,height:844});
+  const items = await page.locator('#qa-document-tool-fixture .sirati-doc-tool-link')
+    .evaluateAll(nodes => nodes.map(el => ({
+      width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
+      minHeight:getComputedStyle(el).minHeight,visible:getComputedStyle(el).display
+    })));
+  assert.equal(items.length,2);
+  for (const item of items) {
+    assert(item.height>=44 && item.width<=302,
+      'document tool link size invalid at '+width+': '+JSON.stringify(item));
+    if (width<=390) assert(item.width>=290,'mobile document tool action not full row at '+width);
+  }
+}
+await page.locator('#qa-document-tool-fixture').evaluate(el => el.remove());
+await page.setViewportSize({width:1440,height:1000});
+console.log('PASS: bilingual document tools reach 44px and stack at 360/390px, preserve desktop layout (synthetic CSS fixture)');
 assert((await page.locator('.marketing-hero h1').innerText()).includes('Build a CV'),
   'V13 CV-first homepage headline missing');
 const brandColor = await page.locator('.marketing-page').evaluate(el =>
