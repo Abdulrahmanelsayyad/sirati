@@ -199,7 +199,7 @@ const pdfGuard=pdf.slice(pdf.lastIndexOf('  if (isSessionBoundaryBlocked())'),pd
       f.observeSessionOwner(null);return {data:{id:'synthetic'},error:null};
     }})})}}};
     if(phase==='before')f.observeSessionOwner(null);
-    const context={isSessionBoundaryBlocked:f.isSessionBoundaryBlocked,isSupabaseConfigured:()=>true,
+    const context={saveInFlight:{current:false},isSessionBoundaryBlocked:f.isSessionBoundaryBlocked,isSupabaseConfigured:()=>true,
       createClient:()=>api,userId:'A',documentId:null,setCloudStatus:()=>{},documentTitle:()=>'',
       data:{},template:'modern',language:'ar'};
     const run=new Function(...Object.keys(context),save+';return saveToAccount;')(...Object.values(context));

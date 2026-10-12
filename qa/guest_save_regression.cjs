@@ -67,3 +67,29 @@ function setup({quota=false}={}) {
   const pdf=setup();pdf.storage.set(key,JSON.stringify({...draft,email:'user@example.invalid'}));delete pdf.props.saveRequest;pdf.props.userId='synthetic-user';pdf.render();await tick();assert.equal(pdf.exports,0);assert(pdf.storage.has(key));
   console.log('PASS: guest save preserves exact CV; confirmation/errors retain draft; verified sign-in saves once; quota/session boundary fail closed; document request never exports PDF.');
 })().catch(e=>{console.error(e);process.exitCode=1});
+
+// Run the actual generated save function with deferred synthetic network replies.
+(async()=>{
+  const fn=builder.slice(builder.indexOf('  async function saveToAccount('),builder.indexOf('\n  function restoreVersion('));
+  const js=ts.transpileModule(fn,{compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText;
+  let inserts=0,versions=0,resolveInsert,rejectInsert,status='',blocked=false;
+  const client={from(table){return {
+    insert(){
+      if(table==='cv_versions'){versions++;return Promise.resolve({error:null});}
+      inserts++;
+      return {select(){return {single(){return new Promise((resolve,reject)=>{resolveInsert=resolve;rejectInsert=reject;});}};}};
+    },
+    update(){return {eq:async()=>({error:null})};}
+  };}};
+  const ctx={saveInFlight:{current:false},isSessionBoundaryBlocked:()=>blocked,isSupabaseConfigured:()=>true,createClient:()=>client,userId:'synthetic-A',documentId:null,data:{fullName:'Synthetic'},template:'modern',language:'en',setCloudStatus:v=>status=v,setDocumentId:v=>ctx.documentId=v,documentTitle:()=> 'Synthetic',withBasePath:x=>x,window:{history:{replaceState(){}}},refreshVersions:async()=>{},alert(){}};
+  vm.createContext(ctx);vm.runInContext(js+'\nthis.save=saveToAccount;',ctx);
+  const first=ctx.save();const second=ctx.save();
+  assert.equal(inserts,1,'rapid Save clicks must issue one document insert');
+  resolveInsert({data:{id:'synthetic-doc'},error:null});await Promise.all([first,second]);
+  assert.equal(versions,1);assert.equal(ctx.saveInFlight.current,false);
+  ctx.documentId=null;const failure=ctx.save();rejectInsert(new Error('offline'));assert.equal(await failure,null);
+  assert.match(status,/retry|حاول/i);assert.equal(ctx.saveInFlight.current,false);
+  const retry=ctx.save();resolveInsert({data:{id:'retry-doc'},error:null});assert.equal(await retry,'retry-doc');
+  blocked=true;const before=inserts;assert.equal(await ctx.save(),null);assert.equal(inserts,before);
+  console.log('PASS: concurrent Save creates one document/version; network failure preserves retry; session boundary still blocks.');
+})().catch(e=>{console.error(e);process.exitCode=1});

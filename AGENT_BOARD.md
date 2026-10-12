@@ -236,3 +236,10 @@ Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punc
 - Confirmed: Save CV redirected to /auth without snapshot/return path. Reuse the existing inline auth gate for every saveToAccount entry, preserving exact tab draft and requested save/version intent. Separate save/PDF intent; storage/auth/save failures retain editor. Email return without a matching tab snapshot explains returning to the original tab.
 - Synthetic generated-component checks cover signup confirmation, failed password, successful save once, failed cloud save, quota, session block and no accidental PDF. No real accounts/data, Supabase configuration, RLS, dependencies or workflow settings changed.
 - Local production build/typecheck and bounded account/draft/PDF checks PASS. Exact-head CI pending; no merge/deploy. Closed original tabs/expired snapshots are not recoverable by this fix; cross-tab draft transfer is not implemented.
+
+## V22 explicit Save concurrency — 2026-10-12
+- Owner: Codex, branch `fix/v22-save-retry`, base `0e49c54`; existing draft work preserved in another worktree.
+- Reproduced two inserts from rapid Save calls in actual generated Builder function. Scope: existing auth-gate generator, existing synthetic regression and this board only.
+- Serialize explicit saves with a synchronous ref, release on every exit, and display retry guidance on thrown network failures. No Auth/RLS/schema/PDF engine or deployment change.
+- Reference: React useRef official documentation; event-handler refs persist synchronously across renders. Reusable rule: exercise overlapping requests, not just sequential successful saves.
+- Verification in progress; live A/B fixtures, physical Android and independent reviewer unavailable. No merge/deploy authorized.
