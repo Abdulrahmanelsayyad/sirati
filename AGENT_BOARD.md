@@ -213,3 +213,11 @@ Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punc
 - Finding: historical V14 whitelist rejected the approved session patch before PDF tests ran.
 - Rule: use an explicit reviewed source snapshot for this successor; retain original historical checks, manual deployment gate, PDF invariants and production artifact checks.
 - Status: local production build/artifact gate, 10 guard regressions, account suite, bounded verifier, 10 verifier contracts and 42 PDF boundary cases PASS. Exact-head CI pending; no merge/deploy or independent release approval.
+
+## Menu accessibility continuation — 2026-10-12
+- Owner: Codex; branch `fix/mobile-menu-focus-20261012`, base `ff5e597` (merged V21).
+- Scope: existing navigation generator and E2E only; background isolation, focus containment and restoration. No overlapping template/Smart CV work.
+- Evidence before: generated drawer declares `aria-modal` but only locks scrolling and boundary Tab; background elements remain interactive to programmatic/assistive focus.
+- Reference: W3C APG modal dialog pattern, https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/ .
+- Reusable rule: pair modal semantics with actual background isolation, preserve prior inert/scroll state, restore it before returning focus, and exercise filtered results.
+- Status: local production build/typecheck, bounded verification and generated-source comparison PASS (only SiratiSiteMenu.tsx changed; app/lib/public byte-identical). Existing CI now exercises modal isolation, Tab wrapping, filtered results and all dismissals at five widths. Exact-head browser CI pending; local browser unavailable. No merge/deploy; physical Android and assistive technology acceptance remain separate.
