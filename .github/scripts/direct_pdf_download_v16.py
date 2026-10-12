@@ -159,6 +159,19 @@ type Saved = { title?: string | null; data: unknown; template?: string | null;
                language?: string | null };
 type Choice = { row: Saved; name: string };
 
+// Do not surface raw Supabase/browser error messages to CV owners.
+// Keep the saved-document download flow recoverable, including on mobile.
+function pdfDownloadError(error: unknown): string {
+  const detail = error instanceof Error ? error.message : '';
+  if (detail === 'Please sign in first.' || detail === 'Sign in required.')
+    return 'انتهت جلسة الدخول. سجّل الدخول وحاول مجددًا. · Sign in and retry.';
+  if (detail === 'Saved CV not available for this account.')
+    return 'هذه السيرة غير متاحة لهذا الحساب. · This CV is unavailable in your account.';
+  if (detail === 'Saved CV content is missing.')
+    return 'محتوى السيرة غير متاح. افتح السيرة وتحقق من بياناتها. · CV content is missing. Open the editor to check it.';
+  return 'تعذّر تنزيل PDF. أعد المحاولة أو افتح السيرة من المحرر. · PDF download failed. Retry or open the CV editor.';
+}
+
 export default function SiratiPdfDownload({ documentId, title }: {
   documentId: string; title: string;
 }) {
@@ -187,7 +200,7 @@ export default function SiratiPdfDownload({ documentId, title }: {
         throw new Error('Saved CV content is missing.');
       setSelected({row: data as Saved, name: title || data.title || 'Sirati-CV'});
     } catch (e: unknown) {
-      setErrorText(e instanceof Error ? e.message : 'Cannot prepare your PDF.');
+      setErrorText(pdfDownloadError(e));
       setBusy(false); request.current = false;
     }
   }
@@ -204,7 +217,7 @@ export default function SiratiPdfDownload({ documentId, title }: {
         if (!sheet) throw new Error('CV preview not available.');
         await downloadCvSheet(sheet, selected.name);
       } catch (e: unknown) {
-        if (!cancelled) setErrorText(e instanceof Error ? e.message : 'PDF export failed.');
+        if (!cancelled) setErrorText(pdfDownloadError(e));
       } finally {
         if (!cancelled) { setSelected(null); setBusy(false); request.current = false; }
       }
@@ -214,8 +227,9 @@ export default function SiratiPdfDownload({ documentId, title }: {
   return <>
     <span className="sirati-direct-pdf-action">
       <button type="button" className="btn btn-secondary" disabled={busy}
-        onClick={begin} aria-label={'Download PDF · ' + title}>
-        {busy ? 'Preparing PDF…' : 'Download PDF · تنزيل PDF'}
+        onClick={begin} aria-busy={busy}
+        aria-label={'تنزيل PDF · Download PDF · ' + title}>
+        {busy ? 'جارٍ إعداد PDF… · Preparing PDF…' : 'تنزيل PDF · Download PDF'}
       </button>
       {errorText && <span className="sirati-pdf-error" role="alert">{errorText}</span>}
     </span>
