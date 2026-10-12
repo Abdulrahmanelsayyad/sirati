@@ -56,12 +56,14 @@ button_at = docs.rfind('<button', 0, delete_at)
 button_end = docs.find('</button>', delete_at)
 if button_at < 0 or button_end < 0 or delete_at - button_at > 300:
     raise RuntimeError('#91/#92: document action row changed')
-card_shortcuts = """<a className="btn btn-secondary"
+card_shortcuts = """<a className="btn btn-secondary sirati-doc-tool-link"
                 href={withBasePath('/builder?doc=' + encodeURIComponent(doc.id) + '&focus=smart')}
-                aria-label={'Smart CV · ' + (doc.title || 'CV')}>Smart CV ✦</a>
-              <a className="btn btn-secondary"
+                aria-label={'مساعد الكتابة · Smart CV · ' + (doc.title || 'CV')}>
+                <span aria-hidden="true">✦</span> مساعد الكتابة · Smart CV</a>
+              <a className="btn btn-secondary sirati-doc-tool-link"
                 href={withBasePath('/builder?doc=' + encodeURIComponent(doc.id) + '&focus=quality')}
-                aria-label={'CV Quality · ' + (doc.title || 'CV')}>CV Quality ◉</a>
+                aria-label={'مراجعة الجودة · CV Quality · ' + (doc.title || 'CV')}>
+                <span aria-hidden="true">◉</span> مراجعة الجودة · CV Quality</a>
               """
 docs = docs[:button_at] + card_shortcuts + docs[button_at:]
 docs_path.write_text(docs, encoding='utf-8')
@@ -203,6 +205,36 @@ css += r"""
 @media screen and (max-width: 390px) {
   .sirati-document-intent { padding: 14px; }
   .sirati-document-intent-row > a { width: 100%; }
+}
+"""
+# Keep existing card actions usable on narrow phones without creating new
+# navigation, changing document permissions, or hiding the original controls.
+css += r"""
+/* Sirati V24: bilingual saved-CV actions, responsive touch targets. */
+@media screen {
+  .sirati-documents-page .sirati-doc-tool-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+    min-height: 44px;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+}
+@media screen and (max-width: 640px) {
+  .sirati-documents-page .sirati-doc-tool-link {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+}
+@media print {
+  .sirati-documents-page .sirati-doc-tool-link { display: none !important; }
 }
 """
 css_path.write_text(css, encoding='utf-8')
