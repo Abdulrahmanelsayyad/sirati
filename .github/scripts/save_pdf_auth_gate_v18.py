@@ -170,6 +170,28 @@ source=source.replace('<main className="builder-page wizard-builder-page">',
         hydrated={hydrated} userId={userId} saveRequest={saveAuthRequest}
         onSave={() => saveToAccount(saveVersionRequested.current)}
         onAuthenticated={(id, email) => { setUserId(id); setUserEmail(email); }} />''',1)
+# Serialize all explicit save entry points before any asynchronous auth/network work.
+source=source.replace(ready_ref, ready_ref + '\n  const saveInFlight = useRef(false);', 1)
+save_start='  async function saveToAccount(createVersion = true) {'
+save_end='    return id;\n  }\n\n  function restoreVersion('
+if source.count(save_start)!=1 or source.count(save_end)!=1:
+    raise SystemExit('Save concurrency anchors changed')
+source=source.replace(save_start, save_start + """
+    if (saveInFlight.current) return null;
+    saveInFlight.current = true;
+    try {""",1)
+source=source.replace(save_end,"""    return id;
+    } catch {
+      if (!isSessionBoundaryBlocked()) setCloudStatus(language === 'ar'
+        ? 'تعذّر الحفظ. بياناتك ما زالت في المحرر؛ حاول مجددًا.'
+        : 'Save failed. Your CV is still in the editor; retry Save.');
+      return null;
+    } finally {
+      saveInFlight.current = false;
+    }
+  }
+
+  function restoreVersion(""",1)
 builder_path.write_text(source,encoding='utf-8')
 
 # Keep the original PDF generator unchanged. Password auth stays on the page;
