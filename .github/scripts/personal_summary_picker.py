@@ -10,11 +10,14 @@ import { createPortal } from 'react-dom';
 
 type Local = { en: string; ar: string };
 type Lang = 'en' | 'ar';
-type Career = { match: RegExp; name: Local; focus: Local; outcome: Local };
+type Career = { match: Pick<RegExp, 'test'>; name: Local; focus: Local; outcome: Local };
+// A care setting is not an occupation: require an explicit nursing title.
+const nursingRole = /\b(?:nurse|nurses|nursing)\b|(?<!\p{L})(?:ال)?(?:تمريض|ممرض(?:ة|ين|ات)?)(?!\p{L})/iu;
+const criticalCare = /\b(?:icu|intensive care|critical care)\b|(?:ال)?عناية (?:ال)?مركزة|(?:ال)?رعاية (?:ال)?حرجة/iu;
 const careers: Career[] = [
-  {match:/\bicu\b|intensive care|عناية مركزة|رعاية حرجة/i,name:{en:'critical care nursing',ar:'تمريض الرعاية الحرجة'},focus:{en:'patient observation and clinical coordination',ar:'مراقبة المرضى والتنسيق السريري'},outcome:{en:'safe coordinated care',ar:'الرعاية الآمنة والمنسقة'}},
-  {match:/emergency nurs|\ber nurse\b|trauma nurse|تمريض طوارئ|ممرض طوارئ/i,name:{en:'emergency nursing',ar:'تمريض الطوارئ'},focus:{en:'timely assessment and appropriate escalation',ar:'التقييم السريع والتصعيد المناسب'},outcome:{en:'safe emergency team performance',ar:'أداء فريق الطوارئ بشكل آمن'}},
-  {match:/nurs|تمريض|ممرض|ممرضة/i,name:{en:'nursing',ar:'التمريض'},focus:{en:'patient-centered care and precise documentation',ar:'رعاية المرضى والتوثيق الدقيق'},outcome:{en:'patient safety and teamwork',ar:'سلامة المرضى والعمل الجماعي'}},
+  {match:{test:(role:string) => nursingRole.test(role) && criticalCare.test(role)},name:{en:'critical care nursing',ar:'تمريض الرعاية الحرجة'},focus:{en:'patient observation and clinical coordination',ar:'مراقبة المرضى والتنسيق السريري'},outcome:{en:'safe coordinated care',ar:'الرعاية الآمنة والمنسقة'}},
+  {match:{test:(role:string) => nursingRole.test(role) && /\b(?:emergency|er|ed|trauma)\b|طوارئ/i.test(role)},name:{en:'emergency nursing',ar:'تمريض الطوارئ'},focus:{en:'timely assessment and appropriate escalation',ar:'التقييم السريع والتصعيد المناسب'},outcome:{en:'safe emergency team performance',ar:'أداء فريق الطوارئ بشكل آمن'}},
+  {match:nursingRole,name:{en:'nursing',ar:'التمريض'},focus:{en:'patient-centered care and precise documentation',ar:'رعاية المرضى والتوثيق الدقيق'},outcome:{en:'patient safety and teamwork',ar:'سلامة المرضى والعمل الجماعي'}},
   {match:/accountant|accounting|bookkeep|محاسب|محاسبة|حسابات/i,name:{en:'accounting',ar:'المحاسبة'},focus:{en:'accurate financial records and reporting',ar:'دقة السجلات والتقارير المالية'},outcome:{en:'reliable financial workflows',ar:'موثوقية العمليات المالية'}},
   {match:/developer|software|programmer|full.stack|frontend|backend|مبرمج|برمجيات|مطو.?ر برمج/i,name:{en:'software development',ar:'تطوير البرمجيات'},focus:{en:'maintainable software and practical problem solving',ar:'البرمجيات القابلة للصيانة وحل المشكلات'},outcome:{en:'useful reliable digital experiences',ar:'تجارب رقمية مفيدة وموثوقة'}},
   {match:/engineer|مهندس|هندسة/i,name:{en:'engineering',ar:'الهندسة'},focus:{en:'technical planning and quality-centered execution',ar:'التخطيط الفني والتنفيذ عالي الجودة'},outcome:{en:'practical project results',ar:'نتائج عملية للمشروعات'}},
