@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+execFileSync(process.execPath, [(process.env.GITHUB_WORKSPACE || '../..') + '/qa/guest_save_regression.cjs', process.cwd()], {stdio:'inherit'});
 
 // Removal is a security and UX regression gate: don't ship the old feature.
 assert.equal(fs.existsSync('components/TargetJobTailor.tsx'), false, 'retired Job Match component must not ship');

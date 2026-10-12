@@ -230,3 +230,9 @@ Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punc
 - Browser matrix reuses #117 workflow and now covers 13 titles in EN/AR at 360/390/1440 widths. Exact-head CI pending. Browser unavailable locally; no new native-PDF/device/live-account acceptance claimed.
 - Reusable lesson: test complete Arabic words and ambiguous industry/job combinations, not only obvious role examples. Keep nonclinical headings neutral when classification is uncertain.
 - No merge to main or publication; existing PDF/account/menu changes retained. Release acceptance remains separate.
+
+## Guest Save CV preservation — 2026-10-12
+- Owner: Codex; branch `fix/guest-save-draft-20261012`, base main `3b925c5`; user-reported draft loss after email entry.
+- Confirmed: Save CV redirected to /auth without snapshot/return path. Reuse the existing inline auth gate for every saveToAccount entry, preserving exact tab draft and requested save/version intent. Separate save/PDF intent; storage/auth/save failures retain editor. Email return without a matching tab snapshot explains returning to the original tab.
+- Synthetic generated-component checks cover signup confirmation, failed password, successful save once, failed cloud save, quota, session block and no accidental PDF. No real accounts/data, Supabase configuration, RLS, dependencies or workflow settings changed.
+- Local production build/typecheck and bounded account/draft/PDF checks PASS. Exact-head CI pending; no merge/deploy. Closed original tabs/expired snapshots are not recoverable by this fix; cross-tab draft transfer is not implemented.
