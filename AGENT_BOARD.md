@@ -206,3 +206,10 @@ Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punc
 - Scope: QA runner and credential-boundary tests, existing QA CI wiring, agent governance and evidence documentation only. No product/PDF generator edits.
 - Status: IN REVIEW — no merge/deploy.
 - Handoff: `docs/AGENT_ARCHITECTURE_AUDIT.md`; security and QA evidence retain separate checks and unresolved gates. Historical board entries are not current live acceptance evidence.
+
+## V21 PDF QA compatibility follow-up — 2026-10-12
+- Owner: Codex continuation session; PR #133, runtime pinned at d909eba.
+- Scope: PDF source-scope guard and adversarial regression only; no runtime/workflow changes.
+- Finding: historical V14 whitelist rejected the approved session patch before PDF tests ran.
+- Rule: use an explicit reviewed source snapshot for this successor; retain original historical checks, manual deployment gate, PDF invariants and production artifact checks.
+- Status: local production build/artifact gate, 10 guard regressions, account suite, bounded verifier, 10 verifier contracts and 42 PDF boundary cases PASS. Exact-head CI pending; no merge/deploy or independent release approval.

@@ -151,3 +151,73 @@ async function check({allowed=true, logoutFails=false, hasDraft=true}) {
 """.replace("CLIENT", json.dumps(client_name)).replace("SNIPPET", json.dumps(block)).replace("AUTH_ARG", client_arg)
     subprocess.run(["node", "-e", js], check=True)
 print("PASS: generated sign-out safety invariants (real A/B still NOT RUN)")
+
+# Execute the generated session boundary and queued save callbacks with synthetic
+# storage/API doubles. No credentials, real account writes or browser claims.
+boundary_js = r"""
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const root=process.argv[1];
+const source=fs.readFileSync(root+'/lib/sessionBoundary.ts','utf8')
+  .replace('let owner: string | null | undefined;', 'let owner;')
+  .replace('next: string | null','next').replaceAll('export function','function');
+function fixture(prior=null, denied=false) {
+  const local=new Map([['sirati.cv.v2.A','oldA'],['sirati.cv.v2.B','keepB'],['sb-token','auth']]);
+  const tab=new Map([['sirati.cv.v2.A','A'],['sirati.cv.v2.B','B'],['sirati.guest.pdf.pending.v1','guest']]);
+  if(prior)tab.set('sirati.session.owner.v1',prior);
+  const storage=m=>({getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)});
+  const window={get localStorage(){if(denied)throw Error('denied');return storage(local)},
+    get sessionStorage(){if(denied)throw Error('denied');return storage(tab)}};
+  const api=new Function('window',source+';return {observeSessionOwner,isSessionBoundaryBlocked}')(window);
+  return {local,tab,...api};
+}
+for(const next of [null,'B']) {
+  const f=fixture();assert.equal(f.observeSessionOwner('A'),false);
+  assert.equal(f.observeSessionOwner('A'),false); // refresh/refocus does not reset
+  assert.equal(f.observeSessionOwner(next),true);
+  assert(!f.local.has('sirati.cv.v2.A'));assert(!f.tab.has('sirati.cv.v2.A'));
+  assert.equal(f.local.get('sirati.cv.v2.B'),'keepB');assert.equal(f.tab.get('sirati.cv.v2.B'),'B');
+  assert.equal(f.local.get('sb-token'),'auth');assert(!f.tab.has('sirati.guest.pdf.pending.v1'));
+  assert.equal(f.observeSessionOwner('A'),true); // old closures cannot re-enable writes
+}
+let f=fixture();assert.equal(f.observeSessionOwner(null),false);
+assert.equal(f.observeSessionOwner('A'),false);assert.equal(f.tab.get('sirati.guest.pdf.pending.v1'),'guest');
+f=fixture('A');assert.equal(f.observeSessionOwner(null),true);assert(!f.tab.has('sirati.cv.v2.A'));
+f=fixture(null,true);assert.equal(f.observeSessionOwner('A'),false);assert.equal(f.observeSessionOwner(null),true);
+
+const builder=fs.readFileSync(root+'/app/builder/page.tsx','utf8');
+const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+const save=builder.slice(builder.indexOf('  async function saveToAccount('),builder.indexOf('  function restoreVersion('))
+  .replace('created.id as string','created.id').replaceAll('supabase!', 'supabase');
+const timerStart=builder.indexOf('    const timer = window.setTimeout(async () => {');
+const timerBody=builder.slice(timerStart+'    const timer = window.setTimeout(async () => {'.length,builder.indexOf('    }, 1200);',timerStart)).replaceAll('supabase!', 'supabase');
+const pdf=fs.readFileSync(root+'/lib/siratiPdfExport.ts','utf8');
+const pdfGuard=pdf.slice(pdf.lastIndexOf('  if (isSessionBoundaryBlocked())'),pdf.indexOf('\n}',pdf.lastIndexOf('  if (isSessionBoundaryBlocked())')));
+(async()=>{
+  for(const phase of ['before','during']) {
+    const f=fixture();f.observeSessionOwner('A');let writes=0;
+    const api={from:()=>{writes++;return {insert:()=>({select:()=>({single:async()=>{
+      f.observeSessionOwner(null);return {data:{id:'synthetic'},error:null};
+    }})})}}};
+    if(phase==='before')f.observeSessionOwner(null);
+    const context={isSessionBoundaryBlocked:f.isSessionBoundaryBlocked,isSupabaseConfigured:()=>true,
+      createClient:()=>api,userId:'A',documentId:null,setCloudStatus:()=>{},documentTitle:()=>'',
+      data:{},template:'modern',language:'ar'};
+    const run=new Function(...Object.keys(context),save+';return saveToAccount;')(...Object.values(context));
+    assert.equal(await run(),null);assert.equal(writes,phase==='before'?0:1);
+    // Simulate an already-queued auto-save running after the auth callback.
+    await new AsyncFunction('isSessionBoundaryBlocked',timerBody)(f.isSessionBoundaryBlocked);
+    let downloads=0;
+    assert.throws(()=>new Function('isSessionBoundaryBlocked','downloadBlob','blob','name',pdfGuard)
+      (f.isSessionBoundaryBlocked,()=>downloads++,{},'synthetic'),/Session changed/);
+    assert.equal(downloads,0);
+  }
+  const layout=fs.readFileSync(root+'/app/layout.tsx','utf8');
+  assert(layout.includes('<SessionBoundary>{children}'));
+  const component=fs.readFileSync(root+'/components/SessionBoundary.tsx','utf8');
+  assert(component.includes('if (blocked) return <main'));
+  assert(component.includes('subscription.unsubscribe()'));
+  assert(!component.includes('async '));
+  console.log('PASS: guest continuity, refresh, A→B/logout/reload, denied storage, stale saves and final PDF delivery boundary');
+})().catch(e=>{console.error(e);process.exitCode=1});
+"""
+subprocess.run(['node', '-e', boundary_js, str(root)], check=True)
