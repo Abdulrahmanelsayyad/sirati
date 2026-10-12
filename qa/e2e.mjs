@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 execFileSync(process.execPath, [(process.env.GITHUB_WORKSPACE || '../..') + '/qa/guest_save_regression.cjs', process.cwd()], {stdio:'inherit'});
 
+execFileSync(process.execPath, [(process.env.GITHUB_WORKSPACE || '../..') + '/qa/smart_role_regression.cjs', process.cwd()], {stdio:'inherit'});
+
 // Removal is a security and UX regression gate: don't ship the old feature.
 assert.equal(fs.existsSync('components/TargetJobTailor.tsx'), false, 'retired Job Match component must not ship');
 assert(fs.existsSync('components/ExperienceDescriptionPicker.tsx'), 'Experience Description Pro must be preserved');
@@ -1465,6 +1467,34 @@ assert((await realExperience.inputValue()).includes('Manual responsibility retai
 await page.reload({ waitUntil: 'networkidle' });
 assert((await page.locator('.cv-sheet').innerText()).includes(realSuggestion), 'inserted experience must survive reload in preview');
 log('real Experience insertion updates React state, preview and saved CV');
+
+// Care settings must not override the real occupation, in either UI language.
+for (const width of [390,1440]) {
+  await page.setViewportSize({width,height:1000});
+  for (const [lang,role,expected] of [
+    ['en','ICU physician','General professional'],
+    ['en','ICU software developer','Software development'],
+    ['en','ICU nurse','Critical care nursing'],
+    ['ar','طبيب طوارئ','مهني عام'],
+    ['ar','مبرمج أنظمة طوارئ','تطوير البرمجيات'],
+    ['ar','ممرضة عناية مركزة','تمريض الرعاية الحرجة'],
+  ]) {
+    await page.locator('.cv-substep').nth(0).click();
+    await page.locator('.field').filter({hasText:'Professional title'}).locator('input').first().fill(role);
+    await page.locator('select').filter({has:page.locator('option[value="ar"]')})
+      .filter({has:page.locator('option[value="en"]')}).first().selectOption(lang);
+    await page.locator('.cv-substep').nth(7).click();
+    await page.locator('.wizard-section-card .sirati-content-trigger').click();
+    assert((await page.locator('.sirati-content-role').innerText()).includes(expected),role+' at '+width);
+    await page.getByRole('button',{name:'Close content suggestions'}).click();
+  }
+}
+await page.locator('select').filter({has:page.locator('option[value="ar"]')})
+  .filter({has:page.locator('option[value="en"]')}).first().selectOption('en');
+await page.locator('.cv-substep').nth(0).click();
+await page.locator('.field').filter({hasText:'Professional title'}).locator('input').first().fill('Emergency Nurse');
+await page.setViewportSize({width:1440,height:1000});
+log('Smart occupation regression: 6 bilingual titles at mobile/desktop widths PASS');
 
 // Smart Content is mounted inside the real controlled Skills field (section 8).
 await page.locator('.cv-substep').nth(7).click();

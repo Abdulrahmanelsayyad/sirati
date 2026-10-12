@@ -16,13 +16,16 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import type { CvData, CvLanguage } from '@/lib/types';
 
 type Local = { en: string; ar: string };
-type Pack = { match: RegExp; label: Local; skills: Local[]; achievements: Local[] };
+type Pack = { match: Pick<RegExp, 'test'>; label: Local; skills: Local[]; achievements: Local[] };
 const pair = (en: string, ar: string): Local => ({ en, ar });
+// A care setting is not an occupation: require an explicit nursing title.
+const nursingRole = /\b(?:nurse|nurses|nursing)\b|(?<!\p{L})(?:ال)?(?:تمريض|ممرض(?:ة|ين|ات)?)(?!\p{L})/iu;
+const criticalCare = /\b(?:icu|intensive care|critical care)\b|(?:ال)?عناية (?:ال)?مركزة|(?:ال)?رعاية (?:ال)?حرجة/iu;
 const PACKS: Pack[] = [
-  {match:/\b(icu|intensive care|critical care)\b|عناية مركزة|رعاية حرجة/i, label:pair('Critical care nursing','تمريض الرعاية الحرجة'),
+  {match:{test:(role:string) => nursingRole.test(role) && criticalCare.test(role)}, label:pair('Critical care nursing','تمريض الرعاية الحرجة'),
    skills:[pair('Patient assessment','تقييم المرضى'),pair('Critical care monitoring','مراقبة الحالات الحرجة'),pair('Structured handovers','تسليم الحالات المنظم'),pair('Clinical documentation','التوثيق السريري'),pair('Safety escalation','تصعيد مخاطر السلامة')],
    achievements:[pair('Improved [actual care workflow] through [action you performed], supported by [verifiable evidence].','تحسين [إجراء رعاية حقيقي] من خلال [الإجراء الذي نفذته] وفق [دليل يمكن التحقق منه].'),pair('Contributed to [verified safety initiative] by [your specific role] with [observed outcome].','المساهمة في [مبادرة سلامة مثبتة] عبر [دورك المحدد] بنتيجة [نتيجة ملحوظة].')]},
-  {match:/\b(nurse|nursing|er nurse|ed nurse)\b|تمريض|ممرض|ممرضة|طوارئ/i,label:pair('Nursing','التمريض'),
+  {match:nursingRole,label:pair('Nursing','التمريض'),
    skills:[pair('Patient triage','فرز المرضى'),pair('Patient safety','سلامة المرضى'),pair('Clinical handover','تسليم الحالات'),pair('Vital signs monitoring','متابعة العلامات الحيوية'),pair('Clinical documentation','التوثيق السريري')],
    achievements:[pair('Supported [documented clinical improvement] by [actual action] with [verified outcome].','المساهمة في [تحسين سريري موثق] بواسطة [إجراء حقيقي] بنتيجة [نتيجة مثبتة].'),pair('Contributed to [real team initiative] by [your own contribution]; evidence: [source].','المساهمة في [مبادرة فريق حقيقية] عبر [مساهمتك الفعلية]؛ الدليل: [المصدر].')]},
   {match:/software|developer|programmer|مبرمج|مطو.?ر برمج|تطوير برمج/i,label:pair('Software development','تطوير البرمجيات'),
