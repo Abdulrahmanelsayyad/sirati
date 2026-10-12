@@ -221,3 +221,12 @@ Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punc
 - Reference: W3C APG modal dialog pattern, https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/ .
 - Reusable rule: pair modal semantics with actual background isolation, preserve prior inert/scroll state, restore it before returning focus, and exercise filtered results.
 - Status: local production build/typecheck, bounded verification and generated-source comparison PASS (only SiratiSiteMenu.tsx changed; app/lib/public byte-identical). Existing CI now exercises modal isolation, Tab wrapping, filtered results and all dismissals at five widths. Exact-head browser CI pending; local browser unavailable. No merge/deploy; physical Android and assistive technology acceptance remain separate.
+
+## Modern headings continuation — 2026-10-12
+- Owner: Codex; existing Draft PR #117, branch `fix/modern-profession-headings-20261011`; updated onto main `ba1eb05`. Reuses the existing implementation and workflow, no duplicate PR.
+- Scope: profession-heading generator and its existing regression. Unknown roles remain neutral; Arabic word boundaries/diacritic normalization prevent kitchen titles matching medicine; healthcare industry words alone do not prove a clinical occupation. No user CV content rewritten.
+- Benchmark principle: standard, relevant section headings (CareerOneStop Resume Guide / Veterans resume format); no ATS certification claim.
+- Local evidence: production build/TypeScript PASS; 26 real generated-component renders PASS (both headings, content unchanged, empty sections hidden); bounded account/draft, duplicate, SQL-static, PDF boundary and credential-boundary checks PASS. The expanded test rejects the old candidate. Initial candidate build attempt failed on a local dependency symlink; using the same dependencies as regular files passed without configuration changes.
+- Browser matrix reuses #117 workflow and now covers 13 titles in EN/AR at 360/390/1440 widths. Exact-head CI pending. Browser unavailable locally; no new native-PDF/device/live-account acceptance claimed.
+- Reusable lesson: test complete Arabic words and ambiguous industry/job combinations, not only obvious role examples. Keep nonclinical headings neutral when classification is uncertain.
+- No merge to main or publication; existing PDF/account/menu changes retained. Release acceptance remains separate.

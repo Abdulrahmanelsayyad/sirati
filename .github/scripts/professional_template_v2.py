@@ -16,6 +16,23 @@ if "professional-v2" not in text:
       ? data.languages.split('\n').map(item => item.trim()).filter(Boolean).join(' | ')
       : '';
 
+    // Titles are part of the user's CV content; infer headings, never skills.
+    // Unrecognized professions intentionally use neutral labels (not nursing).
+    const profession = (data.title || '').normalize('NFKC').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '');
+    const isClinical = /(?:^|\W)(?:nurs(?:e|ing)|physician|doctor|surgeon|paramedic|pharmacist|midwife|dentist|clinician|physiotherapist)(?:$|\W)/i.test(profession)
+      || /(?:^|[^\p{L}])(?:ممرض(?:ة)?|تمريض|طبيب(?:ة)?|دكتور(?:ة)?|صيدل(?:ي|ية)|مسعف(?:ة)?|قابلة|معالج(?:ة)?)(?=$|[^\p{L}])/u.test(profession);
+    const isTechnical = /(?:^|\W)(?:software|develop(?:er|ment)|programmer|engineer|devops|data scientist|cybersecurity|web developer|information technology|it support)(?:$|\W)/i.test(profession)
+      || /مبرمج|مهندس|مطوّر|مطور|تقنية المعلومات|برمجيات/.test(profession);
+    const skillsHeading = isClinical
+      ? (language === 'ar' ? 'المهارات السريرية' : 'CLINICAL SKILLS')
+      : isTechnical
+        ? (language === 'ar' ? 'المهارات التقنية' : 'TECHNICAL SKILLS')
+        : (language === 'ar' ? 'المهارات المهنية' : 'PROFESSIONAL SKILLS');
+    const certHeading = isClinical
+      ? (language === 'ar' ? 'التراخيص والشهادات' : 'LICENSURE AND CERTIFICATIONS')
+      : (language === 'ar' ? 'الشهادات المهنية' : 'CERTIFICATIONS');
+
+
     return (
       <article className="cv-sheet template-modern professional-v2" dir={dir}>
         {watermarked && <div className="cv-watermark">SIRATI · PREVIEW</div>}
@@ -51,7 +68,7 @@ if "professional-v2" not in text:
 
         {visibleCertifications.length > 0 && (
           <section className="professional-v2-section keep-together">
-            <h2>{language === 'ar' ? 'التراخيص والشهادات' : 'LICENSURE AND CERTIFICATIONS'}</h2>
+            <h2>{certHeading}</h2>
             <ul className="professional-v2-list professional-v2-cert-list">
               {visibleCertifications.map(item => (
                 <li key={item.id}>
@@ -141,7 +158,7 @@ if "professional-v2" not in text:
 
         {skillLine && (
           <section className="professional-v2-section keep-together">
-            <h2>{language === 'ar' ? 'المهارات السريرية' : 'CLINICAL SKILLS'}</h2>
+            <h2>{skillsHeading}</h2>
             <p>{skillLine}</p>
           </section>
         )}
