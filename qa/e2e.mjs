@@ -28,6 +28,18 @@ assert(guestTemplateSource.includes('function continueToBuilder()') &&
 console.log('PASS: guest CV gallery has no account-loading state or auth redirect');
 
 const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
+// Every account-owned saved CV card should expose the already implemented
+// Smart CV and Quality journeys, without going through Templates or auth.
+for (const tool of ['smart','quality']) {
+  const href = "href={withBasePath('/builder?doc=' + encodeURIComponent(doc.id) + '&focus=" + tool + "')}";
+  assert.equal(docsSource.split(href).length - 1, 1,
+    'saved CV must have exactly one direct '+tool+' contextual action');
+}
+assert(docsSource.includes("aria-label={'Smart CV · ' + (doc.title || 'CV')}") &&
+  docsSource.includes("aria-label={'CV Quality · ' + (doc.title || 'CV')}"),
+  'saved CV contextual actions need document-specific accessible names');
+console.log('PASS: account-owned document cards expose Smart CV/Quality direct actions');
+
 assert.equal((docsSource.match(/data-testid="career-tools-entry"/g) || []).length, 1,
   'My Documents must have exactly one visible career tools entry');
 assert(docsSource.includes("withBasePath('/career-tools/')"),
