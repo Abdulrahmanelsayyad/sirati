@@ -45,6 +45,25 @@ docs = docs[:first_import.start()] + import_line + docs[first_import.start():]
 # documents were already loaded by the existing RLS-constrained Supabase query.
 target = '<div className="document-grid">'
 docs = once(docs,target,'<SiratiDocumentIntent documents={documents} />\n        '+target,'signed-in document grid')
+# Saved-document cards need contextual actions even if the user did not
+# enter through the drawer. Reuse the same focused Builder journeys; the
+# Builder's account-owned document fetch remains the authorization boundary.
+delete_anchor = "onClick={() => removeDocument(doc.id)}"
+if docs.count(delete_anchor) != 1:
+    raise RuntimeError('#91/#92: expected one document-card delete action')
+delete_at = docs.index(delete_anchor)
+button_at = docs.rfind('<button', 0, delete_at)
+button_end = docs.find('</button>', delete_at)
+if button_at < 0 or button_end < 0 or delete_at - button_at > 300:
+    raise RuntimeError('#91/#92: document action row changed')
+card_shortcuts = """<a className="btn btn-secondary"
+                href={withBasePath('/builder?doc=' + encodeURIComponent(doc.id) + '&focus=smart')}
+                aria-label={'Smart CV · ' + (doc.title || 'CV')}>Smart CV ✦</a>
+              <a className="btn btn-secondary"
+                href={withBasePath('/builder?doc=' + encodeURIComponent(doc.id) + '&focus=quality')}
+                aria-label={'CV Quality · ' + (doc.title || 'CV')}>CV Quality ◉</a>
+              """
+docs = docs[:button_at] + card_shortcuts + docs[button_at:]
 docs_path.write_text(docs, encoding='utf-8')
 
 component = root / 'components/SiratiDocumentIntent.tsx'
