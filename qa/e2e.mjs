@@ -2302,34 +2302,51 @@ assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
 assert((await currentStep()).includes('Section 9 of 9'), 'free review must not automatically submit or navigate');
 log('Free PDF review remains manually accessible');
     
-// Optional voluntary feedback: no pop-up, no DB write, no misleading 'sent' message.
+// Native in-site rating: no email app, optional comments, no claimed persistence
+// when account/database is unavailable. Acceptance with real synthetic A/B
+// Supabase users is a separate security gate, not simulated by this browser test.
 await page.goto(base + '/', {waitUntil:'networkidle'});
 const feedback = page.locator('#feedback');
-assert.equal(await feedback.count(), 1, 'one optional homepage feedback section required');
-await feedback.locator('summary').click();
-const rating3 = feedback.getByRole('button', {name:/3 of 5 stars/});
-assert.equal(await rating3.count(), 1, 'accessible 1-5 star buttons required');
-assert.equal(await feedback.getByRole('link', {name:/Open email draft/}).count(), 0,
-  'email link must not exist until a rating is chosen');
-await rating3.click();
-assert.equal(await rating3.getAttribute('aria-pressed'), 'true');
-await feedback.locator('textarea').fill('Test Arabic / تجربة عربية');
-const draft = await feedback.getByRole('link', {name:/Open email draft/}).getAttribute('href');
-assert(draft.startsWith('mailto:sirati-support@agentmail.to?'),
-  'feedback must route to the existing support address, without a backend');
-const emailDraft = new URL(draft);
-assert.equal(emailDraft.searchParams.get('subject'), 'Sirati CV website rating: 3/5');
-assert(emailDraft.searchParams.get('body').includes('Test Arabic / تجربة عربية'),
-  'Unicode optional feedback must be encoded into the draft');
-assert(!emailDraft.searchParams.get('body').includes('CV JSON'),
-  'rating flow must not attach private CV data');
+assert.equal(await feedback.count(),1,'one rating form is mounted in the homepage');
+assert.equal(await feedback.locator('form').count(),1,'form is always accessible');
+assert.equal(await feedback.locator('a[href^="mailto:"]').count(),0,
+  'rating must never launch an email draft');
+assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isDisabled(),true,
+  'send is disabled until a star rating is chosen');
+const nativeStar3 = feedback.getByRole('button',{name:/3 of 5 stars/});
+await nativeStar3.click();
+assert.equal(await nativeStar3.getAttribute('aria-pressed'),'true');
+await feedback.locator('select').selectOption('pdf');
+await feedback.locator('textarea').fill('Works well / رائع');
+assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isEnabled(),true);
+assert.equal(await feedback.locator('textarea').getAttribute('maxlength'),'400');
+const feedbackSource = fs.readFileSync('components/SiratiFeedbackRating.tsx','utf8');
+assert(feedbackSource.includes(".from('sirati_site_feedback').upsert("),
+  'form must submit only through Supabase');
+assert(feedbackSource.includes('client.auth.getUser()'),
+  'ratings require a verified signed-in account');
+assert(!feedbackSource.includes('mailto:') && !feedbackSource.includes('localStorage'),
+  'ratings may not use mailto or browser-local fake persistence');
+assert(!feedbackSource.includes('dangerouslySetInnerHTML'),
+  'feedback text must render safely');
+const dashboardSource = fs.readFileSync('app/feedback-dashboard/page.tsx','utf8');
+assert(dashboardSource.includes('sirati_feedback_admin') &&
+  dashboardSource.includes(".from('sirati_site_feedback')") &&
+  !dashboardSource.includes('service_role'),
+  'owner dashboard must use RLS and no server secret in browser');
+const feedbackSql = fs.readFileSync('../../docs/FEEDBACK_RLS_REVIEW.sql','utf8');
+for(const control of ['enable row level security','feedback_read_own_or_owner',
+  'feedback_write_own','feedback_edit_own',"'app_metadata'",'revoke all']) {
+  assert(feedbackSql.includes(control),'feedback SQL missing safety control: '+control);
+}
 await page.setViewportSize({width:360,height:800});
-const feedbackOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-assert(feedbackOverflow <= 2, '360px feedback UI must not cause horizontal scrolling');
-await rating3.click();
-assert.equal(await feedback.getByRole('link', {name:/Open email draft/}).count(), 0,
-  'clearing rating disables email submission');
-log('Bilingual voluntary 5-star feedback creates a bounded mailto draft and stays mobile-safe');
+const nativeFeedbackOverflow=await page.evaluate(() => document.documentElement.scrollWidth-innerWidth);
+assert(nativeFeedbackOverflow<=2,
+  'native feedback causes 360px horizontal overflow: '+nativeFeedbackOverflow);
+await page.goto(base+'/feedback-dashboard/',{waitUntil:'networkidle'});
+assert(await page.getByRole('heading',{name:/Visitor feedback/}).isVisible(),
+  'private rating dashboard route missing');
+log('Native feedback: bilingual 5-star form, no mailto, checked RLS SQL, owner dashboard and 360px layout');
 
 await browser.close();
 console.log('E2E QA COMPLETE');
