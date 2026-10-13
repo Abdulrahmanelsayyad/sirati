@@ -368,7 +368,8 @@ export default function SiratiBuilderPdfButton(props: Props) {
     }
     catch (e: unknown) {
       // Saving a cloud CV and authenticating retain their existing error paths.
-      if (saving || e instanceof PdfRenderFailure) throw e;
+      if (saving) throw e;
+      if (e instanceof PdfRenderFailure) throw e;
       throw new PdfRenderFailure(pdfExportFeedback(e, arabic));
     }
   }
