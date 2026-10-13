@@ -88,6 +88,23 @@ assert(fs.readFileSync('app/globals.css','utf8').includes(
   'saved-CV PDF recovery action must have responsive touch sizing');
 console.log('PASS: saved PDF download notices are bilingual, retryable and hide backend details');
 
+const builderPdfSource = fs.readFileSync('components/SiratiBuilderPdfButton.tsx','utf8');
+const builderMapperSource = builderPdfSource.match(/function builderPdfErrorText\(error: unknown, language: string\): string \{[\s\S]*?\n\}/)?.[0];
+assert(builderMapperSource, 'Builder PDF localized error mapper is missing');
+const builderMessageJS = transpilePdfMessage(builderMapperSource,{compilerOptions:{target:PdfScriptTarget.ES2020}}).outputText;
+const builderPdfErrorText = new Function(builderMessageJS+';return builderPdfErrorText;')();
+const rejectedMixed = new Error('Mixed-script PDF text cannot be exported safely. Separate the text fields.');
+assert.match(builderPdfErrorText(rejectedMixed,'ar'), /النصوص المختلطة.*أعد التنزيل/);
+assert.match(builderPdfErrorText(rejectedMixed,'en'), /Arabic\/English.*retry/);
+assert.match(builderPdfErrorText(new Error('CV preview is not available.'),'ar'), /معاينة السيرة.*المعاينة/);
+assert.match(builderPdfErrorText(new Error('CV preview is not available.'),'en'), /CV preview.*retry/);
+assert(!builderPdfErrorText(new Error('SECRET_TOKENS_SHOULD_NEVER_SHOW'),'ar').includes('SECRET_TOKENS_SHOULD_NEVER_SHOW'));
+assert(!builderPdfErrorText(new Error('SECRET_TOKENS_SHOULD_NEVER_SHOW'),'en').includes('SECRET_TOKENS_SHOULD_NEVER_SHOW'));
+assert(builderPdfSource.includes('setError(builderPdfErrorText(e, language));') &&
+       builderPdfSource.includes('aria-busy={busy} onClick={handle}'),
+  'Builder PDF must show safe localized errors with accessible busy state');
+console.log('PASS: Builder mixed-script PDF errors are actionable and never expose technical exception text');
+
 const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
 // Every account-owned saved CV card should expose the already implemented
 // Smart CV and Quality journeys, without going through Templates or auth.
