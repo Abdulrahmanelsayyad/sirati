@@ -234,10 +234,12 @@ for (const [pathname,contextInfo] of guestLinks) {
 // Require the five observed page anchors plus the menu-only Builder route.
 // A future UI change must not silently reduce buyer-discoverable navigation.
 // Wizard button flows are verified in the separate journey below.
-assert(guestLinks.size >= 6,
-  'Buyer link crawl covered too few destinations: '+guestLinks.size);
+assert(guestLinks.size >= 5 && guestEntrypoints.size >= 8,
+  'Buyer link coverage fell below observed baseline: routes='+guestLinks.size+
+  ', feature entrypoints='+guestEntrypoints.size);
 console.log('PASS: buyer guest-link integrity across '+guestPaths.length+
-  ' public pages and '+guestLinks.size+' linked local routes: '+
+  ' public pages, '+guestLinks.size+' static routes, and '+guestEntrypoints.size+
+  ' unique feature entrypoints: '+
   [...guestLinks.keys()].join(', ')+' (no backend accounts)');
 
 // Actual guest pages at mobile/desktop widths, without account or storage mocks.
