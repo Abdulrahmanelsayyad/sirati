@@ -85,20 +85,33 @@ function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
     const rex = /\S+/gu;
     let match: RegExpExecArray | null;
     while ((match = rex.exec(text))) {
-      const range = document.createRange();
-      range.setStart(node, match.index);
-      range.setEnd(node, match.index + match[0].length);
-      const rect = range.getBoundingClientRect();
-      range.detach();
-      if (!rect.width || !rect.height) continue;
-      const top = rect.top - bounds.top;
-      const bottom = rect.bottom - bounds.top;
-      if (top < -3 || bottom < 0 || top > sheet.scrollHeight + 15) continue;
-      result.push({
-        value: match[0].normalize('NFC'),
-        x: rect.left - bounds.left,
-        width: rect.width, top, bottom, size: fontSize, rtl, nodeId,
-      });
+      // A bounded Arabic-prefix medical acronym (الـICU/ER) consists of
+      // two scripts but is displayed as one visual word. The Arabic PDF
+      // font lacks Latin letters: split only this known grammar at the
+      // original DOM character boundary and measure each part with a Range.
+      // Do not add/invent spaces, transliterate the acronym or alter bitmap
+      // rendering. All other mixed-script tokens retain the safety guard.
+      const bilingual = match[0].match(/^([\u0600-\u06FF]+)([A-Za-z]+(?:[/-][A-Za-z]+)*)$/u);
+      const chunks = bilingual
+        ? [{value:bilingual[1],start:match.index},
+           {value:bilingual[2],start:match.index+bilingual[1].length}]
+        : [{value:match[0],start:match.index}];
+      for (const chunk of chunks) {
+        const range = document.createRange();
+        range.setStart(node, chunk.start);
+        range.setEnd(node, chunk.start + chunk.value.length);
+        const rect = range.getBoundingClientRect();
+        range.detach();
+        if (!rect.width || !rect.height) continue;
+        const top = rect.top - bounds.top;
+        const bottom = rect.bottom - bounds.top;
+        if (top < -3 || bottom < 0 || top > sheet.scrollHeight + 15) continue;
+        result.push({
+          value: chunk.value.normalize('NFC'),
+          x: rect.left - bounds.left,
+          width: rect.width, top, bottom, size: fontSize, rtl, nodeId,
+        });
+      }
     }
   }
   return result;
