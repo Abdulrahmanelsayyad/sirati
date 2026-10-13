@@ -67,17 +67,49 @@ export default function SiratiFeedbackRating() {
     }
   }
 
+  const feeling = rating > 0 ? [
+    '',
+    'محتاجين نتحسّن · Needs improvement',
+    'فيه حاجات محتاجة تطوير · Could be better',
+    'تجربة جيدة · Good',
+    'تجربة رائعة · Great',
+    'تجربة ممتازة! · Excellent!'
+  ][rating] : 'اختار تقييمك · Choose your rating';
+
   return (
-    <div className="container sirati-feedback-v2 no-print" id="feedback"
+    <section className="container sirati-feedback-v2 no-print" id="feedback"
       role="region" aria-labelledby="feedback-heading">
       <div className="sirati-feedback-v2__intro">
-        <span className="sirati-feedback-v2__eyebrow">YOUR VOICE · رأيك يهمنا</span>
-        <h2 id="feedback-heading">How was your experience? <span>إيه رأيك في سيرتي؟</span></h2>
-        <p>ساعدنا نحسّن تجربة إنشاء الـCV · Help us make Sirati better.</p>
+        <div className="sirati-feedback-v2__eyebrow">
+          <span aria-hidden="true">✦</span> YOUR VOICE MATTERS
+          <span lang="ar">رأيك يهمنا</span>
+        </div>
+        <h2 id="feedback-heading">
+          <span lang="ar" dir="rtl">إيه رأيك في تجربتك مع سيرتي؟</span>
+          <span lang="en">How was your experience?</span>
+        </h2>
+        <p lang="ar" dir="rtl" className="sirati-feedback-v2__intro-copy">
+          بنطوّر سيرتي خطوة بخطوة. تقييمك الصادق بيساعدنا نخلّي إنشاء الـCV أسهل وأفضل.
+        </p>
+        <p className="sirati-feedback-v2__intro-copy" lang="en">
+          Your honest feedback helps us build a better CV experience.
+        </p>
+        <div className="sirati-feedback-v2__signature">
+          <span className="sirati-feedback-v2__signature-mark" aria-hidden="true">★</span>
+          <span><strong>Simple. Thoughtful. Better.</strong>
+            <small>Every voice shapes Sirati · كل رأي بيصنع فرق</small>
+          </span>
+        </div>
       </div>
       <form className="sirati-feedback-v2__form" onSubmit={submit}>
+        <div className="sirati-feedback-v2__form-head">
+          <strong>شاركنا رأيك <span lang="en">· Share your feedback</span></strong>
+          <span className="sirati-feedback-v2__form-head-icon" aria-hidden="true">✳</span>
+        </div>
         <fieldset className="sirati-feedback-v2__fieldset">
-          <legend>قيّم تجربتك · Rate your experience</legend>
+          <legend><span className="sirati-feedback-v2__step" aria-hidden="true">01</span>
+            قيّم تجربتك <span lang="en">· Rate your experience</span>
+          </legend>
           <div className="sirati-feedback-v2__stars" role="group" aria-label="Rating · التقييم">
             {[1, 2, 3, 4, 5].map(value => (
               <button type="button" key={value}
@@ -89,39 +121,73 @@ export default function SiratiFeedbackRating() {
               </button>
             ))}
           </div>
-          <p className="sirati-feedback-v2__helper" aria-live="polite">
-            {rating ? rating + ' / 5' : 'اختار عدد النجوم · Choose stars'}
+          <p className={'sirati-feedback-v2__helper' + (rating ? ' is-rated' : '')}
+            aria-live="polite">
+            <span>{feeling}</span>
+            {rating > 0 && <strong dir="ltr">{rating} / 5</strong>}
           </p>
         </fieldset>
-        <label htmlFor="sirati-feedback-area">إيه الجزء اللي بتقيّمه؟ · What are you rating?</label>
-        <select id="sirati-feedback-area" value={area}
-          onChange={event => { setArea(event.target.value as Area); resetNotice(); }}>
-          {areas.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
-        <label htmlFor="sirati-feedback-comment">احكيلنا رأيك (اختياري) · Optional comment</label>
-        <textarea id="sirati-feedback-comment" dir="auto" rows={3}
-          value={comment} maxLength={400}
-          onChange={event => { setComment(event.target.value); resetNotice(); }}
-          placeholder="إيه اللي عجبك، وإيه اللي محتاج يتطور؟" />
-        <div className="sirati-feedback-v2__foot">
-          <p>لا تكتب أي بيانات شخصية أو محتوى سيرتك الذاتية.
-            <span> No personal details or CV data. Free account needed to submit.</span>
-          </p>
-          <button className="sirati-feedback-v2__submit" type="submit"
-            disabled={!rating || status === 'saving'}>
-            {status === 'saving' ? 'جاري الإرسال... · Sending...' : 'إرسال التقييم · Send feedback'}
-          </button>
+        <div className="sirati-feedback-v2__category">
+          <div className="sirati-feedback-v2__label" id="sirati-feedback-area-label">
+            <span className="sirati-feedback-v2__step" aria-hidden="true">02</span>
+            إيه الجزء اللي بتقيّمه؟ <span lang="en">· Which part?</span>
+          </div>
+          <div className="sirati-feedback-v2__chips" role="group"
+            aria-labelledby="sirati-feedback-area-label">
+            {areas.map(item => (
+              <button type="button" key={item.value}
+                className={area === item.value ? 'selected' : ''}
+                aria-pressed={area === item.value}
+                onClick={() => { setArea(item.value); resetNotice(); }}>
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div role="status" aria-live="polite" className="sirati-feedback-v2__status">
+        <div className="sirati-feedback-v2__comment-field">
+          <label htmlFor="sirati-feedback-comment">
+            <span className="sirati-feedback-v2__step" aria-hidden="true">03</span>
+            اكتب رأيك <span lang="en">· Tell us more</span>
+            <span className="sirati-feedback-v2__optional">اختياري · Optional</span>
+          </label>
+          <textarea id="sirati-feedback-comment" dir="auto" rows={3}
+            value={comment} maxLength={400}
+            onChange={event => { setComment(event.target.value); resetNotice(); }}
+            placeholder="إيه اللي عجبك؟ وإيه اللي نقدر نحسّنه؟ · What could we improve?" />
+          <div className="sirati-feedback-v2__count">
+            <span>لا تكتب بيانات شخصية أو محتوى الـCV · No personal data</span>
+            <span dir="ltr">{comment.length} / 400</span>
+          </div>
+        </div>
+        <button className="sirati-feedback-v2__submit" type="submit"
+          disabled={!rating || status === 'saving'} aria-busy={status === 'saving'}>
+          <span aria-hidden="true">{status === 'saving' ? '◌' : '↗'}</span>
+          {status === 'saving' ? 'جاري الإرسال · Sending...' : 'إرسال التقييم · Send feedback'}
+        </button>
+        <p className="sirati-feedback-v2__account-note">
+          يتطلب الإرسال حسابًا مجانيًا · A free account is required to submit
+        </p>
+        {status !== 'idle' && <div role="status" aria-live="polite"
+          className={'sirati-feedback-v2__status is-' + status}>
           {status === 'signin' && <>
-            يلزم تسجيل الدخول لحفظ التقييم · Sign in to submit your review.
-            {' '}<a href={withBasePath('/auth?next=/')}>تسجيل الدخول · Sign in</a>
+            <span className="sirati-feedback-v2__status-icon" aria-hidden="true">↗</span>
+            <span>سجّل دخولك لحفظ التقييم · Sign in to submit.
+              {' '}<a href={withBasePath('/auth?next=/')}>تسجيل الدخول · Sign in</a>
+            </span>
           </>}
-          {status === 'saved' && 'شكرًا! تم حفظ تقييمك بنجاح. يمكنك تعديله لاحقًا · Thank you! Your rating was saved.'}
-          {status === 'error' && 'تعذر حفظ التقييم الآن. لم يتم تأكيد الإرسال؛ حاول لاحقًا · Could not save. Please retry.'}
-        </div>
+          {status === 'saved' && <>
+            <span className="sirati-feedback-v2__status-icon" aria-hidden="true">✓</span>
+            <span><strong>شكرًا لرأيك! · Thank you!</strong>
+              <small>تم حفظ تقييمك بنجاح، ويمكنك تعديله لاحقًا · Your rating was saved.</small>
+            </span>
+          </>}
+          {status === 'error' && <>
+            <span className="sirati-feedback-v2__status-icon" aria-hidden="true">!</span>
+            <span>تعذر حفظ التقييم الآن، حاول مرة تانية · Could not save. Please retry.</span>
+          </>}
+        </div>}
       </form>
-    </div>
+    </section>
   );
 }
 """, encoding="utf-8")
@@ -203,51 +269,203 @@ home_path.write_text(home, encoding="utf-8")
 
 css += r"""
 
-/* Sirati native feedback v2 — scoped screen-only, mobile-first and no overlays */
+/* Sirati native feedback v3: compact editorial layout + thoughtful mobile UX.
+   No overlays, no external assets, no data/permissions changes. */
 @media screen {
-.sirati-feedback-v2 { max-width: 1120px; padding-top: 28px; padding-bottom: 26px;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 26px;
-  align-items: center; }
-.sirati-feedback-v2__intro { padding: 14px 2px; }
-.sirati-feedback-v2__eyebrow { font-size: 11px; font-weight: 750; letter-spacing: .12em; color:#277153; }
-.sirati-feedback-v2__intro h2 { color: #152e26; font-size: clamp(24px, 3vw, 34px); line-height: 1.24; margin: 12px 0; }
-.sirati-feedback-v2__intro h2 span { display:block; font-size:.77em; margin-top:8px; }
-.sirati-feedback-v2__intro p { font-size:14px; color:#53695d; }
-.sirati-feedback-v2__form { min-width: 0; display: grid; gap: 12px;
-  padding: clamp(18px, 3vw, 26px); border:1px solid #dbe8e1; border-radius:20px;
-  background:#fff; box-shadow:0 12px 32px #102f2312; }
-.sirati-feedback-v2__fieldset { margin:0; border:0; padding:0; min-width:0; }
-.sirati-feedback-v2__fieldset legend,.sirati-feedback-v2__form label { color:#1e4130; font-size:13px; font-weight:680; }
-.sirati-feedback-v2__stars { display:flex; gap:6px; flex-wrap:wrap; margin:9px 0 4px; }
-.sirati-feedback-v2__stars button { width:50px; height:48px; border:1px solid #dde4df;
-  border-radius:11px; background:#f9faf9; color:#8c9c93; font-size:30px; line-height:1; cursor:pointer; }
-.sirati-feedback-v2__stars button.selected { color:#c1830c; background:#fff8e8; border-color:#f0cf82; }
-.sirati-feedback-v2__form textarea,.sirati-feedback-v2__form select {
-  color:#172e23; background:#fff; padding:11px 13px; border:1px solid #bccdc2;
-  border-radius:10px; font:inherit; width:100%; min-width:0; box-sizing:border-box; }
-.sirati-feedback-v2__form textarea { resize:vertical; }
-.sirati-feedback-v2__helper,.sirati-feedback-v2__foot p { margin:0; font-size:12px; color:#65796e; }
-.sirati-feedback-v2__foot { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; }
-.sirati-feedback-v2__foot p { max-width:245px; line-height:1.55; }
-.sirati-feedback-v2__foot p span { display:block; }
-.sirati-feedback-v2__submit { border:0; border-radius:12px; padding:12px 16px; min-height:48px;
-  background:#206e4c; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
-.sirati-feedback-v2__submit:disabled { opacity:.5; cursor:not-allowed; }
-.sirati-feedback-v2__status { min-height:18px; font-size:12px; color:#1d6c4b; }
-.sirati-feedback-v2__form :is(button,a,textarea,select):focus-visible { outline:3px solid #19885c; outline-offset:2px; }
-.sirati-rating-admin { padding:28px 16px 60px; max-width:940px; min-height:65vh; }
-.sirati-rating-admin h1 { margin:22px 0 5px; }
-.sirati-rating-admin__stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:18px 0; }
-.sirati-rating-admin__stats>div,.sirati-rating-admin__list article { border:1px solid #dce8df;
-  border-radius:15px; padding:18px; background:#fff; }
-.sirati-rating-admin__stats span { display:block; color:#53695d; font-size:13px; }
-.sirati-rating-admin__stats strong { display:block; font-size:29px; margin-top:8px; }
-.sirati-rating-admin__list { display:grid; gap:12px; }
-.sirati-rating-admin__list article>div { display:flex; flex-wrap:wrap; gap:14px; }
-.sirati-rating-admin__list article strong { color:#b47b12; }
-.sirati-rating-admin__list article time { font-size:12px; color:#637269; }
-@media (max-width:750px) { .sirati-feedback-v2 { grid-template-columns:1fr; gap:12px; } }
-@media (max-width:360px) { .sirati-feedback-v2__stars button { width:45px; } }
+.sirati-feedback-v2 {
+  --feedback-forest: #174938;
+  --feedback-deep: #143a2e;
+  --feedback-muted: #587163;
+  --feedback-amber: #bd8526;
+  position: relative; isolation: isolate;
+  display: grid; grid-template-columns: minmax(0, .90fr) minmax(0, 1.12fr);
+  align-items: center; gap: clamp(20px, 4vw, 64px);
+  box-sizing: border-box; max-width: 1120px;
+  padding: clamp(20px, 4vw, 52px);
+  margin-top: 24px; margin-bottom: 24px;
+  border: 1px solid #dfe9df; border-radius: 26px;
+  background: linear-gradient(130deg, #e8f4ec 0%, #f3f8f2 48%, #fffdf7 100%);
+  box-shadow: 0 12px 48px #173f2910;
+  overflow: hidden; color: #173a2d;
+}
+.sirati-feedback-v2::before {
+  content:""; position:absolute; z-index:-1;
+  width: 270px; height:270px; border-radius: 50%;
+  left:-90px; top:-110px; background: #bedec33b;
+  pointer-events:none;
+}
+.sirati-feedback-v2__intro { padding: clamp(0px, 1.3vw, 18px); min-width: 0; }
+.sirati-feedback-v2__eyebrow {
+  display:inline-flex; align-items:center; flex-wrap:wrap;
+  gap:8px; letter-spacing:.06em; font-size:11px; font-weight:800;
+  color:#2f7156; text-transform:uppercase;
+}
+.sirati-feedback-v2__eyebrow span:last-child { letter-spacing:normal; text-transform:none; }
+.sirati-feedback-v2__eyebrow span:first-child { font-size:18px; color:#bd8526; }
+.sirati-feedback-v2__intro h2 {
+  font-size:clamp(29px,3.6vw,42px); font-weight:800; line-height:1.25;
+  color:var(--feedback-deep); letter-spacing:-.025em;
+  margin:18px 0 18px; overflow-wrap:anywhere;
+}
+.sirati-feedback-v2__intro h2 span { display:block; }
+.sirati-feedback-v2__intro h2 span[lang=en] {
+  font-size:.65em; font-weight:560; line-height:1.4;
+  letter-spacing:-.015em; margin-top:9px; color:#4c685b;
+}
+.sirati-feedback-v2__intro-copy {
+  color:#4a685b; line-height:1.85; font-size:14px; margin:0 0 9px;
+  max-width:360px;
+}
+.sirati-feedback-v2__intro-copy[lang=en] { font-size:13px; }
+.sirati-feedback-v2__signature {
+  display:flex; align-items:center; gap:13px;
+  margin-top:32px; padding-top:22px; border-top:1px solid #bfcfc2;
+}
+.sirati-feedback-v2__signature-mark {
+  display:grid;place-items:center;flex-shrink:0;
+  width:48px;height:48px;border-radius:15px;
+  background:#fff8e8;color:#bd8526;font-size:25px;border:1px solid #f0dbac;
+}
+.sirati-feedback-v2__signature strong {display:block;font-size:13px;color:#244d3b}
+.sirati-feedback-v2__signature small {display:block;color:#557265;font-size:11px;margin-top:5px;line-height:1.5}
+.sirati-feedback-v2__form {
+  display:grid; gap:17px; min-width:0;
+  box-sizing:border-box; padding:clamp(18px,3vw,32px);
+  border:1px solid #e0e9e2; border-radius:22px;
+  background:#fff; box-shadow:0 17px 42px #153f2517;
+}
+.sirati-feedback-v2__form-head {display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding-bottom:15px;border-bottom:1px solid #edf1ec;color:#204b38;font-size:16px;line-height:1.5}
+.sirati-feedback-v2__form-head span[lang=en] {font-size:12px;font-weight:500;color:#648072}
+.sirati-feedback-v2__form-head-icon {font-size:25px;color:#b88732}
+.sirati-feedback-v2__fieldset {border:0;padding:0;margin:0;min-width:0}
+.sirati-feedback-v2__fieldset legend, .sirati-feedback-v2__label,
+.sirati-feedback-v2__comment-field label {
+  font-size:13px;line-height:1.55;color:#254737;font-weight:740;
+}
+.sirati-feedback-v2__fieldset legend span[lang=en],
+.sirati-feedback-v2__label span[lang=en],
+.sirati-feedback-v2__comment-field label span[lang=en] {font-size:12px;font-weight:500;color:#607466}
+.sirati-feedback-v2__step {
+  display:inline-flex;align-items:center;justify-content:center;
+  width:25px;height:25px;border-radius:8px;margin-inline-end:7px;
+  background:#edf5ef;color:#2c6b4f;font:700 10px/1 system-ui;
+}
+.sirati-feedback-v2__stars {
+  display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;direction:ltr;
+}
+.sirati-feedback-v2__stars button {
+  display:grid;place-items:center; flex:0 0 49px;
+  width:49px;height:50px;line-height:1;
+  border-radius:13px;border:1px solid #e1e9e2;
+  color:#aebcb2;background:#f7f9f7;
+  font:32px/1 system-ui;cursor:pointer;
+  transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;
+}
+.sirati-feedback-v2__stars button.selected {
+  background:#fff7e5;color:var(--feedback-amber);border-color:#edd394;
+}
+@media(hover:hover) {
+  .sirati-feedback-v2__stars button:hover {transform:translateY(-3px);color:#ad7b1d;border-color:#e8cb88;background:#fff8e9}
+  .sirati-feedback-v2__chips button:hover {border-color:#719e87;background:#f1f7f2}
+  .sirati-feedback-v2__submit:not(:disabled):hover {background:#246d4e;transform:translateY(-1px)}
+}
+.sirati-feedback-v2__helper {
+  min-height:22px;display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:8px;
+  color:#6c806f;font-size:12px;margin:7px 0 0;
+}
+.sirati-feedback-v2__helper.is-rated {color:#91630f}
+.sirati-feedback-v2__helper strong {font:800 12px/1.2 system-ui;white-space:nowrap}
+.sirati-feedback-v2__category {display:grid;gap:11px}
+.sirati-feedback-v2__chips {display:flex;flex-wrap:wrap;gap:8px}
+.sirati-feedback-v2__chips button {
+  min-height:42px;max-width:100%;box-sizing:border-box;
+  padding:9px 13px;border:1px solid #dce6de;border-radius:999px;
+  background:#f8faf8;color:#476252;font:600 12px/1.35 inherit;
+  cursor:pointer;transition:background .18s,border-color .18s,color .18s;
+}
+.sirati-feedback-v2__chips button.selected {
+  background:#eaf5ed;color:#19543b;border-color:#9bc4a9;box-shadow:inset 0 0 0 1px #a8d0b2;
+}
+.sirati-feedback-v2__comment-field {display:grid;gap:10px}
+.sirati-feedback-v2__comment-field label {display:flex;align-items:center;flex-wrap:wrap;gap:3px}
+.sirati-feedback-v2__optional {
+  margin-inline-start:auto;background:#f3f5f2;border-radius:6px;
+  color:#63776b;padding:3px 7px;font-size:11px;font-weight:500;
+}
+.sirati-feedback-v2__comment-field textarea {
+  display:block;width:100%;box-sizing:border-box;min-width:0;
+  min-height:92px;padding:13px 14px;resize:vertical;
+  background:#fbfcfa;color:#233b2d;border:1px solid #d8e3d9;
+  border-radius:13px;font:inherit;font-size:13px;line-height:1.7;
+}
+.sirati-feedback-v2__comment-field textarea::placeholder {color:#8a9e90}
+.sirati-feedback-v2__count {
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  color:#788b7c;font-size:11px;line-height:1.5;
+}
+.sirati-feedback-v2__count span:last-child {font-variant-numeric:tabular-nums}
+.sirati-feedback-v2__submit {
+  display:flex;align-items:center;justify-content:center;gap:11px;
+  width:100%;min-height:50px;padding:12px 16px;border:0;border-radius:13px;
+  background:var(--feedback-forest);color:white;
+  font:750 14px/1.4 inherit;cursor:pointer;
+  transition:transform .18s ease,background .18s ease;box-shadow:0 6px 14px #1749381b;
+}
+.sirati-feedback-v2__submit span {font:20px/1 system-ui}
+.sirati-feedback-v2__submit:disabled {cursor:not-allowed;opacity:.5;box-shadow:none}
+.sirati-feedback-v2__account-note {font-size:11px;color:#728477;text-align:center;margin:-10px 0 0}
+.sirati-feedback-v2__status {
+  display:flex;align-items:flex-start;gap:12px;
+  border-radius:13px;padding:13px;font-size:13px;line-height:1.65;
+  background:#f0f7f0;border:1px solid #cee2d0;color:#21583b;
+}
+.sirati-feedback-v2__status.is-signin {background:#f3f7f5}
+.sirati-feedback-v2__status.is-error {background:#fff6f2;border-color:#f0d2c3;color:#9b4632}
+.sirati-feedback-v2__status-icon {
+  flex:0 0 25px;width:25px;height:25px;display:grid;place-items:center;
+  border-radius:50%;background:#d5e9d7;font:750 16px/1 system-ui;
+}
+.sirati-feedback-v2__status.is-error .sirati-feedback-v2__status-icon {background:#ffe5d8}
+.sirati-feedback-v2__status strong {display:block}
+.sirati-feedback-v2__status small {display:block;font-size:12px;margin-top:3px}
+.sirati-feedback-v2__status a {color:#11583b;font-weight:750;text-decoration:underline}
+.sirati-feedback-v2 :is(button,textarea,a):focus-visible {
+  outline:3px solid #168457;outline-offset:3px;
+}
+.sirati-rating-admin {padding:28px 16px 60px;max-width:940px;min-height:65vh}
+.sirati-rating-admin h1 {margin:22px 0 5px}
+.sirati-rating-admin__stats {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:18px 0}
+.sirati-rating-admin__stats>div,.sirati-rating-admin__list article {border:1px solid #dce8df;border-radius:15px;padding:18px;background:#fff}
+.sirati-rating-admin__stats span {display:block;color:#53695d;font-size:13px}
+.sirati-rating-admin__stats strong {display:block;font-size:29px;margin-top:8px}
+.sirati-rating-admin__list {display:grid;gap:12px}
+.sirati-rating-admin__list article>div {display:flex;flex-wrap:wrap;gap:14px}
+.sirati-rating-admin__list article strong {color:#b47b12}
+.sirati-rating-admin__list article time {font-size:12px;color:#637269}
+@media(max-width:800px) {
+  .sirati-feedback-v2 {grid-template-columns:minmax(0,1fr);gap:18px;padding:clamp(15px,4vw,28px);border-radius:21px}
+  .sirati-feedback-v2__intro {padding:6px 3px 0}
+  .sirati-feedback-v2__intro h2 {font-size:clamp(25px,6vw,32px);margin:9px 0}
+  .sirati-feedback-v2__intro-copy {margin:0 0 5px;max-width:none}
+  .sirati-feedback-v2__signature {display:none}
+  .sirati-feedback-v2__form {padding:clamp(15px,4vw,24px)}
+}
+@media(max-width:420px) {
+  .sirati-feedback-v2 {gap:14px;border-radius:17px}
+  .sirati-feedback-v2__form {gap:14px;border-radius:16px}
+  .sirati-feedback-v2__stars {gap:5px}
+  .sirati-feedback-v2__stars button {flex-basis:46px;width:46px;height:48px}
+  .sirati-feedback-v2__chips {gap:6px}
+  .sirati-feedback-v2__chips button {padding:9px 10px;font-size:11px;min-height:44px}
+}
+@media(max-width:340px) {
+  .sirati-feedback-v2__stars button {flex-basis:43px;width:43px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .sirati-feedback-v2__stars button,.sirati-feedback-v2__chips button,.sirati-feedback-v2__submit {transition:none}
+  .sirati-feedback-v2__stars button:hover,.sirati-feedback-v2__submit:hover {transform:none}
+}
 }
 """
 css_path.write_text(css, encoding="utf-8")
