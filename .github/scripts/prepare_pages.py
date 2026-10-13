@@ -292,3 +292,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('session_boundary_v
 
 # Owner reference: refine the existing Modern renderer, preserving the PDF engine.
 subprocess.run([sys.executable, str(Path(__file__).with_name('modern_reference_layout.py')), str(root)], check=True)
+
+# Voluntary website feedback via existing support email; no backend or CV data.
+subprocess.run([sys.executable, str(Path(__file__).with_name('feedback_rating_v1.py')), str(root)], check=True)
