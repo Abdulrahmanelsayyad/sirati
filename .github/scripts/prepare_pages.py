@@ -295,6 +295,3 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('modern_reference_l
 
 # Voluntary website feedback via existing support email; no backend or CV data.
 subprocess.run([sys.executable, str(Path(__file__).with_name('feedback_rating_v1.py')), str(root)], check=True)
-
-# Discoverability only: trusted owner role controls visibility; dashboard RLS is unchanged.
-subprocess.run([sys.executable, str(Path(__file__).with_name('owner_feedback_menu.py')), str(root)], check=True)
