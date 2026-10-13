@@ -106,7 +106,7 @@ export default function FeedbackDashboard() {
       <a className="sirati-rating-v2__back" href={withBasePath('/')}>← الرئيسية · Home</a>
       <header className="sirati-rating-v2__header">
         <div><span className="sirati-rating-v2__eyebrow">SIRATI · PRIVATE INSIGHTS</span>
-          <h1>تقييمات المستخدمين <span aria-hidden="true">★</span></h1>
+          <h1>تقييمات المستخدمين <span lang="en">· Visitor feedback</span> <span aria-hidden="true">★</span></h1>
           <p>Visitor feedback · لوحة خاصة بصاحب الموقع</p>
         </div>
       </header>
