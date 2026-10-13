@@ -18,12 +18,13 @@ if "Capture the existing CV preview" not in previous or "html2canvas" not in pre
 src.write_text(r"""'use client';
 
 import html2canvas from 'html2canvas';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFHexString, PDFName, PDFOperator, PDFOperatorNames, endMarkedContent } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { withBasePath } from '@/lib/basePath';
 
 type Word = { value: string; x: number; top: number; bottom: number;
-              width: number; size: number; rtl: boolean; nodeId: number };
+              width: number; size: number; rtl: boolean; nodeId: number;
+              mixedText?: string; mixedStart?: boolean; mixedEnd?: boolean };
 const PDF_WIDTH_PT = 595.2756;
 const PDF_HEIGHT_PT = 841.8898;
 const JPEG_QUALITY = 0.94;
@@ -96,7 +97,7 @@ function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
         ? [{value:bilingual[1],start:match.index},
            {value:bilingual[2],start:match.index+bilingual[1].length}]
         : [{value:match[0],start:match.index}];
-      for (const chunk of chunks) {
+      for (const [chunkIndex, chunk] of chunks.entries()) {
         const range = document.createRange();
         range.setStart(node, chunk.start);
         range.setEnd(node, chunk.start + chunk.value.length);
@@ -110,6 +111,9 @@ function wordsFromSheet(sheet: HTMLElement, bounds: DOMRect): Word[] {
           value: chunk.value.normalize('NFC'),
           x: rect.left - bounds.left,
           width: rect.width, top, bottom, size: fontSize, rtl, nodeId,
+          mixedText: bilingual ? match[0].normalize('NFC') : undefined,
+          mixedStart: !!bilingual && chunkIndex === 0,
+          mixedEnd: !!bilingual && chunkIndex === chunks.length - 1,
         });
       }
     }
@@ -293,7 +297,8 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       const sameNumericKind = prev &&
         numericWord.test(prev[0].value) === numericWord.test(w.value);
       if (prev && prev[0].nodeId === w.nodeId &&
-          sameLine && sameScript && sameNumericKind) {
+          sameLine && sameScript && sameNumericKind &&
+          !prev.some(item => item.mixedText) && !w.mixedText) {
         prev.push(w);
       } else {
         runs.push([w]);
@@ -307,6 +312,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     let previousRun: {
       x: number; width: number; top: number; rtl: boolean; nodeId: number;
     } | null = null;
+    let activeMixed: string | null = null;
     for (const run of runs) {
       const first = run[0];
       const isArabicIndicNumber = run.every(w =>
@@ -388,15 +394,36 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
         }
       }
       const safeX = Math.max(0, x);
+      // PDF /ActualText (ISO 32000) substitutes the exact original logical
+      // token for the two font-specific glyph objects. Without it, native
+      // extractors insert a false space between Arabic and Latin fragments.
+      // Only the narrowly allowlisted token grammar receives this marker.
+      // Do not wrap unrelated CV runs or overwrite font fallback behavior.
+      if (first.mixedStart) {
+        if (activeMixed) throw new Error('Nested PDF mixed-script sequence blocked.');
+        if (!first.mixedText) throw new Error('Missing semantic PDF token.');
+        activeMixed = first.mixedText;
+        page.pushOperators(PDFOperator.of(PDFOperatorNames.BeginMarkedContentSequence, [
+          PDFName.of('Span'),
+          '<< /ActualText ' + PDFHexString.fromText(activeMixed).toString() + ' >>',
+        ]));
+      }
       let spanX = safeX;
       for (const span of spans) {
         page.drawText(span.text, { x: spanX, y, size, font: span.font, opacity: 0 });
         spanX += span.font.widthOfTextAtSize(span.text, size);
       }
+      if (first.mixedEnd) {
+        if (!activeMixed || first.mixedText !== activeMixed)
+          throw new Error('Unpaired PDF mixed-script sequence blocked.');
+        page.pushOperators(endMarkedContent());
+        activeMixed = null;
+      }
       previousRun = { x: safeX, width: glyphWidth, top: first.top,
         rtl: first.rtl, nodeId: first.nodeId };
       embedded += run.length;
     }
+    if (activeMixed) throw new Error('PDF mixed-script token crosses an unsafe page boundary.');
   }
   canvas.width = 0; canvas.height = 0; // Release the full-CV bitmap before PDF serialization.
   if (embedded !== words.length)
