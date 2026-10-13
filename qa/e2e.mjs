@@ -189,6 +189,40 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
 
+// Sale readiness: verify actual guest-facing navigation before buyer demos.
+// Read-only GET requests against the isolated static build; no Supabase,
+// accounts, tracking calls, paid APIs, destructive actions or live traffic.
+// Collect links from rendered pages, not guesses about routes.
+const guestPaths = ['/', '/templates/', '/career-tools/', '/builder/?template=modern', '/auth/'];
+const guestLinks = new Map();
+for (const source of guestPaths) {
+  await page.goto(base + source, {waitUntil:'domcontentloaded'});
+  assert.equal((await page.locator('body').count()), 1, 'Guest page empty: ' + source);
+  const links = await page.locator('a[href]').evaluateAll(elements =>
+    elements.map(a => ({href:a.href, text:(a.textContent||'').trim().slice(0,70)})));
+  for (const {href,text} of links) {
+    const address = new URL(href);
+    if (address.origin !== new URL(base).origin ||
+        !address.pathname.startsWith('/sirati/')) continue;
+    const pathname = address.pathname.endsWith('/') ? address.pathname : address.pathname + '/';
+    // Host-served static routes are what a buyer receives; query strings
+    // and fragments are application state, not separate exported HTML files.
+    if (!guestLinks.has(pathname)) guestLinks.set(pathname,{source,text});
+  }
+}
+for (const [pathname,contextInfo] of guestLinks) {
+  const response = await page.request.get(new URL(pathname,base).href, {
+    timeout:15000, maxRedirects:2
+  });
+  assert(response.ok(),
+    'Broken local CV site link '+pathname+' from '+contextInfo.source+
+    ' (status '+response.status()+')');
+}
+assert(guestLinks.size >= 7,
+  'Buyer link crawl covered too few destinations: '+guestLinks.size);
+console.log('PASS: buyer guest-link integrity across '+guestPaths.length+
+  ' public pages and '+guestLinks.size+' local routes (no backend accounts)');
+
 // Actual guest pages at mobile/desktop widths, without account or storage mocks.
 const journeyContext = await browser.newContext();
 const journeyPage = await journeyContext.newPage();
