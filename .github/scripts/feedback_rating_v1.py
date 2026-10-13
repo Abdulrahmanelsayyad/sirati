@@ -475,3 +475,6 @@ print("Applied in-site rating form and private owner dashboard; DB migration is 
 # This does not change the global reconstruction script or the PDF-only release scope.
 import subprocess
 subprocess.run([sys.executable, str(Path(__file__).with_name('owner_feedback_menu.py')), str(root)], check=True)
+
+# Feedback V2 UI/insights only. Keep the protected PDF build entrypoint unchanged.
+subprocess.run([sys.executable, str(Path(__file__).with_name('feedback_dashboard_v2.py')), str(root)], check=True)
