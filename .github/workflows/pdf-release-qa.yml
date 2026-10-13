@@ -48,7 +48,7 @@ jobs:
             # The historical Staging baseline intentionally cannot export
             # joined Arabic-Indic dates; exercise this case only in candidate.
             if [[ "$variant" == candidate ]]; then
-              SIRATI_PDF_DATES=1 python3 candidate/qa/pdf_metadata_fixture.py "$variant/site-src/sirati-cv-source"
+              SIRATI_PDF_DATES=1 SIRATI_PDF_MIXED_ACRONYMS=1 python3 candidate/qa/pdf_metadata_fixture.py "$variant/site-src/sirati-cv-source"
             else
               python3 candidate/qa/pdf_metadata_fixture.py "$variant/site-src/sirati-cv-source"
             fi
