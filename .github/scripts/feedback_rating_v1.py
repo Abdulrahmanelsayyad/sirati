@@ -470,3 +470,8 @@ css += r"""
 """
 css_path.write_text(css, encoding="utf-8")
 print("Applied in-site rating form and private owner dashboard; DB migration is separate.")
+
+# Keep owner-only navigation adjacent to the existing feedback dashboard generator.
+# This does not change the global reconstruction script or the PDF-only release scope.
+import subprocess
+subprocess.run([sys.executable, str(Path(__file__).with_name('owner_feedback_menu.py')), str(root)], check=True)
