@@ -15,7 +15,7 @@ href = "href={withBasePath('/feedback-dashboard/')}"
 assert menu.count(guard) == 1, "Missing or repeated owner role visibility guard"
 assert menu.count(href) == 1, "Missing or repeated base-path-safe dashboard link"
 assert menu.count('className="sirati-menu-item sirati-feedback-owner-link"') == 1
-assert menu.index(guard) < menu.index(href) < menu.index('<NavGroup title="السيرة الذاتية"'), (
+assert menu.index(guard) < menu.index(href) < menu.index('{matchingCv.length > 0 && <NavGroup title="السيرة الذاتية"'), (
     "Feedback link must live within the owner-only menu section"
 )
 assert "getUser()" in menu, "Account identity must be verified"
