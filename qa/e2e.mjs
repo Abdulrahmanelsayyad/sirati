@@ -195,21 +195,32 @@ const page = await context.newPage();
 // Collect links from rendered pages, not guesses about routes.
 const guestPaths = ['/', '/templates/', '/career-tools/', '/builder/?template=modern', '/auth/'];
 const guestLinks = new Map();
-for (const source of guestPaths) {
-  await page.goto(base + source, {waitUntil:'domcontentloaded'});
-  assert.equal((await page.locator('body').count()), 1, 'Guest page empty: ' + source);
-  const links = await page.locator('a[href]').evaluateAll(elements =>
+async function collectBuyerLinks(locator, source) {
+  const links = await locator.locator('a[href]').evaluateAll(elements =>
     elements.map(a => ({href:a.href, text:(a.textContent||'').trim().slice(0,70)})));
   for (const {href,text} of links) {
     const address = new URL(href);
     if (address.origin !== new URL(base).origin ||
         !address.pathname.startsWith('/sirati/')) continue;
     const pathname = address.pathname.endsWith('/') ? address.pathname : address.pathname + '/';
-    // Host-served static routes are what a buyer receives; query strings
-    // and fragments are application state, not separate exported HTML files.
+    // The static host serves paths, not fragment or query-string variants.
     if (!guestLinks.has(pathname)) guestLinks.set(pathname,{source,text});
   }
 }
+for (const source of guestPaths) {
+  await page.goto(base + source, {waitUntil:'domcontentloaded'});
+  assert.equal((await page.locator('body').count()), 1, 'Guest page empty: ' + source);
+  await collectBuyerLinks(page.locator('body'), source);
+}
+// The buyer's main navigation is in a collapsed drawer. Inspect the opened
+// mobile/desktop menu too; a crawl of visible homepage links misses routes.
+await page.goto(base + '/', {waitUntil:'networkidle'});
+await page.getByRole('button',{name:'Open Sirati menu'}).click();
+const buyerDrawer = page.getByRole('dialog',{name:'Sirati features and customer account'});
+assert(await buyerDrawer.isVisible(),'Buyer cannot open the primary navigation drawer');
+await collectBuyerLinks(buyerDrawer,'/ [feature menu]');
+await page.keyboard.press('Escape');
+assert.equal(await buyerDrawer.count(),0,'Feature menu must dismiss after crawl');
 for (const [pathname,contextInfo] of guestLinks) {
   const response = await page.request.get(new URL(pathname,base).href, {
     timeout:15000, maxRedirects:2
@@ -218,10 +229,10 @@ for (const [pathname,contextInfo] of guestLinks) {
     'Broken local CV site link '+pathname+' from '+contextInfo.source+
     ' (status '+response.status()+')');
 }
-// Initial baseline exposes five directly linked static routes; other wizard
-// transitions use buttons and are tested in the separate guest journey below.
-// Do not invent seven anchors or weaken the per-link 404 failure above.
-assert(guestLinks.size >= 5,
+// Require the five observed page anchors plus the menu-only Builder route.
+// A future UI change must not silently reduce buyer-discoverable navigation.
+// Wizard button flows are verified in the separate journey below.
+assert(guestLinks.size >= 6,
   'Buyer link crawl covered too few destinations: '+guestLinks.size);
 console.log('PASS: buyer guest-link integrity across '+guestPaths.length+
   ' public pages and '+guestLinks.size+' linked local routes: '+
