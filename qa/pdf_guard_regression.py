@@ -39,6 +39,31 @@ class GuardRegression(unittest.TestCase):
     def test_pinned_session_candidate_passes(self):
         self.check(True, 'V21 runtime and account tests match')
 
+    def modern(self):
+        subprocess.run(['git', 'checkout', '--quiet', '--force',
+            'd6018cd1f7179807dbef7e26af6749e4a5fc968e'], cwd=self.repo, check=True)
+        shutil.copyfile(REPO / 'qa/pdf_release_guard.py', self.repo / 'qa/pdf_release_guard.py')
+
+    def test_approved_modern_candidate_passes(self):
+        self.modern()
+        self.check(True, 'Modern runtime matches owner-approved')
+
+    def test_modern_runtime_edit_rejected(self):
+        self.modern()
+        self.write('.github/scripts/modern_reference_layout.py', '# unexpected edit', repo=True)
+        self.check(False, 'Unreviewed Modern source change')
+
+    def test_modern_deploy_gate_edit_rejected(self):
+        self.modern()
+        path = self.repo / '.github/workflows/pages.yml'
+        path.write_text(path.read_text().replace('default: false', 'default: true'))
+        self.check(False, 'Unreviewed Modern source change')
+
+    def test_modern_qa_route_rejected(self):
+        self.modern()
+        self.write('app/qa-pdf-probe/page.tsx', 'synthetic')
+        self.check(False, 'Synthetic route in production source')
+
     def test_historical_pdf_release_still_passes(self):
         subprocess.run(['git', 'checkout', '--quiet', '25b29f883edfd09797bbc974c0acf2224844479e'], cwd=self.repo, check=True)
         self.check(True, 'PDF dependency and exact text coverage guards')
