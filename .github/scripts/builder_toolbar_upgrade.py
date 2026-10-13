@@ -1,7 +1,7 @@
 """Professional, profession-neutral mobile builder header for Sirati.
 
 Applies only during the existing source preparation step.
-Does not change authentication, persistence, payment, or PDF logic.
+Does not change authentication, payment, or PDF logic.
 """
 from pathlib import Path
 import sys
@@ -34,7 +34,16 @@ new_header = """      <header className="container nav no-print wizard-builder-n
                   type="button"
                   key={choice.category}
                   onClick={event => {
-                    if (!window.confirm('Load this example? Your current CV draft will be replaced.')) return;
+                    if (!hydrated || !cloudReadyRef.current || cloudLoading || saveInFlight.current) return;
+                    if (!window.confirm(language === 'ar'
+                      ? 'تحميل المثال كمسودة جديدة؟ سيتم استبدال المسودة الحالية، ولن تتغير سيرتك المحفوظة.'
+                      : 'Load this example as a new draft? Your current draft will be replaced. Your saved CV will stay unchanged.')) return;
+                    setDocumentId(null);
+                    setVersions([]);
+                    setHistoryOpen(false);
+                    setCurrentSection(0);
+                    setCloudStatus(userId ? 'New local draft' : 'Local draft');
+                    window.history.replaceState({}, '', withBasePath(`/builder?template=${template}&language=${language}`));
                     event.currentTarget.closest('details')?.removeAttribute('open');
                     setData(normalizeCv(makeHeaderSampleCv(choice)));
                   }}
