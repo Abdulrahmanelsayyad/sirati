@@ -250,6 +250,40 @@ function pdfExportFeedback(error: unknown, arabic: boolean): string {
     ? 'تعذّر إعداد ملف PDF. راجع المعاينة وحاول مجددًا. بيانات سيرتك ما زالت في المحرر.'
     : 'Could not prepare the PDF. Check the preview and retry. Your CV remains in the editor.';
 }
+// Detect only a joined Arabic/Latin token before requesting an account or PDF.
+// All checks stay in the local editor; never mutate, upload, or log CV values.
+function pdfJoinedScriptWarning(data: CvData, arabic: boolean): string | null {
+  const joined = /[\u0600-\u08FF]+[A-Za-z]+(?:[/-][A-Za-z]+)*|[A-Za-z]+[\u0600-\u08FF]+/u;
+  function firstToken(value: unknown, depth = 0): string | null {
+    if (depth > 5) return null;
+    if (typeof value === 'string') return value.match(joined)?.[0] || null;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = firstToken(item, depth + 1);
+        if (found) return found;
+      }
+    } else if (value && typeof value === 'object') {
+      for (const [key, item] of Object.entries(value)) {
+        // Photo/base64 and URLs are not human CV prose.
+        if (/photo|image|url|href/i.test(key)) continue;
+        const found = firstToken(item, depth + 1);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  const token = firstToken(data);
+  if (!token) return null;
+  const example = token
+    .replace(/([\u0600-\u08FF])([A-Za-z])/u, '$1 $2')
+    .replace(/([A-Za-z])([\u0600-\u08FF])/u, '$1 $2');
+  return arabic
+    ? 'قبل تنزيل PDF، افصل الحروف العربية والإنجليزية في «' + token +
+      '». مثال: «' + example + '». بيانات سيرتك لم تتغير.'
+    : 'Before downloading PDF, separate Arabic and English in "' + token +
+      '". Try "' + example + '". Your CV is unchanged.';
+}
+
 class PdfRenderFailure extends Error {}
 
 type Props = {
@@ -325,16 +359,29 @@ export default function SiratiBuilderPdfButton(props: Props) {
   }
 
   async function exportWithFeedback() {
-    try { await exportCurrentSheet(); }
+    try {
+      if (!saving) {
+        const warning = pdfJoinedScriptWarning(data, arabic);
+        if (warning) throw new PdfRenderFailure(warning);
+      }
+      await exportCurrentSheet();
+    }
     catch (e: unknown) {
       // Saving a cloud CV and authenticating retain their existing error paths.
       if (saving) throw e;
+      if (e instanceof PdfRenderFailure) throw e;
       throw new PdfRenderFailure(pdfExportFeedback(e, arabic));
     }
   }
 
   async function begin() {
     if (active.current || isSessionBoundaryBlocked()) return;
+    // Guest users should see the actionable fix before signing up or
+    // sharing an email address, while Save CV stays fully available.
+    if (!saving) {
+      const warning = pdfJoinedScriptWarning(data, arabic);
+      if (warning) { setError(warning); return; }
+    }
     active.current = true;
     returnFocus.current = document.activeElement as HTMLElement;
     setBusy(true); setError(''); setNotice('');

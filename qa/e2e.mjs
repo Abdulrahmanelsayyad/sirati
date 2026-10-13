@@ -110,6 +110,31 @@ assert(builderPdfSource.includes('aria-busy={busy} onClick={begin}'),
   'PDF primary action must expose its loading state');
 console.log('PASS: Active auth-gated PDF export maps mixed-script/preview/browser errors without leaking details');
 
+// The user can fix an unsupported joined token before the PDF sign-in gate.
+// Exercise the generated production helper, including nested Experience,
+// unrelated photos and a no-mutation invariant.
+const warningSource = builderPdfSource.match(/function pdfJoinedScriptWarning\(data: CvData, arabic: boolean\): string \| null \{[\s\S]*?\n\}/)?.[0];
+assert(warningSource, 'Builder PDF joined-script preflight was not generated');
+const warningJS = transpilePdfMessage(warningSource,{compilerOptions:{target:PdfScriptTarget.ES2020}}).outputText;
+const pdfJoinedScriptWarning = new Function(warningJS+';return pdfJoinedScriptWarning;')();
+const joinedCv = {
+  fullName:'Candidate Test',
+  photoDataUrl:'data:image/png;base64,ALLOWED-NO-MATCH',
+  experience:[{details:'رعاية المرضى في الـICU/ER وتدريب الـACLS/BLS'}],
+};
+const joinedSnapshot = JSON.stringify(joinedCv);
+assert.match(pdfJoinedScriptWarning(joinedCv,true), /الـICU\/ER.*الـ ICU\/ER.*لم تتغير/);
+assert.match(pdfJoinedScriptWarning(joinedCv,false), /الـICU\/ER.*الـ ICU\/ER.*unchanged/);
+assert.equal(JSON.stringify(joinedCv),joinedSnapshot,'PDF preflight must never edit CV data');
+assert.equal(pdfJoinedScriptWarning({experience:[{details:'الـ ICU/ER'}]},true),null);
+assert.equal(pdfJoinedScriptWarning({profile:'ACLS/BLS, emergency nurse'},false),null);
+assert.equal(pdfJoinedScriptWarning({photoDataUrl:'الـICU/ER'},false),null);
+assert.equal(pdfJoinedScriptWarning({experience:[{details:'ICUالعناية'}]},false)?.includes('ICUالعناية'),true);
+assert(builderPdfSource.includes('if (!saving) {\n      const warning = pdfJoinedScriptWarning(data, arabic);') &&
+       builderPdfSource.includes('if (e instanceof PdfRenderFailure) throw e'),
+  'PDF preflight must block before auth and survive resumed export without affecting Save CV');
+console.log('PASS: joined Arabic/Latin PDF preflight advises exact fix without editing data or opening auth');
+
 const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
 // Every account-owned saved CV card should expose the already implemented
 // Smart CV and Quality journeys, without going through Templates or auth.
