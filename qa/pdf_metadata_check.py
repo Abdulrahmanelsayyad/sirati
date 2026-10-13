@@ -72,6 +72,18 @@ def inspect(pdf_path, strict=False):
                                 "pymupdf_sorted":date in actual}
             assert date in raw, f"Poppler omitted normalized date {date!r}: {raw[-500:]}"
             assert date in actual, f"PyMuPDF omitted normalized date {date!r}: {actual[-500:]}"
+    # Require the exact joined source token from two independent native
+    # PDF readers. No OCR, inferred spaces or repaired text allowed: if a
+    # font split inserts a space, changes character order, or drops '/-',
+    # the candidate is unsafe and must not be released.
+    mixed_tokens=("الـICU/ER", "الـACLS/BLS", "الـX-Ray")
+    mixed_results={}
+    if strict:
+        for token in mixed_tokens:
+            mixed_results[token]={"poppler_raw":token in raw,
+                                  "pymupdf_sorted":token in actual}
+            assert token in raw, f"Poppler dropped/reordered mixed token {token!r}: {raw[-650:]}"
+            assert token in actual, f"PyMuPDF dropped/reordered mixed token {token!r}: {actual[-650:]}"
     phrase_results={}
     for phrase in ["كلية التمريض","جامعة الزقازيق","اللغة العربية",
                    "اللغة الإنجليزية","بكالوريوس تمريض",
@@ -83,7 +95,7 @@ def inspect(pdf_path, strict=False):
         if strict:
             assert phrase in raw, f"Poppler raw omitted {phrase!r}: {raw[:250]}"
             assert phrase in actual, f"PyMuPDF sorted omitted {phrase!r}: {actual[:250]}"
-    return {"rows":rows,"phrases":phrase_results,"dates":date_results}
+    return {"rows":rows,"phrases":phrase_results,"dates":date_results,"mixed":mixed_results}
 
 old=inspect(baseline,strict=False)
 new=inspect(candidate,strict=True)
