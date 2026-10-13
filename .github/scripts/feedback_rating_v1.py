@@ -77,7 +77,7 @@ export default function SiratiFeedbackRating() {
   ][rating] : 'اختار تقييمك · Choose your rating';
 
   return (
-    <section className="container sirati-feedback-v2 no-print" id="feedback"
+    <div className="container sirati-feedback-v2 no-print" id="feedback"
       role="region" aria-labelledby="feedback-heading">
       <div className="sirati-feedback-v2__intro">
         <div className="sirati-feedback-v2__eyebrow">
@@ -187,7 +187,7 @@ export default function SiratiFeedbackRating() {
           </>}
         </div>}
       </form>
-    </section>
+    </div>
   );
 }
 """, encoding="utf-8")
