@@ -34,6 +34,26 @@ console.log('PASS: guest CV gallery has no account-loading state or auth redirec
 const { createRequire } = await import('node:module');
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
+// Execute the generated route helper with seller, buyer and root hosting paths.
+const basePathJS = ts.transpileModule(fs.readFileSync('lib/basePath.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS }
+}).outputText;
+for (const prefix of ['', '/sirati', '/buyer-cv', '/builder-tools', '/builder']) {
+  const routeModule = { exports: {} };
+  new Function('module', 'exports', 'process', basePathJS)(routeModule, routeModule.exports,
+    {env:{NEXT_PUBLIC_BASE_PATH:prefix}});
+  const {isBuilderPath} = routeModule.exports;
+  for (const route of ['/builder', '/builder/']) assert(isBuilderPath(prefix + route));
+  for (const route of ['/', '/templates/', '/career-tools/', '/builder-other/', '/builder/history/']) {
+    assert.equal(isBuilderPath(prefix + route), false, prefix + route);
+  }
+}
+for (const name of ['BuilderNavigator', 'PersonalSummaryPicker', 'ExperienceDescriptionPicker', 'DuplicateCvAction']) {
+  const source = fs.readFileSync(`components/${name}.tsx`, 'utf8');
+  assert(source.includes('isBuilderPath(window.location.pathname)'), name);
+  assert(!source.includes("window.location.pathname.includes('/builder')"), name);
+}
+console.log('PASS: editor tools match exact app route across five hosting base paths');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const journeyModule = { exports: {} };
@@ -184,7 +204,12 @@ console.log('PASS: V12 Home branding and Documents markup preserve original beha
 const { chromium } = await import('playwright');
 
 
-const base = 'http://127.0.0.1:4173/sirati';
+const base = (process.env.SIRATI_E2E_BASE_URL || 'http://127.0.0.1:4173/sirati').replace(/\/+$/, '');
+const baseAddress = new URL(base);
+assert(['127.0.0.1', 'localhost', '[::1]'].includes(baseAddress.hostname),
+  'Synthetic E2E must target a local build, never a customer-facing site');
+assert(!baseAddress.search && !baseAddress.hash && !baseAddress.username && !baseAddress.password);
+const basePrefix = baseAddress.pathname.replace(/\/+$/, '');
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
@@ -201,8 +226,9 @@ async function collectBuyerLinks(locator, source) {
     elements.map(a => ({href:a.href, text:(a.textContent||'').trim().slice(0,70)})));
   for (const {href,text} of links) {
     const address = new URL(href);
-    if (address.origin !== new URL(base).origin ||
-        !address.pathname.startsWith('/sirati/')) continue;
+    if (address.origin !== baseAddress.origin) continue;
+    assert(address.pathname === basePrefix || address.pathname.startsWith(basePrefix + '/'),
+      'Guest link escaped configured base path: ' + address.pathname);
     const pathname = address.pathname.endsWith('/') ? address.pathname : address.pathname + '/';
     // The static host serves paths, not fragment or query-string variants.
     guestEntrypoints.add(pathname + address.search);
@@ -386,7 +412,7 @@ const topBar = page.getByRole('navigation',{name:'Primary site navigation · ا�
 assert.equal(await topBar.count(),1,'one global primary navigation expected');
 assert.equal(await page.locator('.marketing-page .brand-lockup').count() > 0, true,
   'Home retains product branding in footer');
-assert((await topBar.locator('.sirati-topbar-brand').getAttribute('href') || '').endsWith('/sirati/'),
+assert.equal(await topBar.locator('.sirati-topbar-brand').getAttribute('href'), basePrefix + '/',
   'Sirati brand must link to the correctly based homepage');
 assert((await topBar.locator('.sirati-topbar-link').count())===3,
   'direct CV, Career Tools, and My Documents links are required');
