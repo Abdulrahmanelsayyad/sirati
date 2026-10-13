@@ -111,10 +111,13 @@ try {
     await page.goto(base+'/',{waitUntil:'networkidle'});
     const form=page.locator('#feedback');
     await form.getByRole('button',{name:/4 of 5 stars/}).click();
-    await form.locator('select').selectOption('pdf');
+    await form.getByRole('button',{name:/تنزيل PDF/}).click();
+    assert.equal(await form.getByRole('button',{name:/تنزيل PDF/}).getAttribute('aria-pressed'),'true');
     await form.locator('textarea').fill('تجربة حقيقية من واجهة الاختبار');
     await form.getByRole('button',{name:/Send feedback/}).click();
     await form.getByRole('status').getByText(/Your rating was saved/).waitFor({timeout:10000});
+    assert(await form.locator('.sirati-feedback-v2__status.is-saved').isVisible(),
+      'confirmed successful submission must render the dedicated success card');
     assert.equal(writes.length,1,'Expected one POST when signed in');
     assert.deepEqual(Object.keys(writes[0].posted).sort(),
       ['category','comment','rating','user_id'].sort(),
