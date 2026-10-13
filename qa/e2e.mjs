@@ -2316,10 +2316,16 @@ assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isDisable
 const nativeStar3 = feedback.getByRole('button',{name:/3 of 5 stars/});
 await nativeStar3.click();
 assert.equal(await nativeStar3.getAttribute('aria-pressed'),'true');
-await feedback.locator('select').selectOption('pdf');
+await feedback.getByRole('button',{name:/تنزيل PDF/}).click();
+assert.equal(await feedback.getByRole('button',{name:/تنزيل PDF/}).getAttribute('aria-pressed'),'true',
+  'feedback category chip must preserve its selected state');
 await feedback.locator('textarea').fill('Works well / رائع');
 assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isEnabled(),true);
 assert.equal(await feedback.locator('textarea').getAttribute('maxlength'),'400');
+assert(await feedback.getByText('Works well / رائع'.length + ' / 400').isVisible(),
+  'visible comment counter should update after typing');
+assert.equal(await feedback.locator('.sirati-feedback-v2__stars button').count(),5,
+  'rating selector should remain five accessible touch targets');
 const feedbackSource = fs.readFileSync('components/SiratiFeedbackRating.tsx','utf8');
 assert(feedbackSource.includes(".from('sirati_site_feedback').upsert("),
   'form must submit only through Supabase');
@@ -2338,6 +2344,11 @@ const feedbackSql = fs.readFileSync('../../docs/FEEDBACK_RLS_REVIEW.sql','utf8')
 for(const control of ['enable row level security','feedback_read_own_or_owner',
   'feedback_write_own','feedback_edit_own',"'app_metadata'",'revoke all']) {
   assert(feedbackSql.includes(control),'feedback SQL missing safety control: '+control);
+}
+for(const narrowWidth of [320,360,390]) {
+  await page.setViewportSize({width:narrowWidth,height:800});
+  const overflow=await page.evaluate(() => document.documentElement.scrollWidth-innerWidth);
+  assert(overflow<=2,'native feedback horizontal overflow at '+narrowWidth+'px: '+overflow);
 }
 await page.setViewportSize({width:360,height:800});
 const nativeFeedbackOverflow=await page.evaluate(() => document.documentElement.scrollWidth-innerWidth);
