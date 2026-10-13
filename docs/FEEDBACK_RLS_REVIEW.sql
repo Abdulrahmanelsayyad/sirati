@@ -24,7 +24,9 @@ revoke all on table public.sirati_site_feedback from public, anon, authenticated
 grant select on public.sirati_site_feedback to authenticated;
 grant insert (user_id, rating, category, comment)
   on public.sirati_site_feedback to authenticated;
-grant update (rating, category, comment)
+-- PostgREST upsert includes user_id in its conflict UPDATE payload.
+-- RLS still enforces the same caller-owned user_id before and after update.
+grant update (user_id, rating, category, comment)
   on public.sirati_site_feedback to authenticated;
 
 create policy "feedback_read_own_or_owner"
