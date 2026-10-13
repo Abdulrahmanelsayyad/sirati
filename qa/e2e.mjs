@@ -195,6 +195,7 @@ const page = await context.newPage();
 // Collect links from rendered pages, not guesses about routes.
 const guestPaths = ['/', '/templates/', '/career-tools/', '/builder/?template=modern', '/auth/'];
 const guestLinks = new Map();
+const guestEntrypoints = new Set();
 async function collectBuyerLinks(locator, source) {
   const links = await locator.locator('a[href]').evaluateAll(elements =>
     elements.map(a => ({href:a.href, text:(a.textContent||'').trim().slice(0,70)})));
@@ -204,6 +205,7 @@ async function collectBuyerLinks(locator, source) {
         !address.pathname.startsWith('/sirati/')) continue;
     const pathname = address.pathname.endsWith('/') ? address.pathname : address.pathname + '/';
     // The static host serves paths, not fragment or query-string variants.
+    guestEntrypoints.add(pathname + address.search);
     if (!guestLinks.has(pathname)) guestLinks.set(pathname,{source,text});
   }
 }
