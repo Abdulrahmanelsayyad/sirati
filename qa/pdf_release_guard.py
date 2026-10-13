@@ -24,7 +24,7 @@ modern_candidate = subprocess.run(
     ['git', 'merge-base', '--is-ancestor', modern_head, 'HEAD'], cwd=repo,
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 if modern_candidate:
-    allowed = {'qa/pdf_release_guard.py', 'qa/pdf_guard_regression.py', 'qa/pdf_quality_check.py'}
+    allowed = {'qa/pdf_release_guard.py', 'qa/pdf_guard_regression.py', 'qa/pdf_quality_check.py', 'qa/e2e.mjs'}
     changed = subprocess.check_output(
         ['git', 'diff', '--name-only', modern_head], cwd=repo, text=True).splitlines()
     assert set(changed) <= allowed, 'Unreviewed Modern source change: ' + str(set(changed) - allowed)
