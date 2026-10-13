@@ -62,6 +62,16 @@ def inspect(pdf_path, strict=False):
     actual=page.get_text(sort=True)
     norm=lambda x: re.sub(r"\s+"," ",re.sub("[\u200e\u200f\u202a-\u202e]","",x)).strip()
     actual=norm(actual);raw=norm(raw)
+    # Candidate-only Arabic-Indic date ranges are checked using independent
+    # native readers: no OCR, whitespace reconstruction or numeric guesswork.
+    # The visible raster must retain Arabic-Indic glyphs (shared visual QA).
+    date_results={}
+    if strict:
+        for date in ("2020-2026", "10/2026", "3.2026"):
+            date_results[date]={"poppler_raw":date in raw,
+                                "pymupdf_sorted":date in actual}
+            assert date in raw, f"Poppler omitted normalized date {date!r}: {raw[-500:]}"
+            assert date in actual, f"PyMuPDF omitted normalized date {date!r}: {actual[-500:]}"
     phrase_results={}
     for phrase in ["كلية التمريض","جامعة الزقازيق","اللغة العربية",
                    "اللغة الإنجليزية","بكالوريوس تمريض",
@@ -73,7 +83,7 @@ def inspect(pdf_path, strict=False):
         if strict:
             assert phrase in raw, f"Poppler raw omitted {phrase!r}: {raw[:250]}"
             assert phrase in actual, f"PyMuPDF sorted omitted {phrase!r}: {actual[:250]}"
-    return {"rows":rows,"phrases":phrase_results}
+    return {"rows":rows,"phrases":phrase_results,"dates":date_results}
 
 old=inspect(baseline,strict=False)
 new=inspect(candidate,strict=True)
