@@ -36,6 +36,9 @@ jobs:
       - name: Verify owner feedback navigation guard
         run: python3 qa/feedback_owner_nav_check.py site-src/sirati-cv-source
 
+      - name: Verify feedback dashboard V2 contracts
+        run: python3 qa/feedback_dashboard_v2_check.py site-src/sirati-cv-source
+
       - name: Bounded synthetic and source verification (not live security approval)
         run: python3 qa/verification.py site-src/sirati-cv-source --output /tmp/sirati-verification.json
 
