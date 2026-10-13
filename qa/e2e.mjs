@@ -204,8 +204,17 @@ console.log('PASS: V12 Home branding and Documents markup preserve original beha
 const { chromium } = await import('playwright');
 
 
-const base = (process.env.SIRATI_E2E_BASE_URL || 'http://127.0.0.1:4173/sirati').replace(/\/+$/, '');
+// Keep the existing buyer-portability matrix and this standalone QA compatible.
+// Never silently choose one target when two local test workflows disagree.
+const qaBase = process.env.SIRATI_QA_BASE_URL;
+const e2eBase = process.env.SIRATI_E2E_BASE_URL;
+if (qaBase && e2eBase) {
+  assert.equal(qaBase.replace(/\/+$/, ''), e2eBase.replace(/\/+$/, ''),
+    'Conflicting local QA base URLs');
+}
+const base = (qaBase || e2eBase || 'http://127.0.0.1:4173/sirati').replace(/\/+$/, '');
 const baseAddress = new URL(base);
+assert.equal(baseAddress.protocol, 'http:', 'Synthetic QA must use the local HTTP test server');
 assert(['127.0.0.1', 'localhost', '[::1]'].includes(baseAddress.hostname),
   'Synthetic E2E must target a local build, never a customer-facing site');
 assert(!baseAddress.search && !baseAddress.hash && !baseAddress.username && !baseAddress.password);
