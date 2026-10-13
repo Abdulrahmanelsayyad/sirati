@@ -22,7 +22,7 @@ const validJwt = (id) => [
 const browser = await chromium.launch({headless:true});
 let accepted = 0;
 try {
-  async function makePage({signedIn=false, owner=false, rejectWrite=false}={}) {
+  async function makePage({signedIn=false, owner=false, rejectWrite=false, existingReview=null}={}) {
     const context = await browser.newContext({viewport:{width:390,height:844}});
     const writes = [];
     const reads = [];
@@ -77,6 +77,15 @@ try {
         }
         if (request.method()==='GET') {
           reads.push(request.url());
+          if (url.searchParams.has('user_id')) {
+            // maybeSingle(): PostgREST returns one JSON object, or PGRST116
+            // (zero rows) which supabase-js translates into null.
+            if (existingReview) await reply(200,existingReview);
+            else await reply(406,{code:'PGRST116',
+              details:'The result contains 0 rows',
+              message:'JSON object requested, multiple (or no) rows returned'});
+            return;
+          }
           await reply(200,[
             {rating:5,category:'overall',comment:'Very good',created_at:'2026-10-13T12:00:00Z'},
             {rating:3,category:'pdf',comment:'تحسين المسافات',created_at:'2026-10-12T12:00:00Z'}
@@ -169,8 +178,43 @@ try {
     accepted++;
   }
 
-  assert.equal(accepted,5);
-  console.log('PASS: 5 browser feedback acceptance scenarios (mocked HTTP only)');
+  // Existing personal review must be prefilled, with a safe update action.
+  {
+    const {page,context,writes,reads}=await makePage({signedIn:true,
+      existingReview:{rating:2,category:'pdf',comment:'Old review'}});
+    await page.goto(base+'/',{waitUntil:'networkidle'});
+    const form=page.locator('#feedback');
+    await form.locator('.sirati-feedback-v2__previous').waitFor({timeout:10000});
+    assert.equal(await form.getByRole('button',{name:/2 of 5 stars/}).getAttribute('aria-pressed'),'true');
+    assert.equal(await form.locator('textarea').inputValue(),'Old review');
+    assert(reads.some(url=>url.includes('user_id=eq.')),'Must select only current member review');
+    await form.getByRole('button',{name:/5 of 5 stars/}).click();
+    await form.getByRole('button',{name:/Update feedback/}).click();
+    await form.getByText(/Your rating was saved/).waitFor({timeout:10000});
+    assert.equal(writes.length,1);
+    assert.equal(writes[0].posted.rating,5);
+    await context.close();
+    accepted++;
+  }
+
+  // Owner can filter by stars and search comments on mobile.
+  {
+    const {page,context}=await makePage({signedIn:true,owner:true});
+    await page.goto(base+'/feedback-dashboard/',{waitUntil:'networkidle'});
+    await page.getByText('4.0 / 5').waitFor({timeout:10000});
+    await page.locator('.sirati-rating-v2__filters select').nth(1).selectOption('3');
+    assert.equal(await page.locator('.sirati-rating-admin__list article').count(),1);
+    assert(await page.getByText('تحسين المسافات').isVisible());
+    await page.locator('.sirati-rating-v2__filters select').nth(1).selectOption('all');
+    await page.locator('.sirati-rating-v2__filters input').fill('Very good');
+    assert.equal(await page.locator('.sirati-rating-admin__list article').count(),1);
+    assert(await page.getByText('Very good').isVisible());
+    await context.close();
+    accepted++;
+  }
+
+  assert.equal(accepted,7);
+  console.log('PASS: 7 browser feedback acceptance scenarios (mocked HTTP only)');
   console.log('NOT TESTED: real login, live Supabase HTTP, full end-to-end write, owner metadata provisioning');
 } finally {
   await browser.close();
