@@ -244,6 +244,14 @@ replace_one("  const resetNotice = () => setStatus('idle');", r"""  const [previ
       try {
         const { data: auth, error: authError } = await client.auth.getUser();
         if (!alive || sequence !== seq) return;
+        // No session is expected for guests; keep the sign-in-on-submit path.
+        // Network/permission failures must still fail closed for existing users.
+        if (!auth.user && (!authError || authError.name === 'AuthSessionMissingError')) {
+          currentUserId.current = null;
+          setPrevious(false);
+          setLoadingPrevious(false);
+          return;
+        }
         if (authError) throw authError;
         currentUserId.current = auth.user?.id ?? null;
         if (!auth.user) {
