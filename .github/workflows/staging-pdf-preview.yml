@@ -84,6 +84,12 @@ jobs:
           cp "$GITHUB_WORKSPACE/qa/staging_preview_smoke.mjs" ./qa-staging.mjs
           node ./qa-staging.mjs
 
+      - name: Browser acceptance of native feedback (mock HTTP, no real credentials)
+        working-directory: site-src/sirati-cv-source
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/feedback_browser_acceptance.mjs" ./qa-feedback-acceptance.mjs
+          node ./qa-feedback-acceptance.mjs
+
       - name: Upload NOT-DEPLOYED staging site artifact
         if: success()
         uses: actions/upload-artifact@v4
