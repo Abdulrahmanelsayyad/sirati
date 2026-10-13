@@ -9,11 +9,11 @@ import sys
 root = Path(sys.argv[1]).resolve()
 path = root / "components" / "SiratiSiteMenu.tsx"
 source = path.read_text(encoding="utf-8")
-anchor = '          <NavGroup title="السيرة الذاتية" items={cvFeatures} close={close} />'
+anchor = '          {matchingCv.length > 0 && <NavGroup title="السيرة الذاتية" items={matchingCv} close={close} />}'
 if source.count(anchor) != 1 or "sirati-feedback-owner-link" in source:
     raise RuntimeError("Owner feedback menu: unexpected existing navigation layout")
 
-owner_link = """          {user?.app_metadata?.sirati_feedback_admin === true && (
+owner_link = """          {!query && user?.app_metadata?.sirati_feedback_admin === true && (
             <section className="sirati-menu-group" aria-label="Owner tools · أدوات المالك">
               <h3>لوحة التحكم · Owner dashboard</h3>
               <a className="sirati-menu-item sirati-feedback-owner-link"
