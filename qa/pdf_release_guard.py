@@ -16,7 +16,20 @@ session_head = 'd909eba3ae04d5bd246ef8e06a7938cd9bf36d75'
 session_candidate = subprocess.run(
     ['git', 'merge-base', '--is-ancestor', session_head, 'HEAD'], cwd=repo,
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-if session_candidate:
+# Owner approved PR #141 at this exact head. Its new Modern design is an
+# intentional visual change, not an unreviewed V21 runtime modification.
+# Only QA corrections may follow this pin; runtime edits still fail closed.
+modern_head = 'd6018cd1f7179807dbef7e26af6749e4a5fc968e'
+modern_candidate = subprocess.run(
+    ['git', 'merge-base', '--is-ancestor', modern_head, 'HEAD'], cwd=repo,
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+if modern_candidate:
+    allowed = {'qa/pdf_release_guard.py', 'qa/pdf_guard_regression.py', 'qa/pdf_quality_check.py'}
+    changed = subprocess.check_output(
+        ['git', 'diff', '--name-only', modern_head], cwd=repo, text=True).splitlines()
+    assert set(changed) <= allowed, 'Unreviewed Modern source change: ' + str(set(changed) - allowed)
+    print('PASS: Modern runtime matches owner-approved PR #141; QA-only follow-up')
+elif session_candidate:
     allowed = {'qa/pdf_release_guard.py', 'qa/pdf_guard_regression.py', 'AGENT_BOARD.md'}
     changed = subprocess.check_output(
         ['git', 'diff', '--name-only', session_head], cwd=repo, text=True).splitlines()
@@ -84,7 +97,7 @@ if not session_candidate:
         assert expected_home.count(old) == 1
         expected_home = expected_home.replace(old, new)
     assert (repo / home_path).read_text() == expected_home, 'Unapproved homepage generator change'
-board_before = subprocess.check_output(['git', 'show', base + ':AGENT_BOARD.md'], cwd=repo, text=True)
+board_before = subprocess.check_output(['git', 'show', (modern_head if modern_candidate else base) + ':AGENT_BOARD.md'], cwd=repo, text=True)
 assert (repo / 'AGENT_BOARD.md').read_text().startswith(board_before), 'Existing task ownership changed'
 # V17 dependency removal must leave the actual exporter byte-identical.
 import json

@@ -60,6 +60,26 @@ def ink_ratio(image):
         .histogram()[35:]) / (image.width * image.height)
 
 reports = []
+modern_rasters = {}
+
+def modern_reference(image, text, key):
+    # PR #141 intentionally replaces the old black Modern layout. Check the
+    # requested colors, header bar and content order instead of old pixels.
+    width, height = image.size
+    navy = (22, 54, 74)
+    teal = (33, 130, 141)
+    close = lambda pixel, color: max(abs(a-b) for a,b in zip(pixel,color)) <= 8
+    assert all(close(image.getpixel((int(width*x), 5)), navy)
+               for x in (.05,.25,.5,.75,.95)), key + ': missing full-width navy bar'
+    assert sum(close(p,teal) for p in image.getdata()) > 150, key + ': missing teal headings'
+    assert image.getpixel((int(width*.03), int(height*.3))) == (255,255,255), key + ': left margin clipped'
+    assert image.getpixel((int(width*.97), int(height*.3))) == (255,255,255), key + ': right margin clipped'
+    markers = (['SummaryMarker','ExperienceMarker','SkillsMarker','CertificationMarker','EducationMarker']
+               if '-en-' in key else ['ملخص','خبرة','مهارات','شهادة','درجة'])
+    offsets = [text.index(m) for m in markers]
+    assert offsets == sorted(offsets), key + ': unexpected section reading order'
+    return {'modern_reference_colors_and_order': True}
+
 visuals = {
     "modern-en-1440", "modern-ar-390", "compact-ats-en-390",
     "compact-ats-ar-1440", "compact-ats-ar-390",
@@ -91,7 +111,14 @@ for kind, key, before, after, pages in pairs:
     fonts=command("pdffonts",str(after))
     assert "yes" in fonts.lower(),f"{key}: missing embedded fonts"
     entry = {"id":key,"pages":pages,"poppler_unicode":True}
-    if key in visuals:
+    if key.startswith('modern-'):
+        aimg = raster(after, 'candidate-'+key)
+        entry.update(modern_reference(aimg, raw_after, key))
+        language = key.split('-')[1]
+        if language in modern_rasters:
+            entry.update(compare(modern_rasters[language], aimg, key+' viewport parity'))
+        modern_rasters[language] = aimg
+    elif key in visuals:
         bimg = raster(before, "baseline-"+key)
         aimg = raster(after, "candidate-"+key)
         entry.update(compare(bimg,aimg,key))
@@ -105,6 +132,6 @@ assert len(reports)==48, f"Expected 36 section + 8 portrait + 4 long baseline co
 with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as out:
     out.write("\n## Independent PDF quality gates\n")
     out.write(f"- {len(reports)} paired PDFs: native text via Poppler, embedded fonts, valid output\n")
-    out.write(f"- {len(visuals)} sampled layout/portrait/long CV comparisons passed automated render-pixel thresholds\n")
+    out.write('- Modern: reference colors, section order and mobile/desktop raster parity; unchanged templates retain baseline pixel thresholds\n')
     out.write("- Physical Android PDF viewer and independent human visual/ATS review remain unverified\n")
 print("PASS: Poppler, embedded fonts, representative visual regression, nonblank long tail")
