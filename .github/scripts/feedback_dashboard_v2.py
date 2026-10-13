@@ -233,7 +233,7 @@ replace_one("  const resetNotice = () => setStatus('idle');", r"""  const [previ
 
   useEffect(() => {
     const client = createClient();
-    if (!client) { setLoadingPrevious(false); setPreviousError(true); return; }
+    if (!client) { setLoadingPrevious(false); return; } // Submit will show the existing error, never a fake success.
     let alive = true;
     let sequence = 0;
 
