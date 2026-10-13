@@ -32,19 +32,28 @@ if 'function handlePhotoUpload' not in s:
       alert('Please choose an image smaller than 8 MB.');
       return;
     }
+    const showPhotoError = () => alert(language === 'ar'
+      ? 'تعذر فتح الصورة. جرّب صورة سليمة بصيغة PNG أو JPEG أو WebP.'
+      : 'Could not open this image. Try a valid PNG, JPEG or WebP image.');
     const reader = new FileReader();
+    reader.onerror = showPhotoError;
     reader.onload = () => {
       const source = String(reader.result || '');
       const image = new Image();
+      image.onerror = showPhotoError;
       image.onload = () => {
+        try {
         const scale = Math.min(1, 360 / image.width, 480 / image.height);
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext('2d');
-        if (!context) return;
+        if (!context) { showPhotoError(); return; }
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
         setData(prev => ({ ...prev, photoDataUrl: canvas.toDataURL('image/jpeg', 0.84) }));
+        } catch { showPhotoError(); }
       };
       image.src = source;
     };
@@ -61,7 +70,7 @@ if 'photo-upload-row' not in s:
                 <div className="photo-upload-row">
                   <label className="btn btn-secondary photo-upload-button">
                     {data.photoDataUrl ? 'Change photo' : 'Upload photo'}
-                    <input type="file" accept="image/*" onChange={e => handlePhotoUpload(e.target.files?.[0])} />
+                    <input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; handlePhotoUpload(file); }} />
                   </label>
                   {data.photoDataUrl && <button type="button" className="text-btn danger-text" onClick={() => setData(prev => ({ ...prev, photoDataUrl: '' }))}>Remove</button>}
                 </div>
