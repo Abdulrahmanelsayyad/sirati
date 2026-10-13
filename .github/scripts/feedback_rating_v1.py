@@ -43,8 +43,8 @@ export default function SiratiFeedbackRating() {
     : undefined;
 
   return (
-    <section className="container sirati-feedback no-print" id="feedback"
-      aria-label="Website feedback · تقييم الموقع">
+    <div className="container sirati-feedback no-print" id="feedback"
+      role="region" aria-label="Website feedback · تقييم الموقع">
       <details className="sirati-feedback__details">
         <summary>Rate your experience · قيّم تجربتك مع سيرتي</summary>
         <div className="sirati-feedback__content">
@@ -88,7 +88,7 @@ export default function SiratiFeedbackRating() {
           </p>
         </div>
       </details>
-    </section>
+    </div>
   );
 }
 """, encoding="utf-8")
