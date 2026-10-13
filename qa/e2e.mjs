@@ -218,10 +218,14 @@ for (const [pathname,contextInfo] of guestLinks) {
     'Broken local CV site link '+pathname+' from '+contextInfo.source+
     ' (status '+response.status()+')');
 }
-assert(guestLinks.size >= 7,
+// Initial baseline exposes five directly linked static routes; other wizard
+// transitions use buttons and are tested in the separate guest journey below.
+// Do not invent seven anchors or weaken the per-link 404 failure above.
+assert(guestLinks.size >= 5,
   'Buyer link crawl covered too few destinations: '+guestLinks.size);
 console.log('PASS: buyer guest-link integrity across '+guestPaths.length+
-  ' public pages and '+guestLinks.size+' local routes (no backend accounts)');
+  ' public pages and '+guestLinks.size+' linked local routes: '+
+  [...guestLinks.keys()].join(', ')+' (no backend accounts)');
 
 // Actual guest pages at mobile/desktop widths, without account or storage mocks.
 const journeyContext = await browser.newContext();
