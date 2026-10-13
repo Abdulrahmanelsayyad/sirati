@@ -381,7 +381,7 @@ css += r"""
 .sirati-feedback-v2__chips button {
   min-height:42px;max-width:100%;box-sizing:border-box;
   padding:9px 13px;border:1px solid #dce6de;border-radius:999px;
-  background:#f8faf8;color:#476252;font:600 12px/1.35 inherit;
+  background:#f8faf8;color:#476252;font-family:inherit;font-size:12px;font-weight:600;line-height:1.35;
   cursor:pointer;transition:background .18s,border-color .18s,color .18s;
 }
 .sirati-feedback-v2__chips button.selected {
@@ -409,7 +409,7 @@ css += r"""
   display:flex;align-items:center;justify-content:center;gap:11px;
   width:100%;min-height:50px;padding:12px 16px;border:0;border-radius:13px;
   background:var(--feedback-forest);color:white;
-  font:750 14px/1.4 inherit;cursor:pointer;
+  font-family:inherit;font-size:14px;font-weight:750;line-height:1.4;cursor:pointer;
   transition:transform .18s ease,background .18s ease;box-shadow:0 6px 14px #1749381b;
 }
 .sirati-feedback-v2__submit span {font:20px/1 system-ui}
@@ -460,7 +460,7 @@ css += r"""
   .sirati-feedback-v2__chips button {padding:9px 10px;font-size:11px;min-height:44px}
 }
 @media(max-width:340px) {
-  .sirati-feedback-v2__stars button {flex-basis:43px;width:43px}
+  .sirati-feedback-v2__stars button {flex-basis:39px;width:39px;height:46px}
 }
 @media(prefers-reduced-motion:reduce) {
   .sirati-feedback-v2__stars button,.sirati-feedback-v2__chips button,.sirati-feedback-v2__submit {transition:none}
