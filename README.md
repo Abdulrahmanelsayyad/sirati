@@ -61,8 +61,10 @@ service-role secret and does not override database RLS.
 
 ## CI and release checks
 
-- `.github/workflows/pages.yml` builds on PRs and builds/deploys on `main`.
-  Pull-request builds do **not** deploy.
+- `.github/workflows/pages.yml` builds on pull requests and pushes to `main`,
+  but **does not deploy automatically**. Publishing GitHub Pages requires a
+  separate manual `workflow_dispatch` on `main`, with the
+  `approve_production_deploy` confirmation explicitly enabled by the owner.
 - `.github/workflows/qa.yml` runs reconstruction, static checks, Playwright
   E2E, mobile/print and template regressions on pull requests.
 - See `qa/` for the test files and `AGENT_POLICY.md` for change boundaries.
