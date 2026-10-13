@@ -272,15 +272,19 @@ replace_one("  const resetNotice = () => setStatus('idle');", r"""  const [previ
     };
     const { data: listener } = client.auth.onAuthStateChange((event, session) => {
       if (!alive || event === 'INITIAL_SESSION') return;
-      // Never keep a previous account's rating visible after session changes.
+      const nextUserId = session?.user?.id ?? null;
+      if (nextUserId === currentUserId.current) return;
+      // Only an actual account change clears the previous account's draft.
       edited.current = false;
-      currentUserId.current = session?.user?.id ?? null;
+      currentUserId.current = nextUserId;
+      sequence++; // Immediately invalidate any in-flight review SELECT.
       setRating(0);
       setArea('overall');
       setComment('');
       setPrevious(false);
       setStatus('idle');
-      void loadOwnReview();
+      // Do not call awaitable Supabase methods synchronously inside Auth callbacks.
+      window.setTimeout(() => { if (alive) void loadOwnReview(); }, 0);
     });
     void loadOwnReview();
     return () => { alive = false; sequence++; listener.subscription.unsubscribe(); };
