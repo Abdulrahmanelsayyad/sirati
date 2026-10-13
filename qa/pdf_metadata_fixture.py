@@ -50,6 +50,6 @@ __DATE_TOKENS_FIXTURE__
   </main>;
 }
 """.replace("__PUNCTUATION_FIXTURE__", '      <h2>علامات الترقيم</h2>\n      <p>التركيز المهني: أخصائي اختبار تجريبي، والتنسيق الآمن وتطوير أساليب العمل.</p>\n      <p>متابعة الحالات (اختبار) وتقييم تجريبي وتسليم المهام؛ والتوثيق الآمن.</p>\n      <p>خبرة في تمريض ICU وسلامة المرضى.</p>\n' if (root / "scripts/sirati-pdf-naskh-punctuation.woff").exists() else "").replace("__DATE_TOKENS_FIXTURE__",
-      '      <h2>تواريخ الاختبار</h2>\\n      <p className="metadata-date-tokens"><span>٢٠٢٠-٢٠٢٦</span> <span>١٠/٢٠٢٦</span> <span>٣.٢٠٢٦</span></p>\\n'
+      '      <h2>تواريخ الاختبار</h2>\n      <p className="metadata-date-tokens"><span>٢٠٢٠-٢٠٢٦</span> <span>١٠/٢٠٢٦</span> <span>٣.٢٠٢٦</span></p>\n'
       if os.environ.get("SIRATI_PDF_DATES") == "1" else ""),encoding="utf-8")
 print("PASS: synthetic PDF metadata QA page installed only for isolated CI")
