@@ -324,7 +324,8 @@ css = css_path.read_text(encoding="utf-8")
 if "/* Sirati feedback insights V2 */" in css: raise RuntimeError("Duplicate insights stylesheet")
 css += r"""
 
-/* Sirati feedback insights V2 — owner dashboard, mobile filters and old-review hint */
+/* Sirati feedback insights V2 */
+/* Owner dashboard, mobile filters and own-review hint */
 @media screen {
 .sirati-rating-v2 { max-width:1060px; color:#173d2f; }
 .sirati-rating-v2__back { display:inline-block;margin-bottom:14px;color:#286348;font-weight:750;text-decoration:none; }
