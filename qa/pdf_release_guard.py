@@ -30,7 +30,21 @@ published_v26 = '1371903da18d4221cb1f5647b20037e91b2dc270'
 v26_candidate = subprocess.run(
     ['git', 'merge-base', '--is-ancestor', published_v26, 'HEAD'], cwd=repo,
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-if v26_candidate:
+# V27 PDF date release was explicitly published by the owner. This PR
+# may touch only the PDF text exporter and offline synthetic verification.
+published_v27 = '5d651f60257f2b2fac76673dc260a60f41b281dc'
+v27_candidate = subprocess.run(
+    ['git', 'merge-base', '--is-ancestor', published_v27, 'HEAD'], cwd=repo,
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+if v27_candidate:
+    allowed = {'.github/scripts/pdf_text_layer_v19.py',
+               'qa/pdf_metadata_fixture.py', 'qa/pdf_metadata_check.py',
+               'qa/pdf_release_guard.py', '.github/workflows/pdf-release-qa.yml'}
+    changed = subprocess.check_output(
+        ['git', 'diff', '--name-only', published_v27], cwd=repo, text=True).splitlines()
+    assert set(changed) <= allowed, 'Unreviewed V27 source change: ' + str(set(changed) - allowed)
+    print('PASS: scoped medical mixed-token PDF and synthetic verification changes only')
+elif v26_candidate:
     allowed = {'.github/scripts/pdf_text_layer_v19.py',
                'qa/pdf_metadata_fixture.py', 'qa/pdf_metadata_check.py',
                'qa/pdf_release_guard.py', '.github/workflows/pdf-release-qa.yml'}
