@@ -289,3 +289,6 @@ subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2] / 'qa/pd
 
 # Owner-approved V21: terminate prior-account client state on auth identity loss.
 subprocess.run([sys.executable, str(Path(__file__).with_name('session_boundary_v21.py')), str(root)], check=True)
+
+# Owner reference: refine the existing Modern renderer, preserving the PDF engine.
+subprocess.run([sys.executable, str(Path(__file__).with_name('modern_reference_layout.py')), str(root)], check=True)
