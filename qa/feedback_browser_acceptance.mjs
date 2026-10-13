@@ -78,12 +78,9 @@ try {
         if (request.method()==='GET') {
           reads.push(request.url());
           if (url.searchParams.has('user_id')) {
-            // maybeSingle(): PostgREST returns one JSON object, or PGRST116
-            // (zero rows) which supabase-js translates into null.
-            if (existingReview) await reply(200,existingReview);
-            else await reply(406,{code:'PGRST116',
-              details:'The result contains 0 rows',
-              message:'JSON object requested, multiple (or no) rows returned'});
+            // For GET maybeSingle(), postgrest-js requests a JSON array and
+            // unwraps zero/one rows on the client. Mock that real wire format.
+            await reply(200,existingReview ? [existingReview] : []);
             return;
           }
           await reply(200,[
