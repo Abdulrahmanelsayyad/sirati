@@ -27,6 +27,10 @@ type Word = { value: string; x: number; top: number; bottom: number;
 const PDF_WIDTH_PT = 595.2756;
 const PDF_HEIGHT_PT = 841.8898;
 const JPEG_QUALITY = 0.94;
+const ARABIC_INDIC_NUMBER_TOKEN = /^[\u0660-\u0669\u06F0-\u06F9]+(?:[./-][\u0660-\u0669\u06F0-\u06F9]+)*$/u;
+// Dates such as ٢٠٢٠-٢٠٢٦ and ١٠/٢٠٢٦ are numeric semantic values.
+// Embed ASCII-equivalent dates as one LTR text run while preserving the
+// untouched Arabic screenshot. Mixed alphabetic tokens remain fail-closed.
 
 // Use asynchronous binary encoding, keeping lossless PNG for text-heavy
 // CVs. Only use high-quality JPEG for images if it saves >=30% of bytes.
@@ -272,7 +276,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
       // Keep numeric-only RTL runs separate from adjacent Arabic prose.
       // They use a distinct LTR ASCII PDF text encoding for stable ATS
       // numeral value extraction, not the screenshot's glyph rendering.
-      const numericWord = /^[\u0660-\u0669\u06F0-\u06F9]+$/u;
+      const numericWord = ARABIC_INDIC_NUMBER_TOKEN;
       const sameNumericKind = prev &&
         numericWord.test(prev[0].value) === numericWord.test(w.value);
       if (prev && prev[0].nodeId === w.nodeId &&
@@ -293,7 +297,7 @@ async function renderCvSheet(sheet: HTMLElement, name: string): Promise<void> {
     for (const run of runs) {
       const first = run[0];
       const isArabicIndicNumber = run.every(w =>
-        /^[\u0660-\u0669\u06F0-\u06F9]+$/u.test(w.value));
+        ARABIC_INDIC_NUMBER_TOKEN.test(w.value));
       const hasArabic = !isArabicIndicNumber &&
         /[\u0600-\u08FF]/u.test(first.value);
       const font = hasArabic ? arabicFont : latinFont;
