@@ -234,6 +234,24 @@ function storeTransfer(value: Transfer) {
   }
   window.sessionStorage.setItem(PENDING_KEY, serialized);
 }
+// Show owners actionable bilingual PDF feedback without leaking browser
+// exceptions or changing Supabase authentication and cloud save behavior.
+function pdfExportFeedback(error: unknown, arabic: boolean): string {
+  const detail = error instanceof Error ? error.message : '';
+  if (detail.includes('Mixed-script PDF text cannot be exported safely'))
+    return arabic
+      ? 'تعذّر تصدير نص مختلط بالعربية والإنجليزية داخل كلمة واحدة. افصل الاختصارات والرموز إلى كلمات مستقلة ثم أعد التنزيل.'
+      : 'Some joined Arabic/English text cannot be exported safely. Separate abbreviations and punctuation into distinct words, then retry.';
+  if (detail === 'CV preview is not available.')
+    return arabic
+      ? 'معاينة السيرة غير متاحة حاليًا. افتح المعاينة وأعد المحاولة.'
+      : 'CV preview is unavailable. Open the preview and retry.';
+  return arabic
+    ? 'تعذّر إعداد ملف PDF. راجع المعاينة وحاول مجددًا. بيانات سيرتك ما زالت في المحرر.'
+    : 'Could not prepare the PDF. Check the preview and retry. Your CV remains in the editor.';
+}
+class PdfRenderFailure extends Error {}
+
 type Props = {
   language: string; data: CvData; template: TemplateName; hydrated: boolean;
   userId: string | null;
@@ -306,6 +324,15 @@ export default function SiratiBuilderPdfButton(props: Props) {
     try { window.sessionStorage.removeItem(PENDING_KEY); } catch {}
   }
 
+  async function exportWithFeedback() {
+    try { await exportCurrentSheet(); }
+    catch (e: unknown) {
+      // Saving a cloud CV and authenticating retain their existing error paths.
+      if (saving) throw e;
+      throw new PdfRenderFailure(pdfExportFeedback(e, arabic));
+    }
+  }
+
   async function begin() {
     if (active.current || isSessionBoundaryBlocked()) return;
     active.current = true;
@@ -318,7 +345,7 @@ export default function SiratiBuilderPdfButton(props: Props) {
       if (isSessionBoundaryBlocked()) return;
       if (result && !result.error && result.data.user) {
         onAuthenticated(result.data.user.id, result.data.user.email || null);
-        await exportCurrentSheet();
+        await exportWithFeedback();
         return;
       }
       // Preserve exact editable CV, language, template and photo data in this tab.
@@ -352,7 +379,7 @@ export default function SiratiBuilderPdfButton(props: Props) {
         if (isSessionBoundaryBlocked() || userError || !auth.user || auth.user.email?.toLowerCase()!==expectedEmail)
           throw new Error('Account verification failed. Try signing in again.');
         onAuthenticated(auth.user.id,auth.user.email||null);
-        await exportCurrentSheet();
+        await exportWithFeedback();
         setOpen(false); setPassword('');
       } else {
         const next=withBasePath('/builder?resume_pdf=1');
@@ -368,7 +395,7 @@ export default function SiratiBuilderPdfButton(props: Props) {
           if (isSessionBoundaryBlocked() || checkError || !confirmed.user || confirmed.user.email?.toLowerCase()!==expectedEmail)
             throw new Error('Account verification failed. Please sign in again.');
           onAuthenticated(confirmed.user.id,confirmed.user.email||null);
-          await exportCurrentSheet();
+          await exportWithFeedback();
           setOpen(false); setPassword('');
         } else {
           setNotice(arabic
@@ -404,7 +431,7 @@ export default function SiratiBuilderPdfButton(props: Props) {
       }
       if (active.current || isSessionBoundaryBlocked()) return;
       active.current=true; setBusy(true);
-      try { await exportCurrentSheet(); }
+      try { await exportWithFeedback(); }
       catch(e:unknown) { if (!disposed) setError(e instanceof Error ? e.message : 'PDF export failed.'); }
       finally {active.current=false;if(!disposed)setBusy(false);}
     })();
@@ -422,7 +449,7 @@ export default function SiratiBuilderPdfButton(props: Props) {
 
   return <span className="sirati-builder-pdf-action">
     {!saving && <button ref={trigger} type="button" className="btn btn-secondary btn-lg"
-      disabled={busy} onClick={begin}>
+      disabled={busy} aria-busy={busy} onClick={begin}>
       {busy ? (arabic?'جارٍ إعداد PDF…':'Preparing PDF…')
         : (arabic?'حفظ PDF':'Save PDF')}
     </button>}

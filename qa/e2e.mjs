@@ -30,6 +30,85 @@ assert(guestTemplateSource.includes('function continueToBuilder()') &&
   guestTemplateSource.includes('template-library-grid'),
   'guest-first fix must preserve onboarding, gallery and template carousel');
 console.log('PASS: guest CV gallery has no account-loading state or auth redirect');
+// Render the real indicator: signing in is not a completed guest step.
+const { createRequire } = await import('node:module');
+const require = createRequire(import.meta.url);
+const ts = require('typescript');
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const journeyModule = { exports: {} };
+const journeyJS = ts.transpileModule(fs.readFileSync('components/OnboardingSteps.tsx', 'utf8'), {
+  compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS }
+}).outputText;
+new Function('require', 'module', 'exports', journeyJS)(require, journeyModule, journeyModule.exports);
+for (const language of ['en', 'ar']) {
+  const renderJourney = current => renderToStaticMarkup(React.createElement(journeyModule.exports.default, {current, language}));
+  assert.equal(renderJourney(1), '', 'account entry must not claim a CV was created');
+  for (const current of [2, 3]) {
+    const html = renderJourney(current);
+    assert.equal((html.match(/aria-current="step"/g) || []).length, 1);
+    assert.equal((html.match(/journey-step complete/g) || []).length, current - 2);
+    assert(!html.includes('Sign in') && !html.includes('Your account'));
+    assert(html.includes(language === 'ar' ? 'dir="rtl"' : 'dir="ltr"'));
+    assert(html.includes(language === 'ar' ? 'مجاني · يلزم حساب' : 'Free · Account required'));
+    assert(html.includes('<strong>' + (current === 2
+      ? (language === 'ar' ? 'اختيار القالب' : 'Choose template')
+      : (language === 'ar' ? 'كتابة السيرة' : 'Build your CV')) + '</strong>'));
+  }
+}
+assert(guestTemplateSource.includes('STEP 1 OF 3'));
+assert(fs.readFileSync('app/builder/page.tsx', 'utf8').includes('STEP 2 OF 3 · BUILD YOUR CV'));
+console.log('PASS: six bilingual rendered guest/account progress states');
+
+
+// The saved-CV download must use recoverable bilingual notices, not expose
+// raw Supabase/browser errors in the UI. Run its actual generated mapper.
+const savedPdfSource = fs.readFileSync('components/SiratiPdfDownload.tsx','utf8');
+const mapperSource = savedPdfSource.match(/function pdfDownloadError\(error: unknown\): string \{[\s\S]*?\n\}/)?.[0];
+assert(mapperSource,'saved PDF failure-message function is missing');
+const {transpileModule:transpilePdfMessage, ScriptTarget:PdfScriptTarget} = await import('typescript');
+const pdfMessageJS = transpilePdfMessage(mapperSource,{compilerOptions:{target:PdfScriptTarget.ES2020}}).outputText;
+const pdfDownloadError = new Function(pdfMessageJS+';return pdfDownloadError;')();
+assert.match(pdfDownloadError(new Error('Sign in required.')), /سجّل الدخول.*Sign in/);
+assert.match(pdfDownloadError(new Error('Saved CV not available for this account.')), /غير متاحة.*unavailable/);
+assert.match(pdfDownloadError(new Error('Saved CV content is missing.')), /غير متاح.*missing/);
+assert.match(pdfDownloadError(new Error('Private server credentials: example')), /أعد المحاولة.*Retry/);
+assert(!pdfDownloadError(new Error('Private server credentials: example')).includes('Private server credentials'));
+assert.equal((savedPdfSource.match(/setErrorText\(pdfDownloadError\(e\)\)/g)||[]).length,2,
+  'both saved-CV PDF failure paths must show safe bilingual messages');
+assert(savedPdfSource.includes('aria-busy={busy}') &&
+       savedPdfSource.includes("aria-label={'تنزيل PDF · Download PDF · ' + title}"),
+  'download state and document-specific bilingual accessible name must be preserved');
+assert(savedPdfSource.includes("import { withBasePath } from '@/lib/basePath';") &&
+       savedPdfSource.includes("href={withBasePath('/builder?doc=' + encodeURIComponent(documentId))}") &&
+       savedPdfSource.includes("aria-label={'فتح السيرة في المحرر · Open CV editor · ' + title}"),
+  'failed saved-CV download must offer an accessible, account-owned editor fallback');
+assert(fs.readFileSync('app/globals.css','utf8').includes(
+  '.sirati-direct-pdf-action .sirati-pdf-recovery-link'),
+  'saved-CV PDF recovery action must have responsive touch sizing');
+console.log('PASS: saved PDF download notices are bilingual, retryable and hide backend details');
+
+const builderPdfSource = fs.readFileSync('components/SiratiBuilderPdfButton.tsx','utf8');
+const builderMapperSource = builderPdfSource.match(/function pdfExportFeedback\(error: unknown, arabic: boolean\): string \{[\s\S]*?\n\}/)?.[0];
+assert(builderMapperSource, 'Active V18 PDF auth gate did not generate its bilingual feedback mapper');
+const builderMessageJS = transpilePdfMessage(builderMapperSource,{compilerOptions:{target:PdfScriptTarget.ES2020}}).outputText;
+const pdfExportFeedback = new Function(builderMessageJS+';return pdfExportFeedback;')();
+const rejectedMixed = new Error('Mixed-script PDF text cannot be exported safely. Separate the text fields.');
+assert.match(pdfExportFeedback(rejectedMixed,true), /نص مختلط.*أعد التنزيل/);
+assert.match(pdfExportFeedback(rejectedMixed,false), /Arabic\/English.*retry/);
+assert.match(pdfExportFeedback(new Error('CV preview is not available.'),true), /معاينة السيرة.*المعاينة/);
+assert.match(pdfExportFeedback(new Error('CV preview is not available.'),false), /CV preview.*retry/);
+assert(!pdfExportFeedback(new Error('SECRET_TOKENS_SHOULD_NEVER_SHOW'),true).includes('SECRET_TOKENS_SHOULD_NEVER_SHOW'));
+assert(!pdfExportFeedback(new Error('SECRET_TOKENS_SHOULD_NEVER_SHOW'),false).includes('SECRET_TOKENS_SHOULD_NEVER_SHOW'));
+assert(builderPdfSource.includes('class PdfRenderFailure extends Error') &&
+       builderPdfSource.includes('throw new PdfRenderFailure(pdfExportFeedback(e, arabic))') &&
+       builderPdfSource.includes('if (saving) throw e'),
+  'auth-gated PDF errors must be sanitized without changing authenticated CV save errors');
+assert.equal((builderPdfSource.match(/await exportWithFeedback\(\);/g)||[]).length,4,
+  'all four signed-in/resume PDF paths must use the sanitized export wrapper');
+assert(builderPdfSource.includes('aria-busy={busy} onClick={begin}'),
+  'PDF primary action must expose its loading state');
+console.log('PASS: Active auth-gated PDF export maps mixed-script/preview/browser errors without leaking details');
 
 const docsSource = fs.readFileSync('app/documents/page.tsx', 'utf8');
 // Every account-owned saved CV card should expose the already implemented
@@ -84,6 +163,38 @@ const base = 'http://127.0.0.1:4173/sirati';
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
+
+// Actual guest pages at mobile/desktop widths, without account or storage mocks.
+const journeyContext = await browser.newContext();
+const journeyPage = await journeyContext.newPage();
+for (const width of [360, 390, 1440]) {
+  await journeyPage.setViewportSize({width, height:844});
+  for (const language of ['en', 'ar']) {
+    await journeyPage.goto(base + '/templates/', {waitUntil:'networkidle'});
+    await journeyPage.getByRole('button', {name:language === 'ar' ? 'العربية' : 'English', exact:true}).click();
+    assert.equal(await journeyPage.locator('.journey-step.complete').count(), 0);
+    assert.equal(await journeyPage.locator('.journey-step[aria-current="step"] strong').innerText(),
+      language === 'ar' ? 'اختيار القالب' : 'Choose template');
+    await journeyPage.goto(base + '/builder/?template=modern', {waitUntil:'networkidle'});
+    // The Builder's supported language control, not a URL query parameter,
+    // drives the live preview and progress indicator.
+    const builderLanguage = journeyPage.locator('select')
+      .filter({has:journeyPage.locator('option[value="ar"]')})
+      .filter({has:journeyPage.locator('option[value="en"]')}).first();
+    assert(await builderLanguage.count(), 'Builder language selector missing');
+    await builderLanguage.selectOption(language);
+    assert.equal(await journeyPage.locator('.journey-step.complete').count(), 1);
+    assert.equal(await journeyPage.locator('.journey-step[aria-current="step"] strong').innerText(),
+      language === 'ar' ? 'كتابة السيرة' : 'Build your CV');
+    assert.equal(await journeyPage.locator('.journey-steps').getAttribute('dir'), language === 'ar' ? 'rtl' : 'ltr');
+    assert.equal(await journeyPage.locator('.journey-step.upcoming strong').innerText(),
+      language === 'ar' ? 'تنزيل PDF' : 'Download PDF');
+    assert((await journeyPage.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 2,
+      'guest Builder horizontal overflow: ' + language + '/' + width);
+  }
+}
+await journeyContext.close();
+console.log('PASS: guest progress EN/AR at 360/390/1440px, no account precondition');
 
 // Premium Minimal V1: verify the actual rendered landing page before other E2E.
 await page.goto(base + '/', { waitUntil: 'networkidle' });
@@ -650,6 +761,9 @@ log('Career toolkit: LinkedIn, interviews, Arabic & 360/390px accessibility smok
 await page.setViewportSize({ width: 1440, height: 1000 });
 
 await page.goto(base + '/templates/', { waitUntil: 'networkidle' });
+assert.equal(await page.locator('.journey-step.complete').count(), 0);
+assert.equal(await page.locator('.journey-step[aria-current="step"] strong').innerText(), 'Choose template');
+assert.equal(await page.getByText('STEP 1 OF 3', {exact:true}).count(), 1);
 assert.equal(await page.getByText('Checking your account…').count(), 0,
   'guest must never see an account-loading splash on the public template gallery');
 assert.equal(await page.locator('.template-real-preview__stage > .cv-sheet').count(), 8,
