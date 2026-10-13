@@ -259,24 +259,6 @@ builderComponent.write_text(r"""'use client';
 import { useState } from 'react';
 import { downloadCvSheet } from '@/lib/siratiPdfExport';
 
-// Export errors can contain browser internals. Provide a non-sensitive,
-// actionable message instead; retain the unsaved editor state for retry.
-function builderPdfErrorText(error: unknown, language: string): string {
-  const detail = error instanceof Error ? error.message : '';
-  const arabic = language === 'ar';
-  if (detail.includes('Mixed-script PDF text cannot be exported safely'))
-    return arabic
-      ? 'تعذّر تصدير بعض النصوص المختلطة بالعربية والإنجليزية. جرّب فصل الاختصارات والرموز في كلمات مستقلة ثم أعد التنزيل.'
-      : 'Some joined Arabic/English text cannot be exported safely. Separate abbreviations and punctuation into distinct words, then retry.';
-  if (detail === 'CV preview is not available.')
-    return arabic
-      ? 'معاينة السيرة غير متاحة حاليًا. افتح المعاينة وأعد المحاولة.'
-      : 'CV preview is unavailable. Open the preview and retry.';
-  return arabic
-    ? 'تعذّر إعداد ملف PDF. راجع المعاينة وأعد المحاولة، وستظل بياناتك في المحرر.'
-    : 'Could not prepare the PDF. Check the preview and retry; your editor content is unchanged.';
-}
-
 export default function SiratiBuilderPdfButton({ language }: {language: string}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -291,12 +273,12 @@ export default function SiratiBuilderPdfButton({ language }: {language: string})
       const name = sheet.querySelector('h1')?.textContent?.trim() || 'Sirati-CV';
       await downloadCvSheet(sheet,name);
     } catch (e: unknown) {
-      setError(builderPdfErrorText(e, language));
+      setError(e instanceof Error ? e.message : 'PDF export failed.');
     } finally { setBusy(false); }
   }
   return <span className="sirati-builder-pdf-action">
     <button type="button" className="btn btn-secondary btn-lg" disabled={busy}
-      aria-busy={busy} onClick={handle}>
+      onClick={handle}>
       {busy ? (language === 'ar' ? 'جارٍ إعداد PDF…' : 'Preparing PDF…')
         : (language === 'ar' ? 'تنزيل PDF مجانًا' : 'Download free PDF')}
     </button>
