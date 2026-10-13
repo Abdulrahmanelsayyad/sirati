@@ -151,6 +151,7 @@ widget.write_text(r"""'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { withBasePath } from '@/lib/basePath';
 import type { CvData, CvLanguage, TemplateName } from '@/lib/types';
 import CvPreview from '@/components/CvPreview';
 import { downloadCvSheet } from '@/lib/siratiPdfExport';
@@ -158,6 +159,19 @@ import { downloadCvSheet } from '@/lib/siratiPdfExport';
 type Saved = { title?: string | null; data: unknown; template?: string | null;
                language?: string | null };
 type Choice = { row: Saved; name: string };
+
+// Do not surface raw Supabase/browser error messages to CV owners.
+// Keep the saved-document download flow recoverable, including on mobile.
+function pdfDownloadError(error: unknown): string {
+  const detail = error instanceof Error ? error.message : '';
+  if (detail === 'Please sign in first.' || detail === 'Sign in required.')
+    return 'انتهت جلسة الدخول. سجّل الدخول وحاول مجددًا. · Sign in and retry.';
+  if (detail === 'Saved CV not available for this account.')
+    return 'هذه السيرة غير متاحة لهذا الحساب. · This CV is unavailable in your account.';
+  if (detail === 'Saved CV content is missing.')
+    return 'محتوى السيرة غير متاح. افتح السيرة وتحقق من بياناتها. · CV content is missing. Open the editor to check it.';
+  return 'تعذّر تنزيل PDF. أعد المحاولة أو افتح السيرة من المحرر. · PDF download failed. Retry or open the CV editor.';
+}
 
 export default function SiratiPdfDownload({ documentId, title }: {
   documentId: string; title: string;
@@ -187,7 +201,7 @@ export default function SiratiPdfDownload({ documentId, title }: {
         throw new Error('Saved CV content is missing.');
       setSelected({row: data as Saved, name: title || data.title || 'Sirati-CV'});
     } catch (e: unknown) {
-      setErrorText(e instanceof Error ? e.message : 'Cannot prepare your PDF.');
+      setErrorText(pdfDownloadError(e));
       setBusy(false); request.current = false;
     }
   }
@@ -204,7 +218,7 @@ export default function SiratiPdfDownload({ documentId, title }: {
         if (!sheet) throw new Error('CV preview not available.');
         await downloadCvSheet(sheet, selected.name);
       } catch (e: unknown) {
-        if (!cancelled) setErrorText(e instanceof Error ? e.message : 'PDF export failed.');
+        if (!cancelled) setErrorText(pdfDownloadError(e));
       } finally {
         if (!cancelled) { setSelected(null); setBusy(false); request.current = false; }
       }
@@ -214,10 +228,18 @@ export default function SiratiPdfDownload({ documentId, title }: {
   return <>
     <span className="sirati-direct-pdf-action">
       <button type="button" className="btn btn-secondary" disabled={busy}
-        onClick={begin} aria-label={'Download PDF · ' + title}>
-        {busy ? 'Preparing PDF…' : 'Download PDF · تنزيل PDF'}
+        onClick={begin} aria-busy={busy}
+        aria-label={'تنزيل PDF · Download PDF · ' + title}>
+        {busy ? 'جارٍ إعداد PDF… · Preparing PDF…' : 'تنزيل PDF · Download PDF'}
       </button>
-      {errorText && <span className="sirati-pdf-error" role="alert">{errorText}</span>}
+      {errorText && <span className="sirati-pdf-error" role="alert">
+        <span>{errorText}</span>
+        <a className="btn btn-secondary sirati-pdf-recovery-link"
+          href={withBasePath('/builder?doc=' + encodeURIComponent(documentId))}
+          aria-label={'فتح السيرة في المحرر · Open CV editor · ' + title}>
+          فتح المحرر · Open editor
+        </a>
+      </span>}
     </span>
     {selected && <div className="sirati-pdf-offscreen" ref={stage} aria-hidden="true">
       <CvPreview
@@ -295,6 +317,12 @@ css += r"""
     display: inline-flex; flex-direction: column; gap: 6px; max-width: 100%; }
   .sirati-direct-pdf-action button, .sirati-builder-pdf-action button { min-height: 44px; }
   .sirati-pdf-error { color: #9a2f27; font-size: 12px; max-width: 36ch; overflow-wrap: anywhere; }
+  .sirati-direct-pdf-action .sirati-pdf-error { display: grid; justify-items: start; gap: 8px; }
+  .sirati-direct-pdf-action .sirati-pdf-recovery-link {
+    display: inline-flex; box-sizing: border-box; align-items: center;
+    justify-content: center; min-height: 44px; max-width: 100%;
+    white-space: normal; text-align: center;
+  }
   .sirati-pdf-offscreen {
     position: fixed !important; top: 0 !important; left: -20000px !important;
     pointer-events: none; z-index: -200 !important;
