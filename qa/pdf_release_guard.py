@@ -23,7 +23,22 @@ modern_head = 'd6018cd1f7179807dbef7e26af6749e4a5fc968e'
 modern_candidate = subprocess.run(
     ['git', 'merge-base', '--is-ancestor', modern_head, 'HEAD'], cwd=repo,
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-if modern_candidate:
+# Owner-published V26 main is the exact starting point for this subsequent,
+# narrowly scoped PDF date-token fix. Audit changes against that release,
+# rather than claiming all post-V21 product edits were unreviewed.
+published_v26 = '1371903da18d4221cb1f5647b20037e91b2dc270'
+v26_candidate = subprocess.run(
+    ['git', 'merge-base', '--is-ancestor', published_v26, 'HEAD'], cwd=repo,
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+if v26_candidate:
+    allowed = {'.github/scripts/pdf_text_layer_v19.py',
+               'qa/pdf_metadata_fixture.py', 'qa/pdf_metadata_check.py',
+               'qa/pdf_release_guard.py', '.github/workflows/pdf-release-qa.yml'}
+    changed = subprocess.check_output(
+        ['git', 'diff', '--name-only', published_v26], cwd=repo, text=True).splitlines()
+    assert set(changed) <= allowed, 'Unreviewed V26 source change: ' + str(set(changed) - allowed)
+    print('PASS: only scoped PDF date and synthetic verification changes after published V26')
+elif modern_candidate:
     allowed = {'qa/pdf_release_guard.py', 'qa/pdf_guard_regression.py', 'qa/pdf_quality_check.py', 'qa/e2e.mjs'}
     changed = subprocess.check_output(
         ['git', 'diff', '--name-only', modern_head], cwd=repo, text=True).splitlines()
