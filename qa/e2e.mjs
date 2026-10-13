@@ -131,7 +131,7 @@ assert.equal(pdfJoinedScriptWarning({profile:'ACLS/BLS, emergency nurse'},false)
 assert.equal(pdfJoinedScriptWarning({photoDataUrl:'الـICU/ER'},false),null);
 assert.equal(pdfJoinedScriptWarning({experience:[{details:'ICUالعناية'}]},false)?.includes('ICUالعناية'),true);
 assert(builderPdfSource.includes('if (!saving) {\n      const warning = pdfJoinedScriptWarning(data, arabic);') &&
-       builderPdfSource.includes('if (saving || e instanceof PdfRenderFailure) throw e'),
+       builderPdfSource.includes('if (e instanceof PdfRenderFailure) throw e'),
   'PDF preflight must block before auth and survive resumed export without affecting Save CV');
 console.log('PASS: joined Arabic/Latin PDF preflight advises exact fix without editing data or opening auth');
 
