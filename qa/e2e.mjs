@@ -2302,6 +2302,35 @@ assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
 assert((await currentStep()).includes('Section 9 of 9'), 'free review must not automatically submit or navigate');
 log('Free PDF review remains manually accessible');
     
+// Optional voluntary feedback: no pop-up, no DB write, no misleading 'sent' message.
+await page.goto(base + '/', {waitUntil:'networkidle'});
+const feedback = page.locator('#feedback');
+assert.equal(await feedback.count(), 1, 'one optional homepage feedback section required');
+await feedback.locator('summary').click();
+const rating3 = feedback.getByRole('button', {name:/3 of 5 stars/});
+assert.equal(await rating3.count(), 1, 'accessible 1-5 star buttons required');
+assert.equal(await feedback.getByRole('link', {name:/Open email draft/}).count(), 0,
+  'email link must not exist until a rating is chosen');
+await rating3.click();
+assert.equal(await rating3.getAttribute('aria-pressed'), 'true');
+await feedback.locator('textarea').fill('Test Arabic / تجربة عربية');
+const draft = await feedback.getByRole('link', {name:/Open email draft/}).getAttribute('href');
+assert(draft.startsWith('mailto:sirati-support@agentmail.to?'),
+  'feedback must route to the existing support address, without a backend');
+const emailDraft = new URL(draft);
+assert.equal(emailDraft.searchParams.get('subject'), 'Sirati CV website rating: 3/5');
+assert(emailDraft.searchParams.get('body').includes('Test Arabic / تجربة عربية'),
+  'Unicode optional feedback must be encoded into the draft');
+assert(!emailDraft.searchParams.get('body').includes('CV JSON'),
+  'rating flow must not attach private CV data');
+await page.setViewportSize({width:360,height:800});
+const feedbackOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+assert(feedbackOverflow <= 2, '360px feedback UI must not cause horizontal scrolling');
+await rating3.click();
+assert.equal(await feedback.getByRole('link', {name:/Open email draft/}).count(), 0,
+  'clearing rating disables email submission');
+log('Bilingual voluntary 5-star feedback creates a bounded mailto draft and stays mobile-safe');
+
 await browser.close();
 console.log('E2E QA COMPLETE');
 
