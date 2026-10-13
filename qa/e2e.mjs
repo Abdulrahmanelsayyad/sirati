@@ -153,7 +153,14 @@ for (const width of [360, 390, 1440]) {
     assert.equal(await journeyPage.locator('.journey-step.complete').count(), 0);
     assert.equal(await journeyPage.locator('.journey-step[aria-current="step"] strong').innerText(),
       language === 'ar' ? 'اختيار القالب' : 'Choose template');
-    await journeyPage.goto(base + '/builder/?template=modern&language=' + language, {waitUntil:'networkidle'});
+    await journeyPage.goto(base + '/builder/?template=modern', {waitUntil:'networkidle'});
+    // The Builder's supported language control, not a URL query parameter,
+    // drives the live preview and progress indicator.
+    const builderLanguage = journeyPage.locator('select')
+      .filter({has:journeyPage.locator('option[value="ar"]')})
+      .filter({has:journeyPage.locator('option[value="en"]')}).first();
+    assert(await builderLanguage.count(), 'Builder language selector missing');
+    await builderLanguage.selectOption(language);
     assert.equal(await journeyPage.locator('.journey-step.complete').count(), 1);
     assert.equal(await journeyPage.locator('.journey-step[aria-current="step"] strong').innerText(),
       language === 'ar' ? 'كتابة السيرة' : 'Build your CV');
