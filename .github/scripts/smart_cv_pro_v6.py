@@ -18,23 +18,29 @@ anchor="\nexport default function PersonalSummaryPicker()"
 helper=r"""
 // Only match explicit job requirements against facts typed by the user.
 // Job-ad terms MUST NEVER be treated as CV evidence by themselves.
-const jobTerms = [
-  'Excel','SAP','Power BI','SQL','Python','React','TypeScript','JavaScript','API',
-  'financial reporting','budgeting','reconciliation','cost accounting','auditing',
-  'inventory management','project management','customer service','Salesforce',
-  'digital marketing','SEO','data analysis','risk management','communication',
-  'team leadership','patient safety','triage','critical care','infection control',
-  'patient assessment','clinical documentation','quality assurance'
+const jobTermGroups = [
+  ['Excel','Microsoft Excel'],['SAP'],['Power BI'],['SQL'],['Python'],['React','React.js'],
+  ['TypeScript'],['JavaScript'],['REST APIs','REST API','RESTful APIs'],['Git'],['Testing','software testing'],
+  ['financial reporting'],['budgeting'],['reconciliation','account reconciliation','accounts reconciliation'],
+  ['general ledger'],['accounts payable'],['accounts receivable'],['cost accounting'],['auditing'],
+  ['inventory management'],['project management'],['customer service'],['Salesforce'],
+  ['digital marketing'],['SEO','search engine optimization'],['data analysis'],['risk management'],
+  ['communication'],['team leadership'],['patient safety'],['triage'],['critical care'],
+  ['infection control'],['patient assessment'],['clinical documentation'],['quality assurance'],
+  ['BLS','basic life support'],['ACLS','advanced cardiovascular life support'],
+  ['lesson planning'],['classroom management'],['recruitment'],['onboarding'],['records management']
 ];
 function hasJobTerm(haystack: string, term: string) {
-  // All terms above are safe literal words/phrases; no user regex is evaluated.
-  return new RegExp('(?:^|[^\\p{L}\\p{N}])' + term + '(?=$|[^\\p{L}\\p{N}])','iu')
-    .test(haystack);
+  const group = jobTermGroups.find(items=>items[0]===term) || [term];
+  return group.some(alias => {
+    const literal = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+');
+    return new RegExp('(?:^|[^\\p{L}\\p{N}])' + literal + '(?=$|[^\\p{L}\\p{N}])','iu').test(haystack.normalize('NFKC'));
+  });
 }
 function analyzeJobPosting(posting: string, skills: string, achievement: string) {
   if (!posting.trim()) return {matched:[] as string[], notInEvidence:[] as string[]};
-  const terms=jobTerms.filter(t=>hasJobTerm(posting.slice(0,2000),t)).slice(0,10);
-  const evidence=(skills+' '+achievement).slice(0,270);
+  const terms=jobTermGroups.map(group=>group[0]).filter(t=>hasJobTerm(posting.slice(0,2000),t));
+  const evidence=skills.slice(0,110)+' '+achievement.slice(0,150);
   return {matched:terms.filter(t=>hasJobTerm(evidence,t)),
           notInEvidence:terms.filter(t=>!hasJobTerm(evidence,t))};
 }
@@ -92,7 +98,7 @@ swap("""        {options.length
           <span>{lang === 'ar' ? 'غير مذكورة في البيانات الاختيارية:' : 'Not listed in your optional facts:'}</span>
           <b>{jobFit.notInEvidence.length ? jobFit.notInEvidence.join(', ') : (lang === 'ar' ? 'لا توجد مصطلحات أخرى' : 'No other detected terms')}</b>
           <small>{lang === 'ar' ? 'لا تُضاف المتطلبات تلقائيًا. ليست درجة ATS.'
-          : 'Requirements are never inserted automatically. Not an ATS score.'}</small>
+          : 'Local vocabulary check of optional facts only, not the full CV or verified qualifications. Unrecognized terms are not assessed. Requirements are never inserted automatically. Not an ATS score.'}</small>
         </div>}
         {options.length
           ? <div className="sirati-summary-choices">""","transparent keyword insights")
@@ -142,6 +148,27 @@ swap("""            </div>
           </div>
         </div>}
         <small>{t.safety}""","in-place editing and consent")
+s=s.replace(" Verified skills supplied: ", " Skills include ")
+s=s.replace(" Achievement supplied: ", " ")
+s=s.replace("Documented achievement supplied: ", "")
+s=s.replace(" User-listed skills relevant to the job ad: ", " Relevant to the target role: ")
+swap("  const target = useRef<HTMLTextAreaElement | null>(null);", """  const target = useRef<HTMLTextAreaElement | null>(null);
+  const [lastInsert, setLastInsert] = useState<{field: HTMLTextAreaElement; before: string; after: string} | null>(null);""", "undo state")
+swap("    putSummary(target.current, value);", """    setLastInsert({field:target.current, before:target.current.value, after:value});
+    putSummary(target.current, value);""", "capture original summary")
+swap("  return createPortal(!open", """  const undo = () => {
+    if (lastInsert && lastInsert.field === target.current && lastInsert.field.isConnected && lastInsert.field.value === lastInsert.after) {
+      putSummary(lastInsert.field, lastInsert.before);
+    }
+    setLastInsert(null);
+  };
+  return createPortal(!open""", "guard undo against subsequent edits")
+swap("    ? <button type=\"button\" className=\"sirati-summary-trigger\"", "    ? <><button type=\"button\" className=\"sirati-summary-trigger\"", "undo trigger wrapper")
+swap("setOpen(true);}}>{t.trigger}</button>", """setOpen(true);}}>{t.trigger}</button>
+      {lastInsert && lastInsert.field === target.current && <button type="button" className="sirati-summary-trigger" onClick={undo}>
+        {lang === 'ar' ? 'تراجع عن إدراج الملخص' : 'Undo summary insertion'}
+      </button>}</>""", "undo control")
+s=s.replace("target.current = null;", "target.current = null; setLastInsert(null);")
 path.write_text(s,encoding="utf-8")
 css=style.read_text(encoding="utf-8")
 if "/* Smart CV Pro V6 Max */" in css:

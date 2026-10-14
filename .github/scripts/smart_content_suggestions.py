@@ -49,9 +49,12 @@ const PACKS: Pack[] = [
   {match:/human resources|recruit|موارد بشرية|توظيف/i,label:pair('Human resources','الموارد البشرية'),
    skills:[pair('Recruitment coordination','تنسيق التوظيف'),pair('Candidate screening','فرز المرشحين'),pair('Personnel records','سجلات الموظفين'),pair('Onboarding','تهيئة الموظفين'),pair('Confidentiality','السرية')],
    achievements:[pair('Improved [real HR process] through [verified procedural change], supported by [evidence].','تحسين [عملية موارد بشرية حقيقية] عبر [تغيير إجرائي مثبت] وفق [دليل].'),pair('Supported [documented recruitment outcome] by [your actual role] with [verified result].','دعم [نتيجة توظيف موثقة] عبر [دورك الفعلي] بنتيجة [مثبتة].')]},
-  {match:/customer service|call center|support agent|خدمة عملاء|كول سنتر/i,label:pair('Customer service','خدمة العملاء'),
+  {match:/customer service|customer support|call center|help desk|support agent|خدمة عملاء|كول سنتر/i,label:pair('Customer service','خدمة العملاء'),
    skills:[pair('Case documentation','توثيق الحالات'),pair('Issue resolution','حل المشكلات'),pair('Customer communication','التواصل مع العملاء'),pair('Escalation','تصعيد الطلبات'),pair('Follow-up','المتابعة')],
    achievements:[pair('Improved [verified customer issue process] through [action taken] with [observed outcome].','تحسين [عملية طلبات عملاء مثبتة] عبر [إجراء منفذ] بنتيجة [ملحوظة].'),pair('Helped resolve [documented recurring issue] by [specific intervention]; evidence: [source].','المساهمة في معالجة [مشكلة متكررة موثقة] عبر [تدخل محدد]؛ الدليل: [المصدر].')]},
+  {match:/administrator|administrative|secretary|office manager|إداري|اداري|سكرتير/i,label:pair('Administration','الإدارة'),
+   skills:[pair('Records management','إدارة السجلات'),pair('Calendar coordination','تنسيق المواعيد'),pair('Document preparation','إعداد المستندات'),pair('Office communication','التواصل الإداري'),pair('Task prioritization','ترتيب الأولويات')],
+   achievements:[pair('Organized [actual records or scheduling process] using [your method], with [observed result].','تنظيم [عملية سجلات أو مواعيد فعلية] باستخدام [طريقتك] مع [نتيجة ملحوظة].'),pair('Resolved [documented administrative issue] by [your action]; evidence: [source].','حل [مشكلة إدارية موثقة] عبر [إجرائك]؛ الدليل: [المصدر].')]},
   {match:/designer|design|ui.?ux|مصمم|تصميم/i,label:pair('Design','التصميم'),
    skills:[pair('Visual hierarchy','التدرج البصري'),pair('Wireframing','تصميم المخططات الأولية'),pair('Accessibility review','مراجعة سهولة الوصول'),pair('Prototyping','إنشاء النماذج'),pair('Design handoff','تسليم التصاميم')],
    achievements:[pair('Improved [tested user journey] using [design change], supported by [research findings].','تحسين [رحلة مستخدم مختبرة] عبر [تغيير تصميم] وفق [نتائج بحث].'),pair('Delivered [verified design outcome] through [your specific contribution]; evidence: [source].','تحقيق [نتيجة تصميم مثبتة] عبر [مساهمتك المحددة]؛ الدليل: [المصدر].')]},
@@ -70,13 +73,14 @@ export default function SmartContentSuggestions({ data, setData, language }: Pro
   const [tab, setTab] = useState<'skills'|'achievement'>('skills');
   const [selected, setSelected] = useState<number[]>([]);
   const [draft, setDraft] = useState('');
-  const [entry, setEntry] = useState(0);
+  const [entryId, setEntryId] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const ar = language === 'ar';
-  const role = (data.title || '').trim();
+  const activeEntry = data.experience.find(item => item.id === entryId);
+  const role = (tab === 'achievement' ? activeEntry?.role || '' : data.title || '').trim();
   const pack = useMemo(() => PACKS.find(p => p.match.test(role)) || GENERIC, [role]);
   const suggestions = pack.skills.map(s => s[ar ? 'ar' : 'en']);
-  useEffect(() => { setSelected([]); setDraft(''); setConfirmed(false); }, [role, language]);
+  useEffect(() => { setSelected([]); setDraft(''); setConfirmed(false); }, [role, language, entryId, tab]);
   const chooseAchievement = (index:number) => {setDraft(pack.achievements[index][ar ? 'ar':'en']);setConfirmed(false);};
   const insertSkills = () => {
     if (!confirmed || !selected.length || !role) return;
@@ -89,18 +93,19 @@ export default function SmartContentSuggestions({ data, setData, language }: Pro
         if (unique.has(key)) return false;
         unique.add(key);return true;
       });
-      return {...prev, skills:[...existing,...additions].join(prev.skills.includes('\n') ? '\n' : ', ')};
+      if (!additions.length) return prev;
+      return {...prev, skills:prev.skills + (prev.skills.trim() ? (prev.skills.includes('\n') ? '\n' : ', ') : '') + additions.join(prev.skills.includes('\n') ? '\n' : ', ')};
     });
     setSelected([]);setConfirmed(false);setOpen(false);
   };
   const insertAchievement = () => {
     const value = draft.trim();
     if (!role || !confirmed || !data.experience.length || !value || /\[[^\]]+\]/.test(value)) return;
-    setData(prev => ({...prev,experience:prev.experience.map((item,i) => {
-      if (i !== Math.min(entry,prev.experience.length-1)) return item;
+    setData(prev => ({...prev,experience:prev.experience.map((item) => {
+      if (item.id !== entryId || item.role.trim() !== role) return item;
       const existing = item.details.split('\n').map(x=>x.trim());
       if (existing.some(x=>x.toLocaleLowerCase()===value.toLocaleLowerCase())) return item;
-      return {...item,details:[item.details.trim(),value].filter(Boolean).join('\n')};
+      return {...item,details:[item.details,value].filter(Boolean).join('\n')};
     })}));
     setDraft('');setConfirmed(false);setOpen(false);
   };
@@ -113,39 +118,39 @@ export default function SmartContentSuggestions({ data, setData, language }: Pro
       <div className="sirati-content-head"><strong>{ar?'محتوى يناسب مسماك الوظيفي':'Suggestions matched to your job title'}</strong>
         <button type="button" aria-label="Close content suggestions" onClick={()=>setOpen(false)}>×</button></div>
       {role ? <p className="sirati-content-role">{role} · {pack.label[ar?'ar':'en']}</p>
-        : <p role="status">{ar?'اكتب المسمى الوظيفي أولًا في البيانات الشخصية.':'Enter your Professional Title in Personal Information first.'}</p>}
-      {role && <>
+        : <p role="status">{ar?(tab==='skills'?'اكتب المسمى الوظيفي أولًا في البيانات الشخصية.':'اختر وظيفة لها مسمى وظيفي لعرض الأمثلة.'):(tab==='skills' ? 'Enter your Professional Title in Personal Information first.' : 'Select a position with a job title to get relevant examples.')}</p>}
+      <>
         <div className="sirati-content-tabs" role="group" aria-label="Suggestion type">
           <button type="button" aria-pressed={tab==='skills'} onClick={()=>{setTab('skills');setConfirmed(false);}}>{ar?'المهارات':'Skills'}</button>
-          <button type="button" aria-pressed={tab==='achievement'} onClick={()=>{setTab('achievement');setConfirmed(false);}}>{ar?'الإنجازات':'Achievements'}</button>
+          <button type="button" aria-pressed={tab==='achievement'} onClick={()=>{setTab('achievement');setConfirmed(false);setEntryId(data.experience[0]?.id || '');}}>{ar?'الإنجازات':'Achievements'}</button>
         </div>
+        {tab==='achievement' && <label>{ar?'الوظيفة المستهدفة':'Target experience'}
+          <select aria-label="Achievement target experience" value={entryId} onChange={e=>{setEntryId(e.target.value);setDraft('');setConfirmed(false);}}>
+            <option value="">{ar?'اختر وظيفة':'Choose a position'}</option>
+            {data.experience.map(exp=><option key={exp.id} value={exp.id}>{exp.role || exp.company || (ar?'خبرة':'Untitled position')}</option>)}
+          </select></label>}
         {tab==='skills' ? <div className="sirati-content-options">
-          {suggestions.map((skill,i)=><label key={i}><input type="checkbox"
-            checked={selected.includes(i)} onChange={()=>{setSelected(v=>v.includes(i)?v.filter(n=>n!==i):[...v,i]);setConfirmed(false);}}/>
+          {(role ? suggestions : []).map((skill,i)=><label key={i}><input type="checkbox"
+            disabled={data.skills.split(/[\n,،;]+/).some(value=>value.trim().toLocaleLowerCase()===skill.toLocaleLowerCase())} checked={selected.includes(i)} onChange={()=>{setSelected(v=>v.includes(i)?v.filter(n=>n!==i):[...v,i]);setConfirmed(false);}}/>
             <span>{skill}</span></label>)}
         </div> : <div className="sirati-content-achievements">
           <p>{ar?'اختر مثالًا ثم استبدل كل الخانات بإنجازاتك الفعلية:':'Choose a prompt, then replace every placeholder with your own evidence:'}</p>
-          {pack.achievements.map((item,i)=><button type="button" key={i} onClick={()=>chooseAchievement(i)}>
+          {(role ? pack.achievements : []).map((item,i)=><button type="button" key={i} onClick={()=>chooseAchievement(i)}>
             {item[ar?'ar':'en']}</button>)}
           <label>{ar?'عدّل الإنجاز بنفسك':'Edit your achievement'}
             <textarea aria-label="Edit achievement" value={draft} onChange={e=>{setDraft(e.target.value);setConfirmed(false);}} rows={3}/>
           </label>
-          {data.experience.length ? <label>{ar?'إضافة إلى خبرة':'Add to experience'}
-            <select aria-label="Achievement target experience" value={Math.min(entry,data.experience.length-1)}
-              onChange={e=>setEntry(Number(e.target.value))}>
-              {data.experience.map((exp,i)=><option key={exp.id || i} value={i}>{exp.role||exp.company||(ar?'خبرة':'Experience')} #{i+1}</option>)}
-            </select></label> : <p role="status">{ar?'أضف خبرة عمل أولًا، ثم أدرج الإنجاز.':'Add a work experience entry before inserting an achievement.'}</p>}
           {draft && /\[[^\]]+\]/.test(draft) && <p className="sirati-content-warning">{ar?'استبدل جميع الخانات بين الأقواس بمعلومات حقيقية أولًا.':'Replace every bracketed placeholder with true details before inserting.'}</p>}
         </div>}
         <p className="sirati-content-advice">{ar?'لوصف الخبرة استخدم «اختيار وصف جاهز لهذه الوظيفة» بجوار خانة Description. لا نُنشئ أرقامًا أو خبرات أو مهارات نيابة عنك.':'For job description examples use the existing Experience Pro beside Description. Never add unverified achievements, skills or metrics.'}</p>
         <label className="sirati-content-confirm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>
           {ar?'أؤكد أن المحتوى الذي اخترته صحيح ويخص خبرتي.':'I confirm this content truthfully reflects my work.'}</label>
         <button type="button" className="sirati-content-add"
-          disabled={!confirmed || (tab==='skills' ? !selected.length : !data.experience.length || !draft.trim() || /\[[^\]]+\]/.test(draft))}
+          disabled={!role || !confirmed || (tab==='skills' ? !selected.length : !data.experience.length || !draft.trim() || /\[[^\]]+\]/.test(draft))}
           onClick={tab==='skills'?insertSkills:insertAchievement}>
           {tab==='skills' ? (ar?'إضافة المهارات المختارة':'Add selected skills'):(ar?'إضافة الإنجاز المعدّل':'Add edited achievement')}
         </button>
-      </>}
+      </>
     </section>}
   </div>);
 }
