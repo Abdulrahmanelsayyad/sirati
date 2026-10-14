@@ -17,14 +17,14 @@ export default function DocumentImportPage() {
     const next: Fact[] = [], warnings: string[] = [];
     for (const file of Array.from(files).slice(0, 10)) {
       if (file.size > 5_000_000) { warnings.push(file.name + ': exceeds 5 MB'); continue; }
-      if (!/\\.(txt|md)$/i.test(file.name)) {
+      if (!/\.(txt|md)$/i.test(file.name)) {
         warnings.push(file.name + ': PDF/image extraction is not available yet; no data was imported.');
         continue;
       }
       try {
         const text = (await file.text()).slice(0, 200_000);
-        const lines = text.split(/\\r?\\n/).map(x => x.trim()).filter(Boolean);
-        const email = /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi;
+        const lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+        const email = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
         const edu = /bachelor|master|diploma|university|college|بكالوريوس|ماجستير|دبلوم|جامعة|كلية/i;
         for (const line of lines) {
           for (const match of line.match(email) || []) next.push({type:'Email',value:match,source:file.name,accepted:false});
@@ -49,7 +49,7 @@ export default function DocumentImportPage() {
       <label><input type="checkbox" checked={f.accepted} onChange={e=>setFacts(old=>old.map((x,j)=>j===i?{...x,accepted:e.target.checked}:x))}/>
       {' '}<strong>{f.type}:</strong> {f.value}</label><small style={{display:'block'}}>Source: {f.source}</small>
     </div>)}
-    <button disabled={!accepted.length} onClick={()=>navigator.clipboard?.writeText(accepted.map(f=>f.type+': '+f.value).join('\\n'))}>
+    <button disabled={!accepted.length} onClick={()=>navigator.clipboard?.writeText(accepted.map(f=>f.type+': '+f.value).join('\n'))}>
       Copy approved facts
     </button>
     <p>Paste reviewed facts into the existing CV Builder. Automatic PDF/image extraction and field mapping are not implemented yet.</p>
