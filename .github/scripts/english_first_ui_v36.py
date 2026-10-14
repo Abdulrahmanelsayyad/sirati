@@ -20,6 +20,9 @@ def change(relative, mapping=(), clean=True):
     if not path.is_file():
         raise RuntimeError("V36 expected generated UI file: " + relative)
     source = path.read_text(encoding="utf-8")
+    if clean:
+        source = AR_EN.sub(lambda match: match["en"].strip(), source)
+        source = EN_AR.sub(lambda match: match["en"].strip(), source)
     for before, after in mapping:
         if before in source:
             source = source.replace(before, after)
@@ -125,6 +128,7 @@ change("components/SiratiDocumentIntent.tsx", [
 ])
 change("app/documents/page.tsx")
 change("components/SiratiFeedbackRating.tsx", [
+    ('dir="rtl"', 'dir="ltr"'),
     ("{ value: 'pdf', label: 'تنزيل PDF' }", "{ value: 'pdf', label: 'PDF download' }"),
     ("إيه الجزء اللي بتقيّمه؟", "Which part are you rating?"),
     ("بنطوّر سيرتي خطوة بخطوة. تقييمك الصادق بيساعدنا نخلّي إنشاء الـCV أسهل وأفضل.",
