@@ -299,3 +299,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('feedback_rating_v1
 # V33: bilingual password recovery and secure account password update pages.
 # Client UI only; backend Auth settings and user data remain untouched.
 subprocess.run([sys.executable, str(Path(__file__).with_name('auth_password_ux_v33.py')), str(root)], check=True)
+
+# V34: responsive bilingual auth and account security, after V33 routes are created.
+subprocess.run([sys.executable, str(Path(__file__).with_name('auth_experience_v34.py')), str(root)], check=True)
