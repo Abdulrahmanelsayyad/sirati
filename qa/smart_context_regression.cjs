@@ -6,7 +6,12 @@ const vm = require('node:vm');
 const root = path.resolve(process.argv[2]);
 const ts = require(path.join(root, 'node_modules/typescript'));
 const source = name => fs.readFileSync(path.join(root,'components',name+'.tsx'),'utf8');
-const transpile = s => ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+const transpile = s => {
+  const result = ts.transpileModule(s,{reportDiagnostics:true,compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}});
+  assert.equal((result.diagnostics || []).filter(d=>d.category===ts.DiagnosticCategory.Error).length,0,
+    'Generated Smart CV source must parse without TypeScript recovery');
+  return result.outputText;
+};
 const summary = source('PersonalSummaryPicker');
 const prefix = summary.slice(0,summary.indexOf('export default function')).replace(/^import .*;$/gm,'');
 const api = vm.runInNewContext(transpile(prefix+'\n({analyzeJobPosting,makeSuggestions,tracksFor,inferredLevel,hasJobTerm})'));
@@ -22,6 +27,15 @@ assert.equal(api.hasJobTerm('خبرة في مكافحة العدوى','infection
 assert.equal(api.hasJobTerm('مهارات خدمة العملاء','customer service'),true);
 assert.equal(api.hasJobTerm('تحليل بايثون','Python'),true);
 assert.equal(api.hasJobTerm('مكافحة العدوىالمتقدمة','infection control'),false);
+assert.equal(api.hasJobTerm('وإِدَارَة المَخَاطِر','risk management'),true);
+assert.equal(api.hasJobTerm('ادارة المشروعات','project management'),true);
+assert.equal(api.hasJobTerm('تـحليل البيانات','data analysis'),true);
+assert.equal(api.hasJobTerm('ادارة المشاريعالقديمة','project management'),false);
+assert.equal(api.hasJobTerm('بياناتتحليل البيانات','data analysis'),false);
+assert.equal(api.hasJobTerm('JavaScript developers','JavaScript'),true);
+assert.equal(api.hasJobTerm('JavaScripted','JavaScript'),false);
+const crossLanguage = api.analyzeJobPosting('Project management and data analysis', 'إدارة المشاريع، تحليل البيانات', '');
+assert.deepEqual(Array.from(crossLanguage.matched), ['project management','data analysis']);
 let arabicFit=api.analyzeJobPosting('مطلوب فرز المرضى ومكافحة العدوى','مكافحة العدوى','');
 assert.deepEqual(Array.from(arabicFit.matched),['infection control']);
 assert.deepEqual(Array.from(arabicFit.notInEvidence),['triage']);

@@ -23,18 +23,23 @@ const jobTermGroups = [
   ['TypeScript'],['JavaScript'],['REST APIs','REST API','RESTful APIs'],['Git'],['Testing','software testing'],
   ['financial reporting','التقارير المالية','القوائم المالية'],['budgeting','إعداد الميزانيات','الموازنات'],['reconciliation','account reconciliation','accounts reconciliation','التسويات المحاسبية','تسوية الحسابات'],
   ['general ledger'],['accounts payable'],['accounts receivable'],['cost accounting'],['auditing'],
-  ['inventory management'],['project management'],['customer service','خدمة العملاء'],['Salesforce'],
-  ['digital marketing'],['SEO','search engine optimization'],['data analysis'],['risk management'],
+  ['inventory management','إدارة المخزون'],['project management','إدارة المشاريع','إدارة المشروعات'],['customer service','خدمة العملاء'],['Salesforce'],
+  ['digital marketing'],['SEO','search engine optimization'],['data analysis','تحليل البيانات'],['risk management','إدارة المخاطر'],
   ['communication'],['team leadership'],['patient safety','سلامة المرضى'],['triage','فرز المرضى'],['critical care','الرعاية الحرجة','العناية المركزة'],
   ['infection control','مكافحة العدوى'],['patient assessment','تقييم المرضى'],['clinical documentation','التوثيق السريري'],['quality assurance'],
   ['BLS','basic life support','الإنعاش الأساسي'],['ACLS','advanced cardiovascular life support','الإنعاش المتقدم'],
-  ['lesson planning'],['classroom management'],['recruitment'],['onboarding'],['records management']
+  ['lesson planning','تخطيط الدروس'],['classroom management','إدارة الصف','إدارة الفصل'],['recruitment','التوظيف'],['onboarding'],['records management','إدارة السجلات']
 ];
+function normalizeJobText(text: string) {
+  // Arabic vocalization and tatweel are presentation differences, not new skills.
+  return text.normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[أإآٱ]/g, 'ا');
+}
 function hasJobTerm(haystack: string, term: string) {
   const group = jobTermGroups.find(items=>items[0]===term) || [term];
   return group.some(alias => {
-    const literal = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+');
-    const conjunction = /[\u0600-\u06FF]/.test(alias) ? '(?:و)?' : '';\n    return new RegExp('(?:^|[^\\p{L}\\p{N}])' + conjunction + literal + '(?=$|[^\\p{L}\\p{N}])','iu').test(haystack.normalize('NFKC'));
+    const literal = normalizeJobText(alias).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+');
+    const conjunction = /[\u0600-\u06FF]/.test(alias) ? '(?:و)?' : '';
+    return new RegExp('(?:^|[^\\p{L}\\p{N}])' + conjunction + literal + '(?=$|[^\\p{L}\\p{N}])','iu').test(normalizeJobText(haystack));
   });
 }
 function analyzeJobPosting(posting: string, skills: string, achievement: string) {

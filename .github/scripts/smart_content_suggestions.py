@@ -49,7 +49,7 @@ const PACKS: Pack[] = [
   {match:/human resources|recruit|موارد بشرية|توظيف/i,label:pair('Human resources','الموارد البشرية'),
    skills:[pair('Recruitment coordination','تنسيق التوظيف'),pair('Candidate screening','فرز المرشحين'),pair('Personnel records','سجلات الموظفين'),pair('Onboarding','تهيئة الموظفين'),pair('Confidentiality','السرية')],
    achievements:[pair('Improved [real HR process] through [verified procedural change], supported by [evidence].','تحسين [عملية موارد بشرية حقيقية] عبر [تغيير إجرائي مثبت] وفق [دليل].'),pair('Supported [documented recruitment outcome] by [your actual role] with [verified result].','دعم [نتيجة توظيف موثقة] عبر [دورك الفعلي] بنتيجة [مثبتة].')]},
-  {match:/customer service|customer support|call center|help desk|support agent|خدمة عملاء|كول سنتر/i,label:pair('Customer service','خدمة العملاء'),
+  {match:/customer service|customer support|call center|help desk|support agent|خدم[ةه] (?:ال)?عملاء|كول سنتر/i,label:pair('Customer service','خدمة العملاء'),
    skills:[pair('Case documentation','توثيق الحالات'),pair('Issue resolution','حل المشكلات'),pair('Customer communication','التواصل مع العملاء'),pair('Escalation','تصعيد الطلبات'),pair('Follow-up','المتابعة')],
    achievements:[pair('Improved [verified customer issue process] through [action taken] with [observed outcome].','تحسين [عملية طلبات عملاء مثبتة] عبر [إجراء منفذ] بنتيجة [ملحوظة].'),pair('Helped resolve [documented recurring issue] by [specific intervention]; evidence: [source].','المساهمة في معالجة [مشكلة متكررة موثقة] عبر [تدخل محدد]؛ الدليل: [المصدر].')]},
   {match:/administrator|administrative|secretary|office manager|إداري|اداري|سكرتير/i,label:pair('Administration','الإدارة'),

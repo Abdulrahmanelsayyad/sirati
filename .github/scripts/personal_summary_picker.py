@@ -25,7 +25,7 @@ const careers: Career[] = [
   {match:/sales|account executive|مبيعات|مندوب بيع/i,name:{en:'sales',ar:'المبيعات'},focus:{en:'customer needs and clear product communication',ar:'احتياجات العملاء والتواصل الواضح'},outcome:{en:'positive customer relationships',ar:'علاقات إيجابية مع العملاء'}},
   {match:/marketing|marketer|seo|تسويق|مسوق/i,name:{en:'marketing',ar:'التسويق'},focus:{en:'audience needs and relevant content',ar:'احتياجات الجمهور والمحتوى الملائم'},outcome:{en:'clear brand communication',ar:'التواصل الواضح للعلامة التجارية'}},
   {match:/human resources|recruiter|recruitment|موارد بشرية|موارد بشريه|توظيف/i,name:{en:'human resources',ar:'الموارد البشرية'},focus:{en:'organized people processes and communication',ar:'تنظيم شؤون الموظفين والتواصل'},outcome:{en:'supportive employee experiences',ar:'تجارب إيجابية للموظفين'}},
-  {match:/customer service|customer support|call center|help desk|خدمة عملاء|خدمه عملاء|كول سنتر/i,name:{en:'customer service',ar:'خدمة العملاء'},focus:{en:'clear communication and careful issue resolution',ar:'التواصل الواضح وحل المشكلات بعناية'},outcome:{en:'consistent customer support',ar:'خدمة عملاء متسقة'}},
+  {match:/customer service|customer support|call center|help desk|خدم[ةه] (?:ال)?عملاء|كول سنتر/i,name:{en:'customer service',ar:'خدمة العملاء'},focus:{en:'clear communication and careful issue resolution',ar:'التواصل الواضح وحل المشكلات بعناية'},outcome:{en:'consistent customer support',ar:'خدمة عملاء متسقة'}},
   {match:/administrator|administrative|secretary|office manager|إداري|اداري|سكرتير|مساعد اداري/i,name:{en:'administration',ar:'الإدارة'},focus:{en:'efficient coordination and accurate records',ar:'التنسيق الفعال ودقة السجلات'},outcome:{en:'organized daily operations',ar:'تنظيم سير العمل اليومي'}},
   {match:/logistics|warehouse|supply chain|inventory|procurement|مخازن|مستودع|لوجست|مشتريات/i,name:{en:'logistics',ar:'اللوجستيات'},focus:{en:'inventory accuracy and order coordination',ar:'دقة المخزون وتنسيق الطلبات'},outcome:{en:'dependable supply operations',ar:'موثوقية عمليات الإمداد'}},
   {match:/graphic design|designer|ui.?ux|تصميم|مصمم/i,name:{en:'design',ar:'التصميم'},focus:{en:'clear visual communication and accessible design',ar:'التواصل البصري والتصميم سهل الاستخدام'},outcome:{en:'thoughtful visual experiences',ar:'تجارب بصرية مدروسة'}},
@@ -115,6 +115,7 @@ export default function PersonalSummaryPicker() {
         titleRef.current = currentTitle;
         setRole(currentTitle);
       }
+      setLang(cvLanguage());
       const summary = Array.from(document.querySelectorAll<HTMLTextAreaElement>('.field textarea')).find(isSummary);
       if (!summary) {
         if (target.current) {
@@ -156,7 +157,7 @@ export default function PersonalSummaryPicker() {
     document.addEventListener('change', onInput, true);
     document.addEventListener('focusin', onFocus, true);
     const observer = new MutationObserver(sync);
-    observer.observe(document.body, {childList:true, subtree:true});
+    observer.observe(document.body, {childList:true, subtree:true, attributes:true, attributeFilter:['dir']});
     sync();
     return () => {
       observer.disconnect();
