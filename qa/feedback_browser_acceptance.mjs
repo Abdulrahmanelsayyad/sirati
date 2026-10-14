@@ -117,8 +117,8 @@ try {
     await page.goto(base+'/',{waitUntil:'networkidle'});
     const form=page.locator('#feedback');
     await form.getByRole('button',{name:/4 of 5 stars/}).click();
-    await form.getByRole('button',{name:/تنزيل PDF/}).click();
-    assert.equal(await form.getByRole('button',{name:/تنزيل PDF/}).getAttribute('aria-pressed'),'true');
+    await form.getByRole('button',{name:/PDF download/}).click();
+    assert.equal(await form.getByRole('button',{name:/PDF download/}).getAttribute('aria-pressed'),'true');
     await form.locator('textarea').fill('تجربة حقيقية من واجهة الاختبار');
     await form.getByRole('button',{name:/Send feedback/}).click();
     await form.getByRole('status').getByText(/Your rating was saved/).waitFor({timeout:10000});
