@@ -3,6 +3,17 @@
 **Prepared:** 2026-10-13. **Original baseline main:** `47b224b668dc99d87e2dcf0f9588a5725185ce32`.
 Use **PASS / FAIL / BLOCKED / NOT RUN**, exact Git commit + deployed URL + tester + date. Older CI and user screenshots are supporting evidence, not proof of a new buyer deployment.
 
+## V32 final scoped decisions — 2026-10-14 (supersedes older open-state entries)
+
+| Scope | Decision | Evidence / remaining test |
+| --- | --- | --- |
+| Staging analytics RPCs [#99](https://github.com/Abdulrahmanelsayyad/sirati/issues/99) | **CLOSED — completed**, two exact public functions' EXECUTE grants revoked for PUBLIC, anon and authenticated on Staging only; catalog confirms both remain | Fresh Supabase Staging Security Advisor shows **0** executable SECURITY DEFINER function WARN; 5 internal RLS/no-policy INFO findings still exist by design, plus password-protection WARN |
+| Joined Arabic/Latin PDF [#130](https://github.com/Abdulrahmanelsayyad/sirati/issues/130) | **CLOSED — not planned** for V32; explicitly unsupported contiguous mixed-script token semantics, no raw-data mutation | Supported Arabic/English matrix PASS on tested head `7448f4d`; physical Android on supported input **NOT RUN**, tracked in #24 |
+| Free-plan leaked-password protection [#24](https://github.com/Abdulrahmanelsayyad/sirati/issues/24) | **Documented Free-plan product limit**, no paid upgrade authorized; remain on Free pending independent security risk acceptance | Production Security Advisor still reports `auth_leaked_password_protection` warning; not a demonstrated breach, **not** a full security PASS |
+| Production V32 final sign-off [#24](https://github.com/Abdulrahmanelsayyad/sirati/issues/24) | **OPEN** — no false PASS for independent reviewer, physical Android, buyer-owned backend restore or legal/IP transfer | Five core Github workflows passed on code head `7448f4d`; detailed native PDF render job PASS, historical PDF-only source guard FAIL for general integration; independent release-scope acceptance still required |
+
+**This top section is authoritative for current status.** Previous entries in this file are historical snapshots and MUST NOT override this closure. No Production release, buyer hosting, customer export, Auth config, RLS, or purchase was executed.
+
 | Priority | Test / buyer evidence | Status and bounded evidence |
 | --- | --- | --- |
 | P0 | Buyer clone reconstructs source and builds successfully under buyer-controlled settings | PASS: Node 22 CI clean static builds on a8c52bc at root, /buyer-cv and /builder-tools; buyer-owned backend NOT RUN |
