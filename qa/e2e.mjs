@@ -73,6 +73,19 @@ const pdfDownloadError = new Function(pdfMessageJS+';return pdfDownloadError;')(
 assert.match(pdfDownloadError(new Error('Sign in required.')), /سجّل الدخول.*Sign in/);
 assert.match(pdfDownloadError(new Error('Saved CV not available for this account.')), /غير متاحة.*unavailable/);
 assert.match(pdfDownloadError(new Error('Saved CV content is missing.')), /غير متاح.*missing/);
+
+const mixedPdfError = new Error('Mixed-script PDF text cannot be exported safely. Separate the text fields.');
+const mixedPdfNotice = pdfDownloadError(mixedPdfError);
+assert.match(mixedPdfNotice, /افصل.*separate.*retry/i,
+  'saved-CV mixed-script failure must give actionable bilingual edit guidance');
+assert(!mixedPdfNotice.includes(mixedPdfError.message),
+  'saved-CV notice must not expose the raw PDF engine exception');
+const unsupportedPdfError = new Error('A CV character is unsupported by the PDF fonts; export aborted.');
+const unsupportedPdfNotice = pdfDownloadError(unsupportedPdfError);
+assert.match(unsupportedPdfNotice, /رمز غير مدعوم.*unsupported character.*retry/i,
+  'unsupported PDF font character should direct the user back to the editor');
+assert(!unsupportedPdfNotice.includes(unsupportedPdfError.message),
+  'unsupported-font notice must not expose the engine exception');
 assert.match(pdfDownloadError(new Error('Private server credentials: example')), /أعد المحاولة.*Retry/);
 assert(!pdfDownloadError(new Error('Private server credentials: example')).includes('Private server credentials'));
 assert.equal((savedPdfSource.match(/setErrorText\(pdfDownloadError\(e\)\)/g)||[]).length,2,
