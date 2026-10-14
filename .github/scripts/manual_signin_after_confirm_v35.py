@@ -212,4 +212,18 @@ recovery_text=replace_exact(recovery_text,
       }} disabled={busy}>متابعة لتسجيل الدخول · Continue to sign in</button>""",
     "retry local logout after reset")
 recovery.write_text(recovery_text,encoding="utf-8")
+
+css=root/"app/globals.css"
+style=css.read_text(encoding="utf-8")
+if "/* Sirati Auth V34 — scoped" not in style or "sirati-auth-v35-confirmed" in style:
+    raise RuntimeError("V35 expected generated V34 stylesheet")
+style += """
+/* V35: positive, readable confirmation notice on mobile and desktop */
+.sirati-auth-v35-confirmed {border:1px solid #a4d5b7;background:#edf8f0;
+  color:#165338;border-radius:12px;padding:14px 16px;margin:2px 0 18px;
+  line-height:1.65;font-size:14px}
+.sirati-auth-v35-confirmed strong {font-size:15px;display:block;margin-bottom:4px}
+.sirati-auth-v35-confirmed p {margin:0;color:#275b41}
+"""
+css.write_text(style,encoding="utf-8")
 print("PASS: confirmation session ends before sign-in; recovery session ends before new-password login")
