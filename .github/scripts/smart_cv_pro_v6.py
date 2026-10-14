@@ -19,15 +19,15 @@ helper=r"""
 // Only match explicit job requirements against facts typed by the user.
 // Job-ad terms MUST NEVER be treated as CV evidence by themselves.
 const jobTermGroups = [
-  ['Excel','Microsoft Excel'],['SAP'],['Power BI'],['SQL'],['Python'],['React','React.js'],
+  ['Excel','Microsoft Excel','إكسل','اكسل'],['SAP'],['Power BI','باور بي آي'],['SQL'],['Python','بايثون'],['React','React.js'],
   ['TypeScript'],['JavaScript'],['REST APIs','REST API','RESTful APIs'],['Git'],['Testing','software testing'],
-  ['financial reporting'],['budgeting'],['reconciliation','account reconciliation','accounts reconciliation'],
+  ['financial reporting','التقارير المالية','القوائم المالية'],['budgeting','إعداد الميزانيات','الموازنات'],['reconciliation','account reconciliation','accounts reconciliation','التسويات المحاسبية','تسوية الحسابات'],
   ['general ledger'],['accounts payable'],['accounts receivable'],['cost accounting'],['auditing'],
-  ['inventory management'],['project management'],['customer service'],['Salesforce'],
+  ['inventory management'],['project management'],['customer service','خدمة العملاء'],['Salesforce'],
   ['digital marketing'],['SEO','search engine optimization'],['data analysis'],['risk management'],
-  ['communication'],['team leadership'],['patient safety'],['triage'],['critical care'],
-  ['infection control'],['patient assessment'],['clinical documentation'],['quality assurance'],
-  ['BLS','basic life support'],['ACLS','advanced cardiovascular life support'],
+  ['communication'],['team leadership'],['patient safety','سلامة المرضى'],['triage','فرز المرضى'],['critical care','الرعاية الحرجة','العناية المركزة'],
+  ['infection control','مكافحة العدوى'],['patient assessment','تقييم المرضى'],['clinical documentation','التوثيق السريري'],['quality assurance'],
+  ['BLS','basic life support','الإنعاش الأساسي'],['ACLS','advanced cardiovascular life support','الإنعاش المتقدم'],
   ['lesson planning'],['classroom management'],['recruitment'],['onboarding'],['records management']
 ];
 function hasJobTerm(haystack: string, term: string) {
