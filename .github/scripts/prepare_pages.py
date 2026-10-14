@@ -308,3 +308,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('manual_signin_afte
 
 # V36: English-only default UI captions. Explicit Arabic language selection remains.
 subprocess.run([sys.executable, str(Path(__file__).with_name('english_first_ui_v36.py')), str(root)], check=True)
+
+# Zero-cost local document import review route.
+subprocess.run([sys.executable, str(Path(__file__).with_name('document_import_v1.py')), str(root)], check=True)

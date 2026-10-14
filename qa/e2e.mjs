@@ -2359,6 +2359,41 @@ assert(await page.getByRole('heading',{name:/Visitor feedback/}).isVisible(),
   'private rating dashboard route missing');
 log('Native feedback: bilingual 5-star form, no mailto, checked RLS SQL, owner dashboard and 360px layout');
 
+// Local document-to-CV review: synthetic text only, no account or uploaded customer data.
+const importCheck = await browser.newPage({viewport:{width:390,height:844}});
+await importCheck.goto(base + '/import-documents/', {waitUntil:'domcontentloaded'});
+assert(await importCheck.getByRole('heading',{name:/Import CV documents/}).isVisible(),
+  'document review page must be available on the production base path');
+const documentFiles = importCheck.locator('#cv-files');
+await documentFiles.setInputFiles([
+  {name:'synthetic-cv.txt',mimeType:'text/plain',buffer:Buffer.from(
+    'Sample Person\nEmail: example.person@example.com\nPhone: +20 100 123 4567\nEducation: Bachelor of Engineering, 2022\n')},
+  {name:'unsupported.pdf',mimeType:'application/pdf',buffer:Buffer.from('not-a-real-pdf')}
+]);
+await importCheck.getByText(/TXT and Markdown only/).waitFor();
+const importedFacts = importCheck.locator('input[type="checkbox"]');
+assert((await importedFacts.count()) >= 4, 'email, phone, degree and date must be proposed for review');
+const copyApproved = importCheck.getByRole('button',{name:/Copy reviewed facts/});
+assert(await copyApproved.isDisabled(), 'no unapproved fact may be copied');
+await importedFacts.first().check();
+assert(await copyApproved.isEnabled(), 'approving a fact must enable copy');
+const approvedText = importCheck.getByLabel('Approved CV facts');
+assert((await approvedText.inputValue()).includes('example.person@example.com'),
+  'approved email must appear in the export');
+assert(!(await approvedText.inputValue()).includes('+20 100 123 4567'),
+  'unapproved phone must not appear in the export');
+await importedFacts.nth(1).check();
+assert((await approvedText.inputValue()).includes('+20 100 123 4567'),
+  'approved phone must be included without editing it');
+await importedFacts.first().uncheck();
+assert(!(await approvedText.inputValue()).includes('example.person@example.com'),
+  'unchecking a fact must remove it immediately');
+await importCheck.setViewportSize({width:360,height:800});
+assert((await importCheck.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 2,
+  'document-review UI must not overflow a 360px viewport');
+await importCheck.close();
+log('Local document review: real TXT upload, unsupported PDF warning, per-fact consent, revoke and mobile layout');
+
 await browser.close();
 console.log('E2E QA COMPLETE');
 
