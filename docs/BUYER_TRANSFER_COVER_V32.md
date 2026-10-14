@@ -1,9 +1,9 @@
 # Sirati CV — V32 buyer transfer cover sheet
 **As of:** 2026-10-14  
-**Source candidate:** [PR #149](https://github.com/Abdulrahmanelsayyad/sirati/pull/149) (Draft, not merged)  
+**Source candidate:** [PR #149](https://github.com/Abdulrahmanelsayyad/sirati/pull/149) (Ready for independent review, not merged)  
 **Product main at last reconciliation:** `cfaf128f9f5ed4678efbe60dc9741eff57ca81a7`  
 **Tested V32 code head:** `7448f4df2f4a4450f7f82e3013c71b55d3e17dd6`  
-**Status:** TECHNICAL DUE-DILIGENCE PACKET PREPARED — **NOT** unconditional sale, independent security acceptance, buyer deployment, or seller production release.
+**Status:** TECHNICAL DUE-DILIGENCE PACKET PREPARED; PR READY FOR REVIEW — **NOT** unconditional sale, independent security acceptance, buyer deployment, or seller production release.
 
 ## Buyer receives — subject to a signed asset agreement
 - Repository source at the **specified accepted revision**, including nine encoded source parts, build scripts, generated app, templates, rule-based CV suggestions, PDFs, and QA workflows.
