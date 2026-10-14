@@ -77,6 +77,12 @@ jobs:
           sleep 2
           curl --fail http://127.0.0.1:4173/sirati/templates/ >/dev/null
 
+      - name: Browser-check account UX on mobile and desktop
+        working-directory: site-src/sirati-cv-source
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/auth_experience_browser.mjs" ./qa-auth-browser.mjs
+          node ./qa-auth-browser.mjs
+
       - name: Run E2E QA
         working-directory: site-src/sirati-cv-source
         run: |
