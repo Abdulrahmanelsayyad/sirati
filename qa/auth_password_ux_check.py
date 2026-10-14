@@ -28,7 +28,8 @@ for marker in (
 ):
     assert marker in password, f"Account guard absent: {marker}"
 assert "window.setTimeout(()=>{void verifyRecoverySession();},0);" in recovery, "Recovery event must verify session"
-assert "window.setTimeout(()=>{void verifyRecoverySession();},0);\n    }" not in recovery, "Untrusted flow marker must not authorize recovery"
+flow_section = recovery.split("if (new URLSearchParams(window.location.search).get(\'flow\')===\'password\') {",1)[1].split("return ()=>{alive=false;subscription.unsubscribe();};",1)[0]
+assert "verifyRecoverySession()" not in flow_section, "Untrusted flow marker must not authorize recovery"
 assert "withBasePath('/auth/recovery')" in dialog
 assert "withBasePath('/account/password')" in menu
 for source in (recovery,password):
