@@ -78,6 +78,7 @@ menu_map = {
     "مثال: LinkedIn أو CV أو خطاب": "Try LinkedIn, CV or Cover Letter",
     "ابحث بالعربي أو الإنجليزي للوصول للأداة بسرعة": "Find CV and career tools quickly",
     "لا توجد أدوات مطابقة": "No matching tools",
+    "No matching tools. Try CV, LinkedIn or Interview.": "Try CV, LinkedIn or Interview.",
     "إظهار كل الأدوات": "Show all",
     "كل الأدوات مجانية": "All tools are free",
 }
