@@ -44,7 +44,7 @@ function setup({quota=false}={}) {
   props={language:'ar',data:{personal:{fullName:'Synthetic CV'},photo:'data:synthetic'},template:'modern',hydrated:true,userId:null,saveRequest:0,onAuthenticated(id){props.userId=id},async onSave(){saves++;return 'synthetic-document'}};
   function render(){index=0;effects=[];tree=module.exports.default(props);for(const fn of effects)fn();return tree}
   function nodes(node=tree){if(!node||typeof node!=='object')return [];if(Array.isArray(node))return node.flatMap(nodes);return [node,...nodes(node.props?.children ?? null)]}
-  function field(type,value){nodes().find(n=>n.type==='input'&&n.props.type===type).props.onChange({target:{value}});render()}
+  function field(type,value,index=0){nodes().filter(n=>n.type==='input'&&n.props.type===type)[index].props.onChange({target:{value}});render()}
   async function submit(){await nodes().find(n=>n.type==='form').props.onSubmit({preventDefault(){}});render();await tick();render()}
   return {props,storage,render,nodes,field,submit,setFailed:v=>failed=v,setBlocked:v=>blocked=v,get saves(){return saves},get exports(){return exports},async begin(){render();props.saveRequest++;render();await tick();render()},signin(){nodes().find(n=>n.type==='button'&&n.props['aria-pressed']===false).props.onClick();render()}};
 }
@@ -54,7 +54,10 @@ function setup({quota=false}={}) {
   let draft=JSON.parse(s.storage.get(key));
   assert.equal(draft.action,'save');assert.deepEqual(draft.data,s.props.data);assert.equal(draft.template,'modern');
   s.field('email','USER@example.invalid');s.field('password','synthetic-password');
-  await s.submit(); // Confirmation required: keep mounted editor and snapshot.
+  await s.submit(); // Mismatched passwords must never create an account or save a CV.
+  assert.equal(s.saves,0);assert.equal(JSON.parse(s.storage.get(key)).email,null);
+  s.field('password','synthetic-password',1); // Confirm new password in V34.
+  await s.submit(); // Email confirmation required: keep editor and snapshot.
   assert(s.nodes().some(n=>n.props?.role==='dialog'));assert.equal(s.saves,0);
   assert.equal(JSON.parse(s.storage.get(key)).email,'user@example.invalid');
   s.setFailed(true);await s.submit();assert.equal(s.saves,0);assert(s.storage.has(key));
