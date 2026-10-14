@@ -244,3 +244,12 @@ Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punc
 - Serialize explicit saves with a synchronous ref, release on every exit, and display retry guidance on thrown network failures. No Auth/RLS/schema/PDF engine or deployment change.
 - Reference: React useRef official documentation; event-handler refs persist synchronously across renders. Reusable rule: exercise overlapping requests, not just sequential successful saves.
 - Verification in progress; live A/B fixtures, physical Android and independent reviewer unavailable. No merge/deploy authorized.
+
+## V30 feedback request races — 2026-10-14
+- Owner: Codex; branch `fix/feedback-request-races-v30`; base `cfaf128`.
+- Scope: feedback generator and synthetic deferred-request regression, wired into existing E2E. No overlap with buyer PR #149 or portability PR #151.
+- Reproduced: edits reopen pending submit/duplicate writes; stale auth/write outcomes change the next account UI (including A→B→A).
+- Fix: synchronous request identity, invalidate on account switch/unmount, revision-aware success. Preserve editable drafts and retry. No auth configuration, RLS, schema, PDF or deployment changes.
+- Evidence: baseline 5/6 cases failed; fixed 6/6 passed, 18 feedback invariants and bounded verifier passed. CI/browser acceptance is separate.
+- Reusable rule: tie async feedback to a request identity, not only a user ID; a success response applies only to its submitted draft revision.
+- Status: draft preparation; no merge/deploy.
