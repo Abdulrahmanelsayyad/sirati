@@ -33,6 +33,9 @@ jobs:
           python .github/scripts/prepare_pages.py site-src/sirati-cv-source
           python qa/print_isolation_fix.py site-src/sirati-cv-source
 
+      - name: Verify auth/password recovery UI boundaries
+        run: python3 qa/auth_password_ux_check.py site-src/sirati-cv-source
+
       - name: Verify owner feedback navigation guard
         run: python3 qa/feedback_owner_nav_check.py site-src/sirati-cv-source
 
