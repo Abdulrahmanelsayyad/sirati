@@ -305,3 +305,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('auth_experience_v3
 
 # V35: verified email/recovery must end temporary session and require manual sign-in.
 subprocess.run([sys.executable, str(Path(__file__).with_name('manual_signin_after_confirm_v35.py')), str(root)], check=True)
+
+# V36: English-only default UI captions. Explicit Arabic language selection remains.
+subprocess.run([sys.executable, str(Path(__file__).with_name('english_first_ui_v36.py')), str(root)], check=True)

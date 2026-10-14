@@ -143,9 +143,9 @@ for (const tool of ['smart','quality']) {
   assert.equal(docsSource.split(href).length - 1, 1,
     'saved CV must have exactly one direct '+tool+' contextual action');
 }
-assert(docsSource.includes("aria-label={'مساعد الكتابة · Smart CV · ' + (doc.title || 'CV')}") &&
-  docsSource.includes("aria-label={'مراجعة الجودة · CV Quality · ' + (doc.title || 'CV')}"),
-  'saved CV tools need bilingual document-specific accessible names');
+assert(docsSource.includes("aria-label={'Smart CV · ' + (doc.title || 'CV')}") &&
+  docsSource.includes("aria-label={'CV Quality · ' + (doc.title || 'CV')}"),
+  'saved CV tools need English document-specific accessible names');
 assert.equal((docsSource.match(/className="btn btn-secondary sirati-doc-tool-link"/g) || []).length,2,
   'the two contextual actions must share the responsive touch target styling');
 console.log('PASS: account-owned document cards expose Smart CV/Quality direct actions');
@@ -382,7 +382,7 @@ assert.equal(lead.color,'rgb(237, 244, 237)','faded mobile hero lead must use hi
 assert.equal(lead.opacity,'1','hero lead must not be transparent');
 
 // Sitewide UX: fast, responsive navigation must not float over page content.
-const topBar = page.getByRole('navigation',{name:'Primary site navigation · التنقل الرئيسي'});
+const topBar = page.getByRole('navigation',{name:'Primary site navigation'});
 assert.equal(await topBar.count(),1,'one global primary navigation expected');
 assert.equal(await page.locator('.marketing-page .brand-lockup').count() > 0, true,
   'Home retains product branding in footer');
@@ -573,7 +573,7 @@ log('Career-wide homepage, contrast, all-feature sidebar, escape close, 320/360/
 await page.setViewportSize({width:390,height:844});
 await opener.click();
 const featureDialog = page.getByRole('dialog',{name:'Sirati features and customer account'});
-const featureSearch = featureDialog.getByRole('searchbox',{name:'البحث عن أداة · Search features'});
+const featureSearch = featureDialog.getByRole('searchbox',{name:'Search features'});
 assert(await featureSearch.isVisible(),'feature search missing from the sidebar');
 await featureSearch.fill('LinkedIn');
 let visibleFeatures = await featureDialog.locator('.sirati-menu-item').allInnerTexts();
@@ -583,18 +583,18 @@ assert((await featureDialog.locator('.sirati-menu-item').first().getAttribute('h
   'filtered LinkedIn link should open its actual tool');
 await featureSearch.fill('خطاب');
 visibleFeatures = await featureDialog.locator('.sirati-menu-item').allInnerTexts();
-assert.equal(visibleFeatures.length,1,'Arabic title should filter to one Cover Letter feature');
-assert(visibleFeatures[0].includes('Cover Letter Pro'),'Arabic search filtered wrong tool');
+assert.equal(visibleFeatures.length,1,'Legacy Arabic search alias should find Cover Letter without bilingual captions');
+assert(visibleFeatures[0].includes('Cover Letter Pro'),'Legacy Arabic search alias filtered wrong tool');
 await featureSearch.fill('this-feature-does-not-exist-987');
 assert.equal(await featureDialog.locator('.sirati-menu-item').count(),0,'nonexistent feature query must remove all feature results');
-assert(await featureDialog.getByText('لا توجد أدوات مطابقة').isVisible(),'empty state message missing');
+assert(await featureDialog.getByText('No matching tools').isVisible(),'empty state message missing');
 await featureDialog.getByRole('button',{name:'Close Sirati menu'}).focus();
 await page.keyboard.press('Shift+Tab');
 assert(await featureDialog.evaluate(el => el.contains(document.activeElement)), 'empty search focus escaped');
 await page.keyboard.press('Tab');
 assert(await featureDialog.getByRole('button',{name:'Close Sirati menu'}).evaluate(el => el === document.activeElement),
   'filtered menu must recompute its focus boundary');
-await featureDialog.getByRole('button',{name:'إظهار كل الأدوات · Show all'}).click();
+await featureDialog.getByRole('button',{name:'Show all'}).click();
 assert.equal(await featureSearch.inputValue(),'','Show all must reset the query');
 assert((await featureDialog.locator('.sirati-menu-item').count())>=8,'clearing query must restore the menu');
 await page.keyboard.press('Escape');
@@ -717,7 +717,7 @@ for (const [tool,label] of navTests) {
 await page.goto(base+'/profile/',{waitUntil:'networkidle'});
 assert(await page.locator('.sirati-profile-page').isVisible(),'account profile route missing');
 const profileText = await page.locator('.sirati-profile-page').innerText();
-assert(profileText.includes('الملف الشخصي'),'profile heading missing');
+assert(profileText.includes('My Profile'),'profile heading missing');
 assert(!profileText.includes('QA Person'),'unauthenticated profile must not expose CV demo user');
 log('Career Studio tool deep-links, and unauthenticated profile isolation');
 await page.goto(base+'/career-tools/',{waitUntil:'networkidle'});
@@ -2316,8 +2316,8 @@ assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isDisable
 const nativeStar3 = feedback.getByRole('button',{name:/3 of 5 stars/});
 await nativeStar3.click();
 assert.equal(await nativeStar3.getAttribute('aria-pressed'),'true');
-await feedback.getByRole('button',{name:/تنزيل PDF/}).click();
-assert.equal(await feedback.getByRole('button',{name:/تنزيل PDF/}).getAttribute('aria-pressed'),'true',
+await feedback.getByRole('button',{name:/PDF download/}).click();
+assert.equal(await feedback.getByRole('button',{name:/PDF download/}).getAttribute('aria-pressed'),'true',
   'feedback category chip must preserve its selected state');
 await feedback.locator('textarea').fill('Works well / رائع');
 assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isEnabled(),true);
