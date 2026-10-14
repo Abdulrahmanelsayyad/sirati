@@ -209,7 +209,7 @@ recovery_text=replace_exact(recovery_text,
         } catch {
           setMessage('حاول مرة أخرى لإغلاق جلسة الاستعادة. · Retry ending the temporary recovery session.');
         } finally {setBusy(false);}
-      }} disabled={busy}>متابعة لتسجيل الدخول · Continue to sign in</button>""",
+      }} disabled={busy}>متابعة لتسجيل الدخول · Continue to sign in</button>}""",
     "retry local logout after reset")
 recovery.write_text(recovery_text,encoding="utf-8")
 
