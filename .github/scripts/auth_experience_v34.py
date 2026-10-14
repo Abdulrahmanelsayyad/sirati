@@ -266,7 +266,7 @@ replace_once(
   const [passwordConfirm,setPasswordConfirm] = useState('');
   const [showPassword,setShowPassword] = useState(false);""")
 replace_once(
-    "       if (password.length < 8) throw new Error('Use a password of at least 8 characters.');",
+    "      if (password.length < 8) throw new Error('Use a password of at least 8 characters.');",
     """       if (password.length < 8) throw new Error(arabic
          ? 'كلمة المرور يجب ألا تقل عن 8 أحرف.' : 'Use a password of at least 8 characters.');
        if (mode==='signup' && password !== passwordConfirm) throw new Error(arabic
