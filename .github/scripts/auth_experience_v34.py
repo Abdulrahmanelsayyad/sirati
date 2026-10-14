@@ -279,8 +279,8 @@ replace_once(
     """onClick={()=>{setMode('signin');setError('');setPassword('');setPasswordConfirm('');setShowPassword(false)}}""")
 replace_once(
     """<input id={dialogId + '-password'} type="password" minLength={8} required
-             autoComplete={mode==='signup'?'new-password':'current-password'}
-             value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/>""",
+            autoComplete={mode==='signup'?'new-password':'current-password'}
+            value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/>""",
     """<div className="sirati-auth-v34-modal-password">
              <input id={dialogId + '-password'} type={showPassword?'text':'password'} minLength={8} required
                autoComplete={mode==='signup'?'new-password':'current-password'}
