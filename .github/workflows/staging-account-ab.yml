@@ -1,0 +1,51 @@
+name: Staging real account isolation (no deploy)
+on:
+  pull_request:
+    branches: [main]
+    paths: ['qa/staging_account_ab.mjs', 'qa/live_account_ab_readonly.mjs', '.github/workflows/staging-account-ab.yml']
+permissions:
+  contents: read
+jobs:
+  account-ab:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'docs/buyer-handover-20261013' && github.event.pull_request.number == 149
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_BASE_PATH: /sirati
+      NEXT_PUBLIC_SUPABASE_URL: https://ykfxcxhozqqsvhtdyxho.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_WJRNf7gnhrggw8r-XB85gw_MmRvwkVt
+      NEXT_PUBLIC_ANALYTICS_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Build exact candidate for isolated local frontend
+        run: bash build.sh
+      - name: Install browser without account secrets
+        working-directory: site-src/sirati-cv-source
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start local frontend (no deployment)
+        run: |
+          mkdir qa-root
+          ln -s "$PWD/site-src/sirati-cv-source/out" qa-root/sirati
+          python3 -m http.server 4173 --directory qa-root >/tmp/sirati-ab-http.log 2>&1 &
+          for n in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/sirati/auth/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4173/sirati/auth/ >/dev/null
+          cp qa/live_account_ab_readonly.mjs site-src/sirati-cv-source/qa-live-account-ab.mjs
+          cp qa/staging_account_ab.mjs site-src/sirati-cv-source/qa-staging-account-ab.mjs
+      - name: Real synthetic A/B API and browser checks; clean only own fixtures
+        working-directory: site-src/sirati-cv-source
+        env:
+          SIRATI_AB_A_PASSWORD: ${{ secrets.SIRATI_AB_A_PASSWORD }}
+          SIRATI_AB_B_PASSWORD: ${{ secrets.SIRATI_AB_C_PASSWORD }}
+        run: node qa-staging-account-ab.mjs

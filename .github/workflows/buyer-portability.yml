@@ -1,0 +1,56 @@
+name: Buyer portability (no deploy)
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  buyer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        base: ['', '/buyer-cv', '/builder-tools']
+    env:
+      NEXT_PUBLIC_BASE_PATH: ${{ matrix.base }}
+      NEXT_PUBLIC_ANALYTICS_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Clean documented build without seller backend
+        run: bash build.sh
+      - name: Verify generated source and portable export
+        run: |
+          python3 qa/verification.py site-src/sirati-cv-source --output /tmp/buyer-verification.json
+          python3 qa/buyer_portability_check.py site-src/sirati-cv-source "$NEXT_PUBLIC_BASE_PATH"
+      - name: Install browser for isolated QA
+        working-directory: site-src/sirati-cv-source
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve buyer base path and run existing E2E including PDF smoke
+        env:
+          SIRATI_QA_BASE_URL: http://127.0.0.1:4173${{ matrix.base }}
+        run: |
+          mkdir qa-root
+          if [ -n "$NEXT_PUBLIC_BASE_PATH" ]; then
+            ln -s "$PWD/site-src/sirati-cv-source/out" "qa-root${NEXT_PUBLIC_BASE_PATH}"
+            serve_dir=qa-root
+          else
+            serve_dir=site-src/sirati-cv-source/out
+          fi
+          python3 -m http.server 4173 --directory "$serve_dir" >/tmp/buyer-http.log 2>&1 &
+          for n in $(seq 1 30); do
+            if curl -fsS "$SIRATI_QA_BASE_URL/templates/" >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS "$SIRATI_QA_BASE_URL/templates/" >/dev/null
+          cp qa/e2e.mjs site-src/sirati-cv-source/qa-e2e.mjs
+          cd site-src/sirati-cv-source
+          node qa-e2e.mjs

@@ -1,5 +1,6 @@
 // Optional independent QA gate: two synthetic accounts, one browser profile.
-// The script performs no CV writes, SQL, payments or production configuration changes.
+// Default journey is read-only; optional recovery edits only the supplied synthetic
+// local-Staging fixture. No SQL, payments or production configuration changes.
 // No secrets, real CV fields, tokens, screenshots, traces or private markers are logged.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
@@ -49,6 +50,14 @@ const timeout = 25000;
 const browser = await chromium.launch({headless: process.env.SIRATI_AB_HEADED !== 'YES'});
 try {
   const context = await browser.newContext({viewport: {width: viewportWidth, height: 844}});
+  if (process.env.SIRATI_AB_STAGING_ONLY === 'YES') {
+    assert(local && !production, 'Staging QA requires the isolated local frontend');
+    await context.route('**/*', route => {
+      const url = new URL(route.request().url());
+      return [base.origin, 'https://ykfxcxhozqqsvhtdyxho.supabase.co'].includes(url.origin)
+        ? route.continue() : route.abort();
+    });
+  }
   const page = await context.newPage();
   const safeVisibleText = async () => page.locator('body').innerText();
   const anyVisibleFieldContains = async value => page.evaluate(value => {
@@ -63,31 +72,53 @@ try {
     ).some(element => element.value?.includes(value));
   }, value, {timeout});
 
+  let phase = 'start';
   async function signIn(email, password) {
-    await page.goto(path('auth/?next=/documents'), {waitUntil: 'domcontentloaded'});
+    phase = 'open login page';
+    await page.goto(path('auth/?next=/documents'), {waitUntil: 'networkidle'});
+    // Static HTML is visible before React hydration. Exercise an existing
+    // stateful control and wait for both renders before filling credentials.
+    phase = 'wait for interactive login form';
+    const switchMode = page.locator('.auth-switch');
+    await switchMode.click();
+    await page.locator('input[autocomplete=new-password]').waitFor({timeout});
+    await switchMode.click();
+    await page.locator('input[autocomplete=current-password]').waitFor({timeout});
+    phase = 'fill login form';
     await page.locator('input[type=email]').fill(email);
     await page.locator('input[type=password]').fill(password);
+    phase = 'submit login form';
+    const valid = await page.locator('input[type=password]').evaluate(el => el.checkValidity());
+    if (!valid) record('Login form accepts supplied password length', 'FAIL', 'Existing account password rejected by HTML form validation');
     await page.locator('form button').first().click();
-    await page.waitForURL(/\/documents\/?(?:\?|$)/, {timeout});
+    phase = 'wait documents redirect';
+    // Inspect pathname: the login URL already contains ?next=/documents.
+    await page.waitForURL(url => url.pathname === '/sirati/documents/' ||
+      url.pathname === '/sirati/documents', {timeout});
+    phase = 'wait documents section';
     await page.locator('.documents-section').waitFor({timeout});
+    phase = 'wait document cards';
     await page.locator('.document-grid .document-card').first().waitFor({timeout});
   }
 
   let originalKey = null;
   try {
     await signIn(process.env.SIRATI_AB_A_EMAIL, process.env.SIRATI_AB_A_PASSWORD);
+    phase = 'find A fixture title';
     await page.locator('.document-card')
       .filter({hasText: process.env.SIRATI_AB_A_TITLE}).first().waitFor({timeout});
     record('A can view own pre-existing synthetic document', 'PASS');
     await page.goto(path('builder/?doc=' + encodeURIComponent(docId)), {waitUntil:'domcontentloaded'});
     await waitForMarker(marker);
     record('A can open own existing document with A-only marker', 'PASS');
+    assert(!(await page.evaluate(value => Object.values(localStorage).some(v => v.includes(value)), marker)),
+      'Authenticated draft must not persist in localStorage');
     try {
-      await page.waitForFunction(marker => Object.keys(localStorage).some(key =>
-        key.startsWith('sirati.cv.v2.') && (localStorage.getItem(key) || '').includes(marker)),
+      await page.waitForFunction(marker => Object.keys(sessionStorage).some(key =>
+        key.startsWith('sirati.cv.v2.') && (sessionStorage.getItem(key) || '').includes(marker)),
         marker, {timeout:8000});
-      originalKey = await page.evaluate(marker => Object.keys(localStorage).find(key =>
-        key.startsWith('sirati.cv.v2.') && (localStorage.getItem(key) || '').includes(marker)
+      originalKey = await page.evaluate(marker => Object.keys(sessionStorage).find(key =>
+        key.startsWith('sirati.cv.v2.') && (sessionStorage.getItem(key) || '').includes(marker)
       ) || null, marker);
       record('A device draft created by the existing builder', 'PASS');
     } catch {
@@ -95,8 +126,50 @@ try {
         'The builder did not create a matching device cache during this read-only test');
     }
 
-    await page.goto(path('documents/'), {waitUntil:'domcontentloaded'});
+    if (process.env.SIRATI_AB_SAVE_RECOVERY === 'YES') {
+      assert(local && process.env.SIRATI_AB_STAGING_ONLY === 'YES',
+        'Save recovery is restricted to the isolated Staging frontend');
+      phase = 'failed network save retains synthetic editor data';
+      const editedMarker = marker + '-RECOVERY';
+      const nameInput = page.locator('.field').filter({has: page.locator('label', {hasText: /^Full name$/})}).locator('input');
+      const documentApi = 'https://ykfxcxhozqqsvhtdyxho.supabase.co/rest/v1/cv_documents*';
+      let deniedWrites = 0;
+      const failWrites = route => {
+        if (['PATCH', 'POST'].includes(route.request().method())) {
+          deniedWrites++;
+          return route.abort('internetdisconnected');
+        }
+        return route.continue();
+      };
+      await context.route(documentApi, failWrites);
+      try {
+        await nameInput.fill(editedMarker);
+        await page.locator('.save-status').filter({hasText: /Cloud save failed|Save failed/}).waitFor({timeout});
+        assert(deniedWrites > 0, 'A real document write must have been blocked');
+        assert.equal(await nameInput.inputValue(), editedMarker);
+        assert(await page.evaluate(value => Object.keys(sessionStorage).some(key =>
+          key.startsWith('sirati.cv.v2.') && sessionStorage.getItem(key)?.includes(value)), editedMarker));
+        record('Failed document network save retains editor and session draft', 'PASS');
+      } finally {
+        await context.unroute(documentApi, failWrites);
+      }
+      phase = 'retry save after reconnect and reopen synthetic document';
+      await page.locator('.sirati-builder-save').click();
+      await page.locator('.save-status').filter({hasText: 'Saved + version created'}).waitFor({timeout});
+      await page.reload({waitUntil:'networkidle'});
+      await waitForMarker(editedMarker);
+      assert.equal(await nameInput.inputValue(), editedMarker);
+      record('Explicit retry after network recovery persists edits across reload', 'PASS');
+      // Restore the fixture name/title for subsequent isolation scenarios.
+      await nameInput.fill(marker);
+      await page.locator('.save-status').filter({hasText: /^Saved to account$/}).waitFor({timeout});
+    }
+
+    await page.goto(path('documents/'), {waitUntil:'networkidle'});
+    phase = 'wait documents section';
     await page.locator('.documents-section').waitFor({timeout});
+    phase = 'wait for authenticated document list before sign out';
+    await page.locator('.document-card').filter({hasText: process.env.SIRATI_AB_A_TITLE}).first().waitFor({timeout});
     // New privacy guards warn before deleting device-only drafts. Without
     // explicitly accepting the confirmation, Playwright may dismiss it by
     // default, leaving A signed in and causing a misleading navigation FAIL.
@@ -115,8 +188,12 @@ try {
         await page.getByRole('button', {name:'Open Sirati menu'}).click();
         await page.locator('.sirati-menu-signout').click();
       } else {
-        await page.getByRole('button', {name:'Sign out'}).click();
+        phase = 'open Documents account details and sign out';
+        await page.locator('.sirati-documents-account-disclosure > summary').click();
+        phase = 'click Documents sign out';
+        await page.getByRole('button', {name:'Sign out', exact:true}).click();
       }
+      phase = 'wait for signed-out home redirect';
       await page.waitForURL(url => url.pathname === '/sirati/' || url.pathname === '/sirati', {timeout});
     } finally {
       page.off('dialog', respondToSignOutDialog);
@@ -149,7 +226,7 @@ try {
 
     if (originalKey) {
       const stillReadable = await page.evaluate(key => {
-        const stored = localStorage.getItem(key);
+        const stored = sessionStorage.getItem(key) || localStorage.getItem(key);
         return Boolean(stored);
       }, originalKey);
       record('A local CV draft is inaccessible to B in the same browser',
@@ -163,7 +240,10 @@ try {
     }
   } catch (error) {
     record('A/B browser journey', 'FAIL',
-      'Scenario did not pass; inspect the local failure details without sharing credentials or user data');
+      'Stage: ' + phase + '; failure type: ' + (error instanceof Error ? error.name : 'Unknown'));
+    const msg = await page.locator('.auth-message').textContent({timeout:1000}).catch(() => '');
+    if (msg?.includes('at least 8 characters')) record('Login form minimum length', 'FAIL', 'UI requires eight characters even for existing accounts');
+    if (msg?.includes('Invalid login credentials')) record('Browser login', 'FAIL', 'Auth rejected credentials');
     if (process.env.SIRATI_AB_DEBUG === 'YES') {
       console.error('Step failure type:', error instanceof Error ? error.name : 'Unknown');
     }
