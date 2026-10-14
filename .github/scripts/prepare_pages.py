@@ -242,6 +242,9 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v5.py
 # V6 Pro Max: local job fit and pre-insertion editor; never touches persistence.
 subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v6.py')), str(root)], check=True)
 
+# Smart CV V7: Arabic/English keyword matching against user-entered facts only.
+subprocess.run([sys.executable, str(Path(__file__).with_name('smart_cv_pro_v7.py')), str(root)], check=True)
+
 # Cross-site navigation UX: visible shortcuts, route context and overlay-free mobile menu.
 subprocess.run([sys.executable, str(Path(__file__).with_name('sitewide_navigation_ux.py')), str(root)], check=True)
 
@@ -293,6 +296,25 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('session_boundary_v
 # Owner reference: refine the existing Modern renderer, preserving the PDF engine.
 subprocess.run([sys.executable, str(Path(__file__).with_name('modern_reference_layout.py')), str(root)], check=True)
 
+# Shared editor tools must not mount on every page when a buyer's repository
+# name contains "builder" (for example /builder-tools). Keep auth URLs untouched.
+base_path_file = root / 'lib/basePath.ts'
+base_path_file.write_text(base_path_file.read_text() + '''
+export function isBuilderPath(pathname: string): boolean {
+  return pathname.replace(/\\/+$/, '') === BASE_PATH + '/builder';
+}
+''')
+for component in ('BuilderNavigator', 'PersonalSummaryPicker',
+                  'ExperienceDescriptionPicker', 'DuplicateCvAction'):
+    target = root / 'components' / f'{component}.tsx'
+    text = target.read_text()
+    old = "window.location.pathname.includes('/builder')"
+    expected = 2 if component == 'PersonalSummaryPicker' else 1
+    if text.count(old) != expected:
+        raise SystemExit(f'Unexpected builder route predicate in {component}')
+    text = text.replace(old, 'isBuilderPath(window.location.pathname)')
+    text = text.replace("'use client';", "'use client';\nimport { isBuilderPath } from '@/lib/basePath';", 1)
+    target.write_text(text)
 # Voluntary website feedback via existing support email; no backend or CV data.
 subprocess.run([sys.executable, str(Path(__file__).with_name('feedback_rating_v1.py')), str(root)], check=True)
 

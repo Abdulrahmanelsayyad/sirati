@@ -74,7 +74,7 @@ import type { User } from '@supabase/supabase-js';
 type Item = { title: string; detail: string; route: string; icon: string };
 const cvFeatures: Item[] = [
   { title: 'إنشاء CV', detail: 'CV Builder', route: '/templates', icon: '▤' },
-  { title: 'مكتبة القوالب', detail: '32 CV templates', route: '/templates', icon: '▦' },
+  { title: 'مكتبة القوالب', detail: 'CV template library', route: '/templates', icon: '▦' },
   { title: 'مساعد الكتابة الذكي', detail: 'Smart CV — inside the builder', route: '/auth?next=/templates', icon: '✦' },
   { title: 'مراجعة جودة السيرة', detail: 'CV Quality — inside the builder', route: '/auth?next=/templates', icon: '◉' },
   { title: 'طباعة السيرة PDF', detail: 'Free export — inside the builder', route: '/auth?next=/templates', icon: '⇩' },

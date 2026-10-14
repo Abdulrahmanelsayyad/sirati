@@ -6,6 +6,28 @@ on:
 permissions:
   contents: read
 jobs:
+  protected-release-scope:
+    # Keep historical release authorization fail-closed. It is independent of
+    # rendering regression, so a general portability PR can collect PDF evidence
+    # without being mislabeled as an approved PDF-only release.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_BASE_PATH: /sirati
+      NEXT_PUBLIC_ANALYTICS_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build exact candidate and enforce unchanged protected release guard
+        run: |
+          bash build.sh
+          python3 qa/pdf_release_guard.py site-src/sirati-cv-source --production
   isolated-pdf:
     runs-on: ubuntu-latest
     timeout-minutes: 50
@@ -31,7 +53,6 @@ jobs:
         run: |
           bash build.sh
           node qa/pdf_boundary_check.mjs
-          python3 qa/pdf_release_guard.py site-src/sirati-cv-source --production
           python3 qa/account_storage_check.py site-src/sirati-cv-source
           python3 qa/multi_cv_duplicate_check.py site-src/sirati-cv-source
           python3 qa/pdf_order_policy_static_check.py

@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 execFileSync(process.execPath, ['../../qa/guest_save_regression.cjs', process.cwd()], {stdio:'inherit'});
 
 execFileSync(process.execPath, ['../../qa/smart_role_regression.cjs', process.cwd()], {stdio:'inherit'});
+execFileSync(process.execPath, ['../../qa/feedback_request_regression.cjs', process.cwd()], {stdio:'inherit'});
 
 // Removal is a security and UX regression gate: don't ship the old feature.
 assert.equal(fs.existsSync('components/TargetJobTailor.tsx'), false, 'retired Job Match component must not ship');
@@ -34,6 +35,26 @@ console.log('PASS: guest CV gallery has no account-loading state or auth redirec
 const { createRequire } = await import('node:module');
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
+// Execute the generated route helper with seller, buyer and root hosting paths.
+const basePathJS = ts.transpileModule(fs.readFileSync('lib/basePath.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS }
+}).outputText;
+for (const prefix of ['', '/sirati', '/buyer-cv', '/builder-tools', '/builder']) {
+  const routeModule = { exports: {} };
+  new Function('module', 'exports', 'process', basePathJS)(routeModule, routeModule.exports,
+    {env:{NEXT_PUBLIC_BASE_PATH:prefix}});
+  const {isBuilderPath} = routeModule.exports;
+  for (const route of ['/builder', '/builder/']) assert(isBuilderPath(prefix + route));
+  for (const route of ['/', '/templates/', '/career-tools/', '/builder-other/', '/builder/history/']) {
+    assert.equal(isBuilderPath(prefix + route), false, prefix + route);
+  }
+}
+for (const name of ['BuilderNavigator', 'PersonalSummaryPicker', 'ExperienceDescriptionPicker', 'DuplicateCvAction']) {
+  const source = fs.readFileSync(`components/${name}.tsx`, 'utf8');
+  assert(source.includes('isBuilderPath(window.location.pathname)'), name);
+  assert(!source.includes("window.location.pathname.includes('/builder')"), name);
+}
+console.log('PASS: editor tools match exact app route across five hosting base paths');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const journeyModule = { exports: {} };
@@ -72,6 +93,19 @@ const pdfDownloadError = new Function(pdfMessageJS+';return pdfDownloadError;')(
 assert.match(pdfDownloadError(new Error('Sign in required.')), /سجّل الدخول.*Sign in/);
 assert.match(pdfDownloadError(new Error('Saved CV not available for this account.')), /غير متاحة.*unavailable/);
 assert.match(pdfDownloadError(new Error('Saved CV content is missing.')), /غير متاح.*missing/);
+
+const mixedPdfError = new Error('Mixed-script PDF text cannot be exported safely. Separate the text fields.');
+const mixedPdfNotice = pdfDownloadError(mixedPdfError);
+assert.match(mixedPdfNotice, /افصل.*separate.*retry/i,
+  'saved-CV mixed-script failure must give actionable bilingual edit guidance');
+assert(!mixedPdfNotice.includes(mixedPdfError.message),
+  'saved-CV notice must not expose the raw PDF engine exception');
+const unsupportedPdfError = new Error('A CV character is unsupported by the PDF fonts; export aborted.');
+const unsupportedPdfNotice = pdfDownloadError(unsupportedPdfError);
+assert.match(unsupportedPdfNotice, /رمز غير مدعوم.*unsupported character.*retry/i,
+  'unsupported PDF font character should direct the user back to the editor');
+assert(!unsupportedPdfNotice.includes(unsupportedPdfError.message),
+  'unsupported-font notice must not expose the engine exception');
 assert.match(pdfDownloadError(new Error('Private server credentials: example')), /أعد المحاولة.*Retry/);
 assert(!pdfDownloadError(new Error('Private server credentials: example')).includes('Private server credentials'));
 assert.equal((savedPdfSource.match(/setErrorText\(pdfDownloadError\(e\)\)/g)||[]).length,2,
@@ -126,6 +160,17 @@ const joinedSnapshot = JSON.stringify(joinedCv);
 assert.match(pdfJoinedScriptWarning(joinedCv,true), /الـICU\/ER.*الـ ICU\/ER.*لم تتغير/);
 assert.match(pdfJoinedScriptWarning(joinedCv,false), /الـICU\/ER.*الـ ICU\/ER.*unchanged/);
 assert.equal(JSON.stringify(joinedCv),joinedSnapshot,'PDF preflight must never edit CV data');
+// Each supported limitation must be checked independently: a first match must
+// not hide a regression in the second medical acronym or punctuation context.
+for (const token of ['الـICU/ER', 'الـACLS/BLS', '(الـICU/ER)، 2020-2026', '2026/10: الـACLS/BLS.']) {
+  const cv = {profile: token};
+  const original = JSON.stringify(cv);
+  for (const arabic of [true, false]) {
+    assert(pdfJoinedScriptWarning(cv, arabic), 'Joined medical token must fail preflight: ' + token);
+    assert.equal(JSON.stringify(cv), original, 'Preflight must preserve exact punctuation and dates');
+  }
+}
+
 assert.equal(pdfJoinedScriptWarning({experience:[{details:'الـ ICU/ER'}]},true),null);
 assert.equal(pdfJoinedScriptWarning({profile:'ACLS/BLS, emergency nurse'},false),null);
 assert.equal(pdfJoinedScriptWarning({photoDataUrl:'الـICU/ER'},false),null);
@@ -184,7 +229,21 @@ console.log('PASS: V12 Home branding and Documents markup preserve original beha
 const { chromium } = await import('playwright');
 
 
-const base = 'http://127.0.0.1:4173/sirati';
+// Keep the existing buyer-portability matrix and this standalone QA compatible.
+// Never silently choose one target when two local test workflows disagree.
+const qaBase = process.env.SIRATI_QA_BASE_URL;
+const e2eBase = process.env.SIRATI_E2E_BASE_URL;
+if (qaBase && e2eBase) {
+  assert.equal(qaBase.replace(/\/+$/, ''), e2eBase.replace(/\/+$/, ''),
+    'Conflicting local QA base URLs');
+}
+const base = (qaBase || e2eBase || 'http://127.0.0.1:4173/sirati').replace(/\/+$/, '');
+const baseAddress = new URL(base);
+assert.equal(baseAddress.protocol, 'http:', 'Synthetic QA must use the local HTTP test server');
+assert(['127.0.0.1', 'localhost', '[::1]'].includes(baseAddress.hostname),
+  'Synthetic E2E must target a local build, never a customer-facing site');
+assert(!baseAddress.search && !baseAddress.hash && !baseAddress.username && !baseAddress.password);
+const basePrefix = baseAddress.pathname.replace(/\/+$/, '');
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
@@ -201,8 +260,9 @@ async function collectBuyerLinks(locator, source) {
     elements.map(a => ({href:a.href, text:(a.textContent||'').trim().slice(0,70)})));
   for (const {href,text} of links) {
     const address = new URL(href);
-    if (address.origin !== new URL(base).origin ||
-        !address.pathname.startsWith('/sirati/')) continue;
+    if (address.origin !== baseAddress.origin) continue;
+    assert(address.pathname === basePrefix || address.pathname.startsWith(basePrefix + '/'),
+      'Guest link escaped configured base path: ' + address.pathname);
     const pathname = address.pathname.endsWith('/') ? address.pathname : address.pathname + '/';
     // The static host serves paths, not fragment or query-string variants.
     guestEntrypoints.add(pathname + address.search);
@@ -386,7 +446,7 @@ const topBar = page.getByRole('navigation',{name:'Primary site navigation · ا�
 assert.equal(await topBar.count(),1,'one global primary navigation expected');
 assert.equal(await page.locator('.marketing-page .brand-lockup').count() > 0, true,
   'Home retains product branding in footer');
-assert((await topBar.locator('.sirati-topbar-brand').getAttribute('href') || '').endsWith('/sirati/'),
+assert.equal(await topBar.locator('.sirati-topbar-brand').getAttribute('href'), basePrefix + '/',
   'Sirati brand must link to the correctly based homepage');
 assert((await topBar.locator('.sirati-topbar-link').count())===3,
   'direct CV, Career Tools, and My Documents links are required');
@@ -476,7 +536,7 @@ async function checkMenuSignOut({confirm=true, fail=false, hasDraft=true}={}) {
   await syntheticMenuLogout(
     {id:'A'}, false, fakeClient, mockWindow, ()=>{},
     message=>{errorMessage=message}, user=>{activeUser=user?.id||null},
-    ()=>{}, path=>'/sirati'+path
+    ()=>{}, path=>basePrefix+path
   );
   assert(store.has('sirati.cv.v2.B') && store.has('sirati.cv.v2'),
     'logout must not clear other accounts or legacy device keys');
@@ -537,11 +597,19 @@ for (const width of [320,360,390,768,1440]) {
   await opener.click();
   const drawer = page.getByRole('dialog',{name:'Sirati features and customer account'});
   assert(await drawer.isVisible(),'features drawer missing at '+width);
-  for (const feature of ['CV Builder','32 CV templates','Smart CV','CV Quality',
+  for (const feature of ['CV Builder','CV template library','Smart CV','CV Quality',
                          'Cover Letter Pro','Headline & About assistant','Interview preparation','My Documents']) {
     assert((await drawer.innerText()).includes(feature),'missing actual feature: '+feature);
   }
   assert((await drawer.locator('a[href*="career-tools"]').count())>=3,'career tools deep links missing');
+  // Keep the existing #91/#92 focused saved-CV destinations intact across builds.
+  const smartLink = drawer.locator('a.sirati-menu-item[href$="/documents?tool=smart"]');
+  const qualityLink = drawer.locator('a.sirati-menu-item[href$="/documents?tool=quality"]');
+  assert.equal(await smartLink.count(),1,'Smart CV must enter its document chooser');
+  assert.equal(await qualityLink.count(),1,'CV Quality must enter its document chooser');
+  assert((await smartLink.innerText()).includes('Smart CV') &&
+    (await qualityLink.innerText()).includes('CV Quality'),
+    'Saved-CV destinations must not be swapped');
   const dimensions = await drawer.boundingBox();
   assert(dimensions && dimensions.width<=width+1,'sidebar overflows at '+width);
   // A modal must isolate the page, not merely announce aria-modal.

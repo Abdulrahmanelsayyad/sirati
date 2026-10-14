@@ -13,6 +13,7 @@ root = Path(sys.argv[1]).resolve()
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { BASE_PATH } from '@/lib/basePath';
 
 const ENABLED = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'true';
 const CONSENT_KEY = 'sirati.analytics.consent.v1';
@@ -20,7 +21,9 @@ const SID_KEY = 'sirati.analytics.session.v1';
 type Choice = 'loading' | 'unset' | 'yes' | 'no';
 
 function safeRoute(path: string) {
-  const clean = (path.replace(/^\/sirati(?=\/|$)/, '') || '/').replace(/\/+$/, '') || '/';
+  const unprefixed = BASE_PATH && (path === BASE_PATH || path.startsWith(BASE_PATH + '/'))
+    ? path.slice(BASE_PATH.length) : path;
+  const clean = (unprefixed || '/').replace(/\/+$/, '') || '/';
   if (clean === '/') return '/';
   for (const route of ['/auth', '/templates', '/builder', '/documents',
                        '/career-tools', '/profile']) {

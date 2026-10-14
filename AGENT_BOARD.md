@@ -5,6 +5,7 @@ Keep Sirati reliable, secure, polished, easy to use, and focused on the core cus
 Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.
 
 ## Now
+- **V29 buyer route portability — 2026-10-13** — Owner: Codex; branch `fix/buyer-portability-v29`, base `47b224b`. Scope: exact Builder-only UI detection for buyer paths containing `builder`; configurable local-only E2E URL and escaping-link assertions. Clean baseline `/buyer-cv` build and synthetic storage/PDF-boundary checks PASS. Buyer `/builder-tools` build and exact-head browser/PDF CI pending. No auth, RLS, deployment configuration, customer data, merge or deploy changes. Lesson: substring checks on absolute browser paths confuse repository names with app routes; use a base-aware exact predicate. Handover remains in PR #149.
 - **P2 Smart CV occupation matching — 2026-10-12** — Owner: Codex; branch `fix/smart-cv-nursing-role-boundaries`, base `316a98a`. Reproduced ICU physician / Arabic emergency titles receiving nursing skills; Nursery teacher receiving nursing summaries. Require an explicit bounded nursing title before specialty matching; preserve opt-in confirmation and neutral fallback. Generated runtime changes only PersonalSummaryPicker and SmartContentSuggestions. Local production build/TypeScript, 40 domain assertions, guest-save/concurrency, bounded verification and 10 verifier contracts PASS. Existing E2E extended with six bilingual roles at 390/1440px; exact-head CI pending, local Chromium download failed. No auth/DB/PDF engine changes or merge/deploy. Benchmark: CareerOneStop relevant-role guidance; lesson: workplace/specialty keywords alone do not establish occupation. Release NO-GO until browser and applicable account/device review gates are satisfied.
 - **P1-TAILOR-01 — Target Job Tailoring / Job Match Center** — Status: RETIRED BY OWNER REQUEST (2026-10-08). Removal work is tracked on `fix/remove-job-match-center`: delete the feature code and UI, clear only deprecated `sirati.jobTailor.v2.*` browser data, preserve Experience Description Pro V2, and require Build + E2E + QA review before any merge/deploy.
 - **P1-READINESS-01 — Live CV Readiness Check** — Owner: Design Agent + Bug Fixer — Status: VERIFIED (2026-10-08) — Zero-cost live completion guide for six essential CV sections shipped; PR #8 passed build + Sirati E2E QA, deployed successfully, and was manually verified on the live site.
@@ -244,3 +245,12 @@ Owner: Codex. Branch: fix/pdf-mixed-script-export. Scope: add missing ASCII punc
 - Serialize explicit saves with a synchronous ref, release on every exit, and display retry guidance on thrown network failures. No Auth/RLS/schema/PDF engine or deployment change.
 - Reference: React useRef official documentation; event-handler refs persist synchronously across renders. Reusable rule: exercise overlapping requests, not just sequential successful saves.
 - Verification in progress; live A/B fixtures, physical Android and independent reviewer unavailable. No merge/deploy authorized.
+
+## V30 feedback request races — 2026-10-14
+- Owner: Codex; branch `fix/feedback-request-races-v30`; base `cfaf128`.
+- Scope: feedback generator and synthetic deferred-request regression, wired into existing E2E. No overlap with buyer PR #149 or portability PR #151.
+- Reproduced: edits reopen pending submit/duplicate writes; stale auth/write outcomes change the next account UI (including A→B→A).
+- Fix: synchronous request identity, invalidate on account switch/unmount, revision-aware success. Preserve editable drafts and retry. No auth configuration, RLS, schema, PDF or deployment changes.
+- Evidence: baseline 5/6 cases failed; fixed 6/6 passed, 18 feedback invariants and bounded verifier passed. CI/browser acceptance is separate.
+- Reusable rule: tie async feedback to a request identity, not only a user ID; a success response applies only to its submitted draft revision.
+- Status: draft preparation; no merge/deploy.

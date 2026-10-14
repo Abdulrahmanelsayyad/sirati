@@ -22,7 +22,7 @@ const validJwt = (id) => [
 const browser = await chromium.launch({headless:true});
 let accepted = 0;
 try {
-  async function makePage({signedIn=false, owner=false, rejectWrite=false, existingReview=null}={}) {
+  async function makePage({signedIn=false, owner=false, rejectWrite=false, existingReview=null, writeGate=null}={}) {
     const context = await browser.newContext({viewport:{width:390,height:844}});
     const writes = [];
     const reads = [];
@@ -71,6 +71,7 @@ try {
           try {posted=JSON.parse(request.postData()||'null');}
           catch { throw Error('Bad feedback request body'); }
           writes.push({posted,url:request.url()});
+          if (writeGate) await writeGate;
           if (rejectWrite) await reply(403,{code:'42501',message:'permission denied'});
           else await reply(201,[]);
           return;
@@ -210,8 +211,42 @@ try {
     accepted++;
   }
 
-  assert.equal(accepted,7);
-  console.log('PASS: 7 browser feedback acceptance scenarios (mocked HTTP only)');
+  // Keep the real compiled form editable during a slow response, but never
+  // re-enable submit or acknowledge newer, unsent edits as persisted.
+  for (const width of [360, 390, 1440]) {
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const {page,context,writes}=await makePage({signedIn:true,writeGate:gate});
+    await page.setViewportSize({width,height:900});
+    try {
+      await page.goto(base+'/',{waitUntil:'networkidle'});
+      const form=page.locator('#feedback');
+      const submit=form.locator('button[type="submit"]');
+      await form.getByRole('button',{name:/4 of 5 stars/}).click();
+      await form.locator('textarea').fill('Submitted snapshot');
+      const request=page.waitForRequest(req=>req.method()==='POST' && req.url().includes('/sirati_site_feedback'));
+      await submit.click();
+      await request;
+      await form.locator('textarea').fill('تعديل جديد لم يُحفظ بعد');
+      await form.getByRole('button',{name:/5 of 5 stars/}).click();
+      assert.equal(await submit.isDisabled(),true,'Edits must not unlock a pending request');
+      release();
+      await page.waitForFunction(()=>!document.querySelector('#feedback button[type="submit"]').disabled);
+      assert.equal(await form.locator('.is-saved').count(),0,'Old response must not confirm new edits');
+      assert.equal(await form.locator('textarea').inputValue(),'تعديل جديد لم يُحفظ بعد');
+      assert.equal(writes.length,1);
+      assert.equal(writes[0].posted.comment,'Submitted snapshot');
+      await submit.click();
+      await form.getByText(/Your rating was saved/).waitFor();
+      assert.equal(writes.length,2);
+      assert.equal(writes[1].posted.comment,'تعديل جديد لم يُحفظ بعد');
+      assert.equal(writes[1].posted.rating,5);
+      accepted++;
+    } finally { release(); await context.close(); }
+  }
+
+  assert.equal(accepted,10);
+  console.log('PASS: 10 browser feedback acceptance scenarios (mocked HTTP only)');
   console.log('NOT TESTED: real login, live Supabase HTTP, full end-to-end write, owner metadata provisioning');
 } finally {
   await browser.close();

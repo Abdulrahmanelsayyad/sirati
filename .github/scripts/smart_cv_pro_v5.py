@@ -61,7 +61,7 @@ function makeSuggestions(job: string, lang: Lang, track: Track, level: Seniority
       role + ' with an interest in ' + focus + ' and continuous improvement.' +
       skillSentence + (fact ? '' : factSentence),
     // Career direction: distinguish intended role from verified current experience.
-    'Seeking ' + (target ? target + ' opportunities' : 'opportunities as a ' + role) +
+    'Seeking ' + (target || role) + ' opportunities' +
       ', with a professional focus on ' + focus + ' and continuous learning.' +
       skillSentence + factSentence
   ];

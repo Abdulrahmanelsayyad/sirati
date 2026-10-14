@@ -170,6 +170,10 @@ function pdfDownloadError(error: unknown): string {
     return 'هذه السيرة غير متاحة لهذا الحساب. · This CV is unavailable in your account.';
   if (detail === 'Saved CV content is missing.')
     return 'محتوى السيرة غير متاح. افتح السيرة وتحقق من بياناتها. · CV content is missing. Open the editor to check it.';
+  if (detail === 'Mixed-script PDF text cannot be exported safely. Separate the text fields.')
+    return 'تعذّر تصدير نص عربي وإنجليزي مختلط. افتح المحرر وافصل الاختصارات الإنجليزية عن الكلمات العربية بمسافات، ثم حاول مجددًا. · Mixed Arabic/English text cannot be exported safely. Open the editor, separate Latin abbreviations from Arabic words with spaces, then retry.';
+  if (detail === 'A CV character is unsupported by the PDF fonts; export aborted.')
+    return 'يوجد رمز غير مدعوم في السيرة. افتح المحرر واستبدل الرمز، ثم حاول مجددًا. · An unsupported character prevents PDF export. Open the editor, replace the character, then retry.';
   return 'تعذّر تنزيل PDF. أعد المحاولة أو افتح السيرة من المحرر. · PDF download failed. Retry or open the CV editor.';
 }
 

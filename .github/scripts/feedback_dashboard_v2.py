@@ -229,7 +229,13 @@ replace_one("  const resetNotice = () => setStatus('idle');", r"""  const [previ
   const [previousError, setPreviousError] = useState(false);
   const currentUserId = useRef<string | null>(null);
   const edited = useRef(false);
-  const resetNotice = () => { setStatus('idle'); edited.current = true; };
+  const pendingSubmit = useRef<object | null>(null);
+  const editVersion = useRef(0);
+  const resetNotice = () => {
+    editVersion.current++;
+    edited.current = true;
+    if (!pendingSubmit.current) setStatus('idle');
+  };
 
   useEffect(() => {
     const client = createClient();
@@ -284,6 +290,7 @@ replace_one("  const resetNotice = () => setStatus('idle');", r"""  const [previ
       if (nextUserId === currentUserId.current) return;
       // Only an actual account change clears the previous account's draft.
       edited.current = false;
+      pendingSubmit.current = null; // Invalidate requests, including an A → B → A switch.
       currentUserId.current = nextUserId;
       sequence++; // Immediately invalidate any in-flight review SELECT.
       setRating(0);
@@ -295,19 +302,32 @@ replace_one("  const resetNotice = () => setStatus('idle');", r"""  const [previ
       window.setTimeout(() => { if (alive) void loadOwnReview(); }, 0);
     });
     void loadOwnReview();
-    return () => { alive = false; sequence++; listener.subscription.unsubscribe(); };
+    return () => { alive = false; sequence++; pendingSubmit.current = null; listener.subscription.unsubscribe(); };
   }, []);
 """, "load/edit existing")
 
 replace_one("if (rating < 1 || rating > 5 || status === 'saving') return;",
-            "if (rating < 1 || rating > 5 || status === 'saving' || loadingPrevious || previousError) return;",
+            "if (rating < 1 || rating > 5 || pendingSubmit.current || status === 'saving' || loadingPrevious || previousError) return;",
             "prevent overwrite before own review loaded")
+replace_one("    setStatus('saving');", """    const request = {};
+    pendingSubmit.current = request; // Synchronous lock; state alone permits duplicate submits.
+    const submittedVersion = editVersion.current;
+    const isCurrent = () => pendingSubmit.current === request;
+    setStatus('saving');""", "submission identity")
+replace_one("      const { data: auth, error: authError } = await client.auth.getUser();\n      if (authError || !auth.user)",
+            "      const { data: auth, error: authError } = await client.auth.getUser();\n      if (!isCurrent()) return;\n      if (authError || !auth.user)",
+            "ignore stale auth result")
 replace_one("      if (authError || !auth.user) { setStatus('signin'); return; }",
             "      if (authError || !auth.user) { setStatus('signin'); return; }\n      if (currentUserId.current !== auth.user.id) { setStatus('error'); return; }",
             "only current verified owner of review")
 replace_one("      setStatus(error ? 'error' : 'saved');",
-            "      if (currentUserId.current !== auth.user.id) return;\n      if (!error) setPrevious(true);\n      setStatus(error ? 'error' : 'saved');",
+            "      if (!isCurrent() || currentUserId.current !== auth.user.id) return;\n      if (!error) setPrevious(true);\n      setStatus(error ? 'error' : editVersion.current === submittedVersion ? 'saved' : 'idle');",
             "only confirm after save")
+replace_one("    } catch {\n      setStatus('error');\n    }", """    } catch {
+      if (isCurrent()) setStatus('error');
+    } finally {
+      if (isCurrent()) pendingSubmit.current = null;
+    }""", "ignore stale failures and unlock own request")
 replace_one('''        <fieldset className="sirati-feedback-v2__fieldset">''', '''        {previous && !loadingPrevious && !previousError &&
           <p className="sirati-feedback-v2__previous" role="status">
             ★ تقييمك السابق ظاهر ويمكنك تعديله وإرساله مرة أخرى · Your previous review is loaded; edit and resubmit.
