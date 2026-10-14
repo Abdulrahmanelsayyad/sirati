@@ -2316,8 +2316,8 @@ assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isDisable
 const nativeStar3 = feedback.getByRole('button',{name:/3 of 5 stars/});
 await nativeStar3.click();
 assert.equal(await nativeStar3.getAttribute('aria-pressed'),'true');
-await feedback.getByRole('button',{name:/تنزيل PDF/}).click();
-assert.equal(await feedback.getByRole('button',{name:/تنزيل PDF/}).getAttribute('aria-pressed'),'true',
+await feedback.getByRole('button',{name:/PDF download/}).click();
+assert.equal(await feedback.getByRole('button',{name:/PDF download/}).getAttribute('aria-pressed'),'true',
   'feedback category chip must preserve its selected state');
 await feedback.locator('textarea').fill('Works well / رائع');
 assert.equal(await feedback.getByRole('button',{name:/Send feedback/}).isEnabled(),true);
