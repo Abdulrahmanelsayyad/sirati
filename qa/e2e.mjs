@@ -543,6 +543,13 @@ for (const width of [320,360,390,768,1440]) {
     assert((await drawer.innerText()).includes(feature),'missing actual feature: '+feature);
   }
   assert((await drawer.locator('a[href*="career-tools"]').count())>=3,'career tools deep links missing');
+  // Account-based CV tools must select a saved document, never restart at Templates.
+  const documentToolLinks = drawer.locator('a.sirati-menu-item[href$="auth?next=/documents"]');
+  assert.equal(await documentToolLinks.count(),2,'Smart CV and CV Quality must link to My Documents');
+  const toolDescriptions = await documentToolLinks.allTextContents();
+  assert(toolDescriptions.some(text=>text.includes('Smart CV')) &&
+    toolDescriptions.some(text=>text.includes('CV Quality')),
+    'Saved-CV routes must belong to the correct menu actions');
   const dimensions = await drawer.boundingBox();
   assert(dimensions && dimensions.width<=width+1,'sidebar overflows at '+width);
   // A modal must isolate the page, not merely announce aria-modal.
