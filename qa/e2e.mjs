@@ -1247,7 +1247,7 @@ await page.evaluate(() => {
 });
 const qaSummary = page.locator('#qa-personal-summary');
 const summaryPanel = page.locator('#qa-personal-summary-field .sirati-summary-panel');
-const summaryTrigger = page.locator('#qa-personal-summary-field .sirati-summary-trigger');
+const summaryTrigger = page.locator('#qa-personal-summary-field .sirati-summary-trigger').first();
 await summaryTrigger.waitFor();
 assert.equal(await summaryPanel.count(),0,
   'Pro V4 should be closed by default instead of blocking the Summary field');
