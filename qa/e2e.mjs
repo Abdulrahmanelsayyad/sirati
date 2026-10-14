@@ -1299,7 +1299,7 @@ assert(v5SummaryTexts[2].includes('Seeking Cost Accounting Manager opportunities
   'V5 should treat targeted role as an aspiration, not proven past employment');
 assert(!v5SummaryTexts[0].includes('Cost Accounting Manager'),
   'V5 must not misrepresent target job as the current professional title');
-assert(v5SummaryTexts[1].startsWith('Documented achievement supplied: Prepared 12'),
+assert(v5SummaryTexts[1].startsWith('Prepared 12 accurate monthly reporting packages.'),
   'evidence-led draft must lead with a real user-entered achievement');
 
 // V6 Pro Max: job posting requirements are never silently promoted into facts.
@@ -1313,7 +1313,7 @@ assert((await jobInsight.innerText()).includes('SAP') && (await jobInsight.inner
 assert((await jobInsight.innerText()).includes('SQL') && (await jobInsight.innerText()).includes('Power BI'),
   'V6 should show requirements absent from user-entered facts');
 const atsDraft = await summaryPanel.locator('.sirati-summary-choice__text').first().innerText();
-assert(atsDraft.includes('User-listed skills relevant to the job ad:') &&
+assert(atsDraft.includes('Relevant to the target role:') &&
        atsDraft.includes('SAP') && atsDraft.includes('Excel'),
   'V6 ATS draft must reference only supported, overlapping skill terms regardless of display order');
 assert(!atsDraft.includes('SQL') && !atsDraft.includes('Power BI'),
