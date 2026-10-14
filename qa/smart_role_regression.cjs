@@ -42,3 +42,19 @@ for (const [role, skill, career] of cases) {
   assert.equal(summary(role), career, 'Summary: ' + role);
 }
 console.log('PASS: 20 EN/AR roles select appropriate skill/summary domains; care settings alone never imply nursing.');
+
+// Run the generated summary function across vowel/consonant/abbreviated titles.
+const summarySource = fs.readFileSync(path.join(root, 'components/PersonalSummaryPicker.tsx'), 'utf8');
+const summaryFunctions = summarySource.slice(summarySource.indexOf('function makeSuggestions('), summarySource.indexOf('export default function PersonalSummaryPicker'));
+const makeSuggestions = vm.runInNewContext(ts.transpileModule(summaryFunctions + '\nmakeSuggestions;',
+  {compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText);
+const track = {focusEn:'financial reporting',focusAr:'التقارير المالية'};
+for (const role of ['Accountant','Engineer','Nurse','HR specialist','IT consultant']) {
+  const suggestions = makeSuggestions(role,'en',track,'mid','','','','');
+  assert(suggestions[2].startsWith('Seeking ' + role + ' opportunities,'));
+  assert(!suggestions.join(' ').includes('Achievement supplied:'));
+}
+assert(makeSuggestions('Accountant','en',track,'mid','','','Finance Manager','')[2]
+  .startsWith('Seeking Finance Manager opportunities,'));
+assert(makeSuggestions('محاسب','ar',track,'mid','','','','')[2].startsWith('أسعى إلى '));
+console.log('PASS: summary career wording across 5 titles, explicit target, and Arabic preservation.');

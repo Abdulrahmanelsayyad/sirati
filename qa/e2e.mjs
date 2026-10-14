@@ -538,7 +538,7 @@ for (const width of [320,360,390,768,1440]) {
   await opener.click();
   const drawer = page.getByRole('dialog',{name:'Sirati features and customer account'});
   assert(await drawer.isVisible(),'features drawer missing at '+width);
-  for (const feature of ['CV Builder','32 CV templates','Smart CV','CV Quality',
+  for (const feature of ['CV Builder','CV template library','Smart CV','CV Quality',
                          'Cover Letter Pro','Headline & About assistant','Interview preparation','My Documents']) {
     assert((await drawer.innerText()).includes(feature),'missing actual feature: '+feature);
   }
