@@ -14,13 +14,13 @@ class DocumentImportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             subprocess.run([sys.executable, str(GENERATOR), temp], check=True)
             root = Path(temp)
-            page = (root / "app/import-documents/page.tsx").read_text(encoding="utf-8")
+            page = (root / "components/DocumentImportReview.tsx").read_text(encoding="utf-8")
             extractor = (root / "lib/documentCvExtraction.ts").read_text(encoding="utf-8")
             adapter = (root / "lib/documentCvFileImport.ts").read_text(encoding="utf-8")
 
             # The same extractor drives the UI and standalone adapter.
-            self.assertIn("importTextDocuments(selected)", page)
-            self.assertIn("extractDocumentCvFacts(text", adapter)
+            self.assertIn("importTextDocuments(Array.from(files))", page)
+            self.assertIn("extractDocumentCvFacts(read.text", adapter)
             for field in ("email", "phone", "education", "date", "url"):
                 self.assertIn(field + ":", page)
 
@@ -40,8 +40,8 @@ class DocumentImportTests(unittest.TestCase):
                 self.assertNotIn("sessionStorage", file_text)
                 self.assertNotIn("supabase", file_text.lower().replace("no supabase", ""))
 
-            self.assertIn("PDF/DOCX/image import", page)
-            self.assertIn('accept=".txt,.md', page)
+            self.assertIn("Images and scanned pages need OCR", page)
+            self.assertIn('accept=".pdf,.txt,.md', page)
 
     def test_generator_does_not_overwrite_existing_library(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -7,6 +7,8 @@ execFileSync(process.execPath, ['../../qa/guest_save_regression.cjs', process.cw
 
 execFileSync(process.execPath, ['../../qa/smart_role_regression.cjs', process.cwd()], {stdio:'inherit'});
 
+execFileSync(process.execPath, ['../../qa/document_import_regression.cjs', process.cwd()], {stdio:'inherit'});
+
 // Removal is a security and UX regression gate: don't ship the old feature.
 assert.equal(fs.existsSync('components/TargetJobTailor.tsx'), false, 'retired Job Match component must not ship');
 assert(fs.existsSync('components/ExperienceDescriptionPicker.tsx'), 'Experience Description Pro must be preserved');
@@ -2364,13 +2366,13 @@ const importCheck = await browser.newPage({viewport:{width:390,height:844}});
 await importCheck.goto(base + '/import-documents/', {waitUntil:'domcontentloaded'});
 assert(await importCheck.getByRole('heading',{name:/Import CV documents/}).isVisible(),
   'document review page must be available on the production base path');
-const documentFiles = importCheck.locator('#cv-files');
+const documentFiles = importCheck.getByLabel('CV documents');
 await documentFiles.setInputFiles([
   {name:'synthetic-cv.txt',mimeType:'text/plain',buffer:Buffer.from(
     'Sample Person\nEmail: example.person@example.com\nPhone: +20 100 123 4567\nEducation: Bachelor of Engineering, 2022\n')},
   {name:'unsupported.pdf',mimeType:'application/pdf',buffer:Buffer.from('not-a-real-pdf')}
 ]);
-await importCheck.getByText(/TXT and Markdown only/).waitFor();
+await importCheck.getByText(/Could not read this file locally/).waitFor();
 const importedFacts = importCheck.locator('input[type="checkbox"]');
 assert((await importedFacts.count()) >= 4, 'email, phone, degree and date must be proposed for review');
 const copyApproved = importCheck.getByRole('button',{name:/Copy reviewed facts/});
@@ -2392,8 +2394,10 @@ await importCheck.setViewportSize({width:360,height:800});
 assert((await importCheck.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 2,
   'document-review UI must not overflow a 360px viewport');
 await importCheck.close();
-log('Local document review: real TXT upload, unsupported PDF warning, per-fact consent, revoke and mobile layout');
+log('Local document review: real TXT upload, invalid PDF warning, per-fact consent, revoke and mobile layout');
 
 await browser.close();
+fs.copyFileSync('../../qa/document_import_browser.cjs', './qa-document-import.cjs');
+execFileSync(process.execPath, ['./qa-document-import.cjs'], {stdio:'inherit'});
 console.log('E2E QA COMPLETE');
 

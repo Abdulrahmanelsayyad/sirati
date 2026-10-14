@@ -8,7 +8,7 @@ export type DocumentEvidence = {
   snippet: string;
 };
 export type ExtractedCvFact = {
-  field: 'email' | 'phone' | 'education' | 'date' | 'url';
+  field: 'email' | 'phone' | 'education' | 'date' | 'url' | 'name' | 'title' | 'experience' | 'certification';
   value: string;
   evidence: DocumentEvidence;
   requiresReview: true;
@@ -38,6 +38,16 @@ export function extractDocumentCvFacts(text: string, fileName: string): Extracte
     facts.push({ field, value, evidence: { fileName, snippet: snippet.slice(0, 240) }, requiresReview: true });
   }
   for (const line of lines) {
+    const labeled: [ExtractedCvFact['field'], RegExp][] = [
+      ['name', /^(?:full name|name|الاسم|الاسم الكامل)\s*[:：]\s*(.+)$/i],
+      ['title', /^(?:professional title|job title|المسمى الوظيفي)\s*[:：]\s*(.+)$/i],
+      ['experience', /^(?:experience|work experience|employment|الخبرة|الخبرة العملية)\s*[:：]\s*(.+)$/i],
+      ['certification', /^(?:certification|certificate|qualification|الشهادة|شهادة|المؤهل)\s*[:：]\s*(.+)$/i],
+    ];
+    for (const [field, pattern] of labeled) {
+      const match = line.match(pattern);
+      if (match) add(field, match[1].slice(0, 500), line);
+    }
     for (const value of uniqueMatches(line, EMAIL)) add('email', value, line);
     for (const value of uniqueMatches(line, URL)) add('url', value, line);
     for (const value of uniqueMatches(line, PHONE)) {
