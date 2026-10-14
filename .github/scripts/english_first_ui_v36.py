@@ -127,7 +127,12 @@ change("components/SiratiDocumentIntent.tsx", [
     ("ليس لديك سيرة ذاتية محفوظة بعد. ابدأ بإنشاء سيرة ثم احفظها في مستنداتي.",
      "No saved CVs yet. Create and save a CV first."),
 ])
-change("app/documents/page.tsx")
+change("app/documents/page.tsx", [
+    # Retain spacing before a dynamic document title after removing the
+    # parallel Arabic part of each accessible name.
+    ("aria-label={'Smart CV ·' +", "aria-label={'Smart CV · ' +"),
+    ("aria-label={'CV Quality ·' +", "aria-label={'CV Quality · ' +"),
+])
 change("components/SiratiFeedbackRating.tsx", [
     ('dir="rtl"', 'dir="ltr"'),
     ("{ value: 'pdf', label: 'تنزيل PDF' }", "{ value: 'pdf', label: 'PDF download' }"),
