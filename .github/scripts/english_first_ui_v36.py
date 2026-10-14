@@ -130,6 +130,8 @@ change("app/documents/page.tsx")
 change("components/SiratiFeedbackRating.tsx", [
     ('dir="rtl"', 'dir="ltr"'),
     ("{ value: 'pdf', label: 'تنزيل PDF' }", "{ value: 'pdf', label: 'PDF download' }"),
+    ("aria-label={value + ' of 5 stars · ' + value + ' من 5 نجوم'}",
+     "aria-label={value + ' of 5 stars'}"),
     ("إيه الجزء اللي بتقيّمه؟", "Which part are you rating?"),
     ("بنطوّر سيرتي خطوة بخطوة. تقييمك الصادق بيساعدنا نخلّي إنشاء الـCV أسهل وأفضل.",
      "Your feedback helps us make CV creation simpler and more useful."),
