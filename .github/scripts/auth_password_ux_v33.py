@@ -18,7 +18,7 @@ def add_page(relative, body):
 
 add_page("app/auth/recovery/page.tsx", r"""'use client';
 
-import {useEffect, useState, type FormEvent} from 'react';
+import {useEffect, useRef, useState, type FormEvent} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {withBasePath} from '@/lib/basePath';
 import {isSessionBoundaryBlocked} from '@/lib/sessionBoundary';
@@ -32,6 +32,8 @@ export default function RecoverPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<'request'|'change'|'sent'|'complete'>('request');
   const [message, setMessage] = useState('');
+  // Only Supabase's verified recovery event authorizes a password change.
+  const recoveryAuthorized = useRef(false);
   useEffect(() => {
     const client=createClient();
     if (!client) {setMessage('خدمة الحسابات غير متاحة حاليًا · Account service unavailable.');return;}
@@ -40,9 +42,11 @@ export default function RecoverPasswordPage() {
       const {data,error}=await client!.auth.getUser();
       if (!alive || isSessionBoundaryBlocked()) return;
       if (!error && data.user?.email) {
+        recoveryAuthorized.current=true;
         setVerifiedEmail(data.user.email);
-        setStage('change');
+        setStage('change');setMessage('');
       } else {
+        recoveryAuthorized.current=false;
         setMessage('رابط الاستعادة غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا. · Request a fresh reset link.');
       }
     }
@@ -50,8 +54,11 @@ export default function RecoverPasswordPage() {
       // Supabase auth callbacks must not await another Supabase call inline.
       if (event==='PASSWORD_RECOVERY') window.setTimeout(()=>{void verifyRecoverySession();},0);
     });
+    // The ?flow=password marker is ONLY navigation, never proof of recovery.
+    // Requiring PASSWORD_RECOVERY prevents an existing session from using
+    // a hand-crafted recovery URL to bypass current-password verification.
     if (new URLSearchParams(window.location.search).get('flow')==='password') {
-      window.setTimeout(()=>{void verifyRecoverySession();},0);
+      setMessage('تحقق من رابط البريد. إذا لم تظهر خانات كلمة المرور، اطلب رابطًا جديدًا. · If reset fields do not appear, request a fresh email link.');
     }
     return ()=>{alive=false;subscription.unsubscribe();};
   },[]);
@@ -79,8 +86,8 @@ export default function RecoverPasswordPage() {
       return;
     }
     const client=createClient();
-    if (!client || isSessionBoundaryBlocked()) {
-      setMessage('انتهت الجلسة. افتح رابط الاستعادة من جديد. · Session unavailable.');return;
+    if (!recoveryAuthorized.current || !client || isSessionBoundaryBlocked()) {
+      setMessage('هذه العملية تتطلب رابط استعادة صالحًا من البريد. · Open a valid password recovery link.');return;
     }
     setBusy(true);setMessage('');
     try {
@@ -90,6 +97,7 @@ export default function RecoverPasswordPage() {
       }
       const {error}=await client.auth.updateUser({password:newPassword});
       if (error) throw error;
+      recoveryAuthorized.current=false;
       setNewPassword('');setConfirm('');setStage('complete');
       window.history.replaceState(null,'',withBasePath('/auth/recovery'));
     } catch {
