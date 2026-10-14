@@ -34,7 +34,7 @@ function hasJobTerm(haystack: string, term: string) {
   const group = jobTermGroups.find(items=>items[0]===term) || [term];
   return group.some(alias => {
     const literal = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+');
-    return new RegExp('(?:^|[^\\p{L}\\p{N}])' + literal + '(?=$|[^\\p{L}\\p{N}])','iu').test(haystack.normalize('NFKC'));
+    const conjunction = /[\u0600-\u06FF]/.test(alias) ? '(?:و)?' : '';\n    return new RegExp('(?:^|[^\\p{L}\\p{N}])' + conjunction + literal + '(?=$|[^\\p{L}\\p{N}])','iu').test(haystack.normalize('NFKC'));
   });
 }
 function analyzeJobPosting(posting: string, skills: string, achievement: string) {
