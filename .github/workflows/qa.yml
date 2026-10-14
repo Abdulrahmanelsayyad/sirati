@@ -36,6 +36,9 @@ jobs:
       - name: Verify auth/password recovery UI boundaries
         run: python3 qa/auth_password_ux_check.py site-src/sirati-cv-source
 
+      - name: Verify professional account UI and reauthentication safeguards
+        run: python3 qa/auth_experience_v34_check.py site-src/sirati-cv-source
+
       - name: Verify owner feedback navigation guard
         run: python3 qa/feedback_owner_nav_check.py site-src/sirati-cv-source
 
