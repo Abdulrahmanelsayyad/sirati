@@ -5,19 +5,13 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
-  workflow_dispatch:
-    inputs:
-      approve_production_deploy:
-        description: "Owner explicitly approves Production deployment of the selected main SHA"
-        required: true
-        type: boolean
-        default: false
-
 permissions:
   contents: read
 
+# Preview PR builds must never cancel a Production deployment, or vice versa.
+# Production pushes share a group so only the latest main build can deploy.
 concurrency:
-  group: "pages"
+  group: pages-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
   cancel-in-progress: true
 
 jobs:
@@ -67,7 +61,8 @@ jobs:
       contents: read
       pages: write
       id-token: write
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.approve_production_deploy == true
+    # Auto-deploy only committed main builds; pull requests build but NEVER publish.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
