@@ -27,6 +27,20 @@ try {
     assert.equal(await page.locator('a.sirati-auth-v34-forgot').count(),1);
     await page.locator('.sirati-auth-v34-lang button').nth(1).click();
     assert.equal(await page.locator('.sirati-auth-v34-tabs button').nth(0).innerText(),'Sign in');
+    // V35: verification and reset completion must return to explicit login.
+    await page.goto(base+'/auth/?confirmed=1',{waitUntil:'networkidle'});
+    assert.equal(await page.locator('.sirati-auth-v34-card').count(),1);
+    assert.match(await page.locator('.sirati-auth-v35-confirmed').innerText(),/تم تأكيد بريدك الإلكتروني/);
+    assert.equal(await page.locator('#sirati-auth-password').count(),1,'Confirmed user must type password again');
+    assert.equal(await page.locator('#sirati-auth-email').inputValue(),'','Do not prefill personal email from callback');
+    assert(page.url().includes('/auth/'),'Must remain on login instead of auto-redirecting after confirmation');
+    await page.goto(base+'/auth/?password_changed=1',{waitUntil:'networkidle'});
+    assert.match(await page.locator('.sirati-auth-v35-confirmed').innerText(),/تم تغيير كلمة المرور/);
+    assert.equal(await page.locator('#sirati-auth-password').count(),1,'Reset user must type NEW password again');
+    assert(page.url().includes('/auth/'),'Must remain on login after password recovery');
+    await page.goto(base+'/auth/confirm/',{waitUntil:'networkidle'});
+    assert.equal(await page.getByRole('link',{name:/العودة لتسجيل الدخول/}).count(),1,
+      'Unverified/invalid callback must offer safe sign-in path');
     await page.goto(base+'/auth/recovery/',{waitUntil:'networkidle'});
     assert.equal(await page.locator('#recovery-email').count(),1,'Recover-by-email missing');
     await page.goto(base+'/account/password/',{waitUntil:'networkidle'});
