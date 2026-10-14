@@ -143,9 +143,9 @@ for (const tool of ['smart','quality']) {
   assert.equal(docsSource.split(href).length - 1, 1,
     'saved CV must have exactly one direct '+tool+' contextual action');
 }
-assert(docsSource.includes("aria-label={'مساعد الكتابة · Smart CV · ' + (doc.title || 'CV')}") &&
-  docsSource.includes("aria-label={'مراجعة الجودة · CV Quality · ' + (doc.title || 'CV')}"),
-  'saved CV tools need bilingual document-specific accessible names');
+assert(docsSource.includes("aria-label={'Smart CV · ' + (doc.title || 'CV')}") &&
+  docsSource.includes("aria-label={'CV Quality · ' + (doc.title || 'CV')}"),
+  'saved CV tools need English document-specific accessible names');
 assert.equal((docsSource.match(/className="btn btn-secondary sirati-doc-tool-link"/g) || []).length,2,
   'the two contextual actions must share the responsive touch target styling');
 console.log('PASS: account-owned document cards expose Smart CV/Quality direct actions');
