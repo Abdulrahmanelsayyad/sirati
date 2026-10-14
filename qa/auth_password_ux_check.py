@@ -14,6 +14,10 @@ for marker in (
     "updateUser({password:newPassword})",
     "withBasePath('/auth/recovery?flow=password')",
     "verified.user.email?.toLowerCase()!==verifiedEmail.toLowerCase()",
+    "const recoveryAuthorized = useRef(false);",
+    "if (event==='PASSWORD_RECOVERY')",
+    "recoveryAuthorized.current=true;",
+    "if (!recoveryAuthorized.current || !client || isSessionBoundaryBlocked())",
 ):
     assert marker in recovery, f"Recovery guard absent: {marker}"
 for marker in (
@@ -23,6 +27,8 @@ for marker in (
     "withBasePath('/auth/recovery')",
 ):
     assert marker in password, f"Account guard absent: {marker}"
+assert "window.setTimeout(()=>{void verifyRecoverySession();},0);" in recovery, "Recovery event must verify session"
+assert "window.setTimeout(()=>{void verifyRecoverySession();},0);\n    }" not in recovery, "Untrusted flow marker must not authorize recovery"
 assert "withBasePath('/auth/recovery')" in dialog
 assert "withBasePath('/account/password')" in menu
 for source in (recovery,password):
