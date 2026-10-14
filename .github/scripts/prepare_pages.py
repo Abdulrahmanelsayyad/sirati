@@ -302,3 +302,6 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('auth_password_ux_v
 
 # V34: responsive bilingual auth and account security, after V33 routes are created.
 subprocess.run([sys.executable, str(Path(__file__).with_name('auth_experience_v34.py')), str(root)], check=True)
+
+# V35: verified email/recovery must end temporary session and require manual sign-in.
+subprocess.run([sys.executable, str(Path(__file__).with_name('manual_signin_after_confirm_v35.py')), str(root)], check=True)
