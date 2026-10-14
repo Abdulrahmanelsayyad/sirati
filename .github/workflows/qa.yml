@@ -71,6 +71,13 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
 
+      - name: Smart CV contextual and guest-save regressions
+        working-directory: site-src/sirati-cv-source
+        run: |
+          node "$GITHUB_WORKSPACE/qa/smart_context_regression.cjs" "$PWD"
+          node "$GITHUB_WORKSPACE/qa/smart_role_regression.cjs" "$PWD"
+          node "$GITHUB_WORKSPACE/qa/guest_save_regression.cjs" "$PWD"
+
       - name: Serve static build
         run: |
           mkdir -p qa-root
@@ -85,6 +92,14 @@ jobs:
         run: |
           cp "$GITHUB_WORKSPACE/qa/auth_experience_browser.mjs" ./qa-auth-browser.mjs
           node ./qa-auth-browser.mjs
+
+      - name: Browser-check bilingual Smart CV matching and undo
+        working-directory: site-src/sirati-cv-source
+        env:
+          SIRATI_SMART_BASE_URL: http://127.0.0.1:4173/sirati
+        run: |
+          cp "$GITHUB_WORKSPACE/qa/smart_bilingual_browser.cjs" ./qa-smart-browser.cjs
+          node ./qa-smart-browser.cjs
 
       - name: Run E2E QA
         working-directory: site-src/sirati-cv-source

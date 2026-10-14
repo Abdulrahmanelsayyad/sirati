@@ -34,6 +34,9 @@ const cases = [
   ['ممرضة طوارئ','Nursing','emergency nursing'],
   ['Registered nurse','Nursing','nursing'],
   ['ممرض','Nursing','nursing'],
+  ['موظف خدمة العملاء','Customer service','customer service'],
+  ['موظف خدمة عملاء','Customer service','customer service'],
+  ['خدمه العملاء','Customer service','customer service'],
   ['Software developer','Software development','software development'],
   ['مهندس مدني','Engineering','engineering'],
 ];
@@ -41,4 +44,4 @@ for (const [role, skill, career] of cases) {
   assert.equal(skills(role), skill, 'Skills: ' + role);
   assert.equal(summary(role), career, 'Summary: ' + role);
 }
-console.log('PASS: 20 EN/AR roles select appropriate skill/summary domains; care settings alone never imply nursing.');
+console.log('PASS: 23 EN/AR roles select appropriate skill/summary domains; care settings alone never imply nursing.');

@@ -1,0 +1,47 @@
+// Real local Builder UI with synthetic text; no network account or CV writes.
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage']}: {})});
+ const page=await browser.newPage({viewport:{width:390,height:844}});
+ const base=process.env.SIRATI_SMART_BASE_URL || 'http://127.0.0.1:8765/sirati';
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try {
+ await page.goto(base+'/builder/');
+ await page.locator('.field').filter({hasText:'Professional title'}).locator('input').first().fill('Project manager');
+ await page.getByRole('button',{name:/Continue/}).last().click();
+ const summary=page.locator('.wizard-section-card textarea').first();
+ await summary.fill('My original summary.');
+ await page.locator('.wizard-section-card .sirati-summary-trigger').first().click();
+ const panel=page.locator('.sirati-summary-panel');await panel.waitFor();
+ await panel.locator('.sirati-summary-v6-job > summary').click();
+ await panel.getByLabel('Summary job description').fill('Project management, data analysis and SQL');
+ await panel.locator('.sirati-summary-pro-facts > summary').click();
+ await panel.getByLabel('Summary actual skills').fill('وإِدَارَة المَشَارِيع، تـحليل البيانات');
+ const values=panel.locator('.sirati-summary-v6-match b');
+ await page.waitForFunction(()=>document.querySelector('.sirati-summary-v6-match b')?.textContent?.includes('project management'));
+ assert.equal(await values.nth(0).innerText(),'project management, data analysis');
+ assert.equal(await values.nth(1).innerText(),'SQL');
+ assert(!(await panel.locator('.sirati-summary-choice__text').first().innerText()).includes('SQL'));
+ console.log('PASS real Builder bilingual evidence matching excludes unsupported SQL');
+ page.once('dialog',dialog=>dialog.accept());
+ await panel.locator('.sirati-summary-choice').first().click();
+ const selected=await summary.inputValue();assert(selected.includes('project management'));
+ await page.waitForFunction(text=>document.querySelector('.cv-sheet')?.textContent?.includes(text),selected);
+ await page.getByRole('button',{name:/Undo summary/}).click();
+ assert.equal(await summary.inputValue(),'My original summary.');
+ console.log('PASS real summary insertion, preview and Undo preserve original text');
+ await page.locator('.wizard-section-card .sirati-summary-trigger').first().click();
+ await panel.waitFor();
+ const language=page.locator('select').filter({has:page.locator('option[value="ar"]')}).filter({has:page.locator('option[value="en"]')}).first();
+ await language.selectOption('ar');
+ await page.locator('.sirati-summary-panel[dir="rtl"]').waitFor();
+ const box=await panel.boundingBox();assert(box.x>=-1 && box.x+box.width<=391);
+ await page.screenshot({path:'/tmp/sirati-smart-ar-mobile.png',fullPage:true});
+ await page.setViewportSize({width:1440,height:1000});await language.selectOption('en');
+ await page.locator('.sirati-summary-panel[dir="ltr"]').waitFor();
+ await page.screenshot({path:'/tmp/sirati-smart-en-desktop.png',fullPage:true});
+ assert.deepEqual(errors,[]);
+ console.log('PASS Arabic mobile and English desktop Smart CV layouts, no runtime errors');
+ } finally {await browser.close()}
+})().catch(e=>{console.error(e);process.exit(1)});
