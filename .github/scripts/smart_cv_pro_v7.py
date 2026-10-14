@@ -68,7 +68,11 @@ function hasKeyword(haystack: string, alias: string): boolean {
   const term = normalizeKeywordText(alias)
     .replace(/[^\p{L}\p{N}\s-]/gu, '\\$&')
     .replace(/[\s-]+/g, '[\\s-]+');
-  return new RegExp('(?:^|[^\\p{L}\\p{N}])' + term +
+  // An Arabic definite article is often attached (إكسل / الإكسل).
+  const normAlias = normalizeKeywordText(alias);
+  const prefix = /[\u0600-\u06FF]/u.test(normAlias) && !normAlias.startsWith('ال')
+    ? '(?:ال)?' : '';
+  return new RegExp('(?:^|[^\\p{L}\\p{N}])' + prefix + term +
     '(?=$|[^\\p{L}\\p{N}])', 'u')
     .test(normalizeKeywordText(haystack));
 }
