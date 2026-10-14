@@ -107,6 +107,7 @@ export default function PersonalSummaryPicker() {
         }
         return;
       }
+      setLang(cvLanguage());
       const titleOnCurrentStep = Array.from(document.querySelectorAll<HTMLInputElement>('.field input'))
         .some(isProfessionalTitleInput);
       const currentTitle = visibleProfessionalTitle();
@@ -115,7 +116,6 @@ export default function PersonalSummaryPicker() {
         titleRef.current = currentTitle;
         setRole(currentTitle);
       }
-      setLang(cvLanguage());
       const summary = Array.from(document.querySelectorAll<HTMLTextAreaElement>('.field textarea')).find(isSummary);
       if (!summary) {
         if (target.current) {
