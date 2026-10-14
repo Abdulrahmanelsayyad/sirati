@@ -38,5 +38,5 @@ assert "setCurrentPassword('')" in password, "Must clear old secret after succes
 assert "resetPasswordForEmail" in recovery and "verified.user.email?.toLowerCase()!==verifiedEmail.toLowerCase()" in recovery
 assert "exchangeCodeForSession" in confirm and "verifyOtp" in confirm
 assert "setMessage(error.message" not in confirm, "Do not expose raw confirmation provider errors"
-assert "/* Sirati Auth V34 */" in css and "@media(max-width:400px)" in css
+assert "/* Sirati Auth V34 — scoped" in css and "@media(max-width:400px)" in css
 print("PASS: bilingual account UX, confirmation, current-password reauthentication, guest draft and mobile CSS guards")
