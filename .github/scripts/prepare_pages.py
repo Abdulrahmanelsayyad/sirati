@@ -311,3 +311,25 @@ subprocess.run([sys.executable, str(Path(__file__).with_name('english_first_ui_v
 
 # Zero-cost local document import review route.
 subprocess.run([sys.executable, str(Path(__file__).with_name('document_import_v1.py')), str(root)], check=True)
+
+# Local, opt-in text review; guarded replacements preserve subsequent edits.
+import shutil
+shutil.copyfile(Path(__file__).resolve().parents[2] / 'components/SectionWritingAssistant.tsx', root / 'components/SectionWritingAssistant.tsx')
+builder = root / 'app/builder/page.tsx'
+text = builder.read_text()
+if 'import SectionWritingAssistant' not in text:
+    text = text.replace("import SmartContentSuggestions", "import SectionWritingAssistant from '@/components/SectionWritingAssistant';\nimport SmartContentSuggestions", 1)
+    summary_anchor = '<div className="field-action-row">\n                  <span className="field-help">Keep it specific'
+    summary = '''<SectionWritingAssistant key={`${userId}:${documentId}:${language}`} value={data.profile} language={language} onApply={(expected, replacement) => {
+                  if (!isSessionBoundaryBlocked()) setData(prev => prev.profile === expected ? {...prev, profile: replacement} : prev);
+                }} />
+                '''
+    experience_anchor = '<span className="field-help">Each new line appears as a CV bullet.</span>'
+    experience = '''<SectionWritingAssistant key={`${userId}:${documentId}:${item.id}:${item.role}:${language}`} value={item.details} experience language={language} onApply={(expected, replacement) => {
+                    if (!isSessionBoundaryBlocked()) setData(prev => ({...prev, experience: prev.experience.map(entry => entry.id === item.id && entry.role === item.role && entry.details === expected ? {...entry, details: replacement} : entry)}));
+                  }} />'''
+    if text.count(summary_anchor) != 1 or text.count(experience_anchor) != 1:
+        raise RuntimeError('Section writing helper: builder anchors changed')
+    text = text.replace(summary_anchor, summary + summary_anchor).replace(experience_anchor, experience_anchor + experience)
+    text = text.replace(' AI writing is intentionally disabled in zero-cost mode.', ' Review local suggestions before applying.')
+    builder.write_text(text)
