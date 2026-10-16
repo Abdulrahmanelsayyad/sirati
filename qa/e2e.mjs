@@ -1647,7 +1647,20 @@ log('local CV save survives reload with Personal Summary and without Job Match')
 // Verify integration with the real controlled Experience field and CV preview.
 for (let step = 0; step < 2; step++) await page.getByRole('button', { name: /Continue/ }).last().click();
 const realExperience = page.locator('.field').filter({ hasText: 'Achievements / responsibilities' }).locator('textarea').first();
-await page.locator('.field').filter({ hasText: /^Role$/ }).locator('input').first().fill('Senior ICU Nurse');
+const jobRole = page.getByRole('combobox', {name:'Role', exact:true}).first();
+await jobRole.fill('de');
+assert.equal(await page.getByRole('listbox', {name:'Role suggestions'}).count(), 0);
+await jobRole.fill('DEV');
+await page.getByRole('option', {name:'Developer', exact:true}).click();
+assert.equal(await jobRole.inputValue(), 'Developer');
+await jobRole.fill('registered');
+await jobRole.press('ArrowDown');
+await jobRole.press('Enter');
+assert.equal(await jobRole.inputValue(), 'Registered Nurse');
+await jobRole.fill('Custom Professional Role');
+await jobRole.press('Escape');
+assert.equal(await jobRole.inputValue(), 'Custom Professional Role');
+await jobRole.fill('Senior ICU Nurse');
 await realExperience.fill('Manual responsibility retained during QA.');
 const realTrigger = page.locator('.sirati-description-assistant-slot .experience-picker-trigger').last();
 await realTrigger.click();
