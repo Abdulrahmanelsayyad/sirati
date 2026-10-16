@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 execFileSync(process.execPath, ['../../qa/guest_save_regression.cjs', process.cwd()], {stdio:'inherit'});
 execFileSync(process.execPath, ['../../qa/pdf_rating_gate_regression.cjs', process.cwd()], {stdio:'inherit'});
 execFileSync(process.execPath, ['../../qa/builder_usability_regression.cjs', process.cwd()], {stdio:'inherit'});
+execFileSync(process.execPath, ['../../qa/job_title_regression.cjs', process.cwd()], {stdio:'inherit'});
 
 execFileSync(process.execPath, ['../../qa/smart_role_regression.cjs', process.cwd()], {stdio:'inherit'});
 
