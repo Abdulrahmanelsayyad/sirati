@@ -216,3 +216,88 @@ css+=r"""
 """
 style.write_text(css,encoding="utf-8")
 print("PASS: V6 privacy-first job match and editable summaries.")
+
+
+# Refreshable, factual Professional Profile choices (added after the V6 generator).
+profile = path.read_text(encoding='utf-8')
+def profile_once(before, after, label):
+    global profile
+    if profile.count(before) != 1:
+        raise RuntimeError("Profile alternatives " + label + ": changed anchor " + str(profile.count(before)))
+    profile = profile.replace(before, after, 1)
+
+profile_once("\nexport default function PersonalSummaryPicker()", r"""
+// Offline, editable alternatives; only user-entered role, focus, skills,
+// achievement and optional target are used. No fictional results or metrics.
+function moreProfileSuggestions(job: string, lang: Lang, track: Track,
+  skills: string, evidence: string, targetRole: string, jobAd: string): string[] {
+  if (!job.trim()) return [];
+  const role = job.trim().slice(0,90);
+  const focus = lang === 'ar' ? track.focusAr : track.focusEn;
+  const skill = skills.trim().slice(0,110);
+  const fact = evidence.trim().slice(0,150);
+  const target = targetRole.trim().slice(0,90);
+  const supported = analyzeJobPosting(jobAd, skills, evidence).matched;
+  if (lang === 'ar') {
+    const skillNote = skill ? ' المهارات المذكورة: ' + skill + '.' : '';
+    const factNote = fact ? ' إنجاز موثق من إدخالك: ' + fact + '.' : '';
+    const fitNote = supported.length ? ' مهارات مذكورة وتوافق الإعلان: ' + supported.join('، ') + '.' : '';
+    return [
+      'الملف المهني: ' + role + '، مع تركيز على ' + focus + '.' + skillNote + factNote,
+      (fact ? fact + '. ' : '') + 'التركيز المهني في دور ' + role + ': ' + focus + '.' + skillNote,
+      'أتطلع إلى فرصة ' + (target || role) + ' تركز على ' + focus + '.' + skillNote,
+      role + '؛ الاهتمامات التخصصية: ' + focus + '.' + fitNote + factNote,
+      (fact ? 'من إنجازاتي المذكورة: ' + fact + '. ' : '') + 'ملخص الخبرة المهنية: ' + role + ' في مجال ' + focus + '.',
+      'الهدف المهني: تطوير المسار نحو ' + (target || role) + ' مع اهتمام بـ' + focus + '.' + factNote,
+      'المسمى المهني: ' + role + '. المجال الأساسي: ' + focus + '.' + skillNote + fitNote,
+      (fact ? 'الإنجاز المدخل: ' + fact + '. ' : '') + 'المجال المهني: ' + focus + ' ضمن دور ' + role + '.' + skillNote,
+      'أسعى للعمل في مجال ' + (target || role) + ' مع تركيز على ' + focus + '.' + skillNote + factNote
+    ];
+  }
+  const skillNote = skill ? ' Skills listed: ' + skill + '.' : '';
+  const factNote = fact ? ' Achievement provided: ' + fact + '.' : '';
+  const fitNote = supported.length ? ' Matching user-listed job skills: ' + supported.join(', ') + '.' : '';
+  return [
+    'Professional profile: ' + role + ', focused on ' + focus + '.' + skillNote + factNote,
+    (fact ? fact + '. ' : '') + 'Professional area: ' + role + ', with a focus on ' + focus + '.' + skillNote,
+    'Interested in ' + (target || role) + ' opportunities centered on ' + focus + '.' + skillNote,
+    role + ' — areas of professional interest include ' + focus + '.' + fitNote + factNote,
+    (fact ? 'Selected achievement: ' + fact + '. ' : '') + 'Role: ' + role + '. Area of focus: ' + focus + '.',
+    'Career objective: pursue ' + (target || role) + ' opportunities with an emphasis on ' + focus + '.' + factNote,
+    'Professional title: ' + role + '. Specialization focus: ' + focus + '.' + skillNote + fitNote,
+    (fact ? 'User-provided result: ' + fact + '. ' : '') + 'Professional emphasis: ' + focus + ' in a ' + role + ' role.' + skillNote,
+    'Seeking a role in ' + (target || role) + ', with an interest in ' + focus + '.' + skillNote + factNote
+  ];
+}
+""" + "\nexport default function PersonalSummaryPicker()", "alternative helper")
+profile_once("  const [targetRole, setTargetRole] = useState('');",
+  "  const [targetRole, setTargetRole] = useState('');\n  const [profilePage, setProfilePage] = useState(0);", "page state")
+profile_once("""  const options = useMemo(() =>
+    makeSuggestions(role.trim(), lang, track, level, skills, achievement, targetRole, jobAd),
+    [role, lang, track, level, skills, achievement, targetRole, jobAd]);""",
+  """  const options = useMemo(() => [
+    ...makeSuggestions(role.trim(), lang, track, level, skills, achievement, targetRole, jobAd),
+    ...moreProfileSuggestions(role.trim(), lang, track, skills, achievement, targetRole, jobAd)
+  ], [role, lang, track, level, skills, achievement, targetRole, jobAd]);
+  useEffect(() => { setProfilePage(0); setEditing(null); },
+    [role, lang, track, level, skills, achievement, targetRole, jobAd]);
+  const visibleProfiles = options.slice(profilePage * 6, (profilePage + 1) * 6)
+    .map((text, i) => ({text, index: profilePage * 6 + i}));""", "derived suggestions")
+profile_once("{options.map((text,i) =>", "{visibleProfiles.map(({text,index:i}) =>", "render visible choices")
+profile_once("{i+1}. {t.styles[i]}", "{i+1}. {t.styles[i % t.styles.length]}", "style labels")
+profile_once("""              )}
+            </div>
+          : <p role="status">{t.empty}</p>}""",
+  """              )}
+              {options.length > 6 && <div className="sirati-summary-more" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                <small aria-live="polite">{profilePage * 6 + 1}–{Math.min((profilePage+1)*6, options.length)} / {options.length}</small>
+                <button type="button" data-summary-more="true"
+                  style={{minHeight:44,padding:'8px 12px',border:'1px solid #bed4c5',borderRadius:9,background:'#edf5ef',color:'#184632',fontWeight:700,cursor:'pointer'}}
+                  onClick={() => {setProfilePage(i => (i+1) % Math.ceil(options.length/6));setEditing(null);}}>
+                  {lang === 'ar' ? '↻ اقتراحات أخرى' : '↻ More profile suggestions'}
+                </button>
+              </div>}
+            </div>
+          : <p role="status">{t.empty}</p>}""", "pager")
+path.write_text(profile,encoding='utf-8')
+print("Added 12 factual profile suggestions in two sets of 6.")

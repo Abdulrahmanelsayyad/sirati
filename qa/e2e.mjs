@@ -1262,8 +1262,8 @@ assert((await summaryTrigger.innerText()).includes('Get specific suggestions'),
 assert.equal(await qaSummary.inputValue(), '', 'summary should remain editable and empty before selection');
 await summaryTrigger.click();
 await summaryPanel.waitFor();
-assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),3,
-  'V4 should offer three editable role-specific summaries');
+assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),6,
+  'Professional Profile should present six editable, role-specific alternatives');
 assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Accountant'),
   'V4 must use entered Professional Title');
 assert.equal(await summaryPanel.locator('.sirati-summary-role input').count(),0,
@@ -1299,8 +1299,17 @@ assert((await v5Sources.innerText()).includes('Supplied skills') &&
 const v5Target = summaryPanel.getByRole('textbox',{name:'Summary target job'});
 await v5Target.fill('Cost Accounting Manager');
 const v5SummaryTexts = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
-assert.equal(v5SummaryTexts.length, 3, 'V5 must keep three selectable summaries');
-assert.equal(new Set(v5SummaryTexts).size, 3, 'V5 draft styles should be meaningfully different');
+assert.equal(v5SummaryTexts.length, 6, 'Professional Profile must provide six choices per page');
+assert.equal(new Set(v5SummaryTexts).size, 6, 'Six profile drafts should be distinct');
+const moreProfiles = summaryPanel.locator('[data-summary-more="true"]');
+assert(await moreProfiles.isVisible(), 'Profile must expose more suggestions');
+await moreProfiles.click();
+const secondProfiles = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
+assert.equal(secondProfiles.length,6);
+assert(secondProfiles.every(t => !v5SummaryTexts.includes(t)), 'Profile refresh should not repeat the first page');
+await moreProfiles.click();
+assert.deepEqual(await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts(),v5SummaryTexts,
+  'Profile refresh should cycle back to the first set without editing the CV');
 assert(v5SummaryTexts[2].includes('Seeking Cost Accounting Manager opportunities'),
   'V5 should treat targeted role as an aspiration, not proven past employment');
 assert(!v5SummaryTexts[0].includes('Cost Accounting Manager'),
@@ -1325,7 +1334,7 @@ assert(atsDraft.includes('Relevant to the target role:') &&
 assert(!atsDraft.includes('SQL') && !atsDraft.includes('Power BI'),
   'V6 must not promote a job ad requirement into claimed experience');
 const editButtons = summaryPanel.locator('.sirati-summary-v6-edit-btn');
-assert.equal(await editButtons.count(),3,'V6 needs an editable action for each summary');
+assert.equal(await editButtons.count(),6,'V6 must support editing each visible profile alternative');
 await editButtons.first().click();
 const editableDraft = summaryPanel.getByRole('textbox',{name:'Edit summary draft'});
 await editableDraft.fill('Verified manual summary: SAP, Excel and cost analysis.');
@@ -1542,21 +1551,50 @@ assert.equal(await accountantPicker.locator('select[aria-label="Career specializ
 assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'default professional career level should be appropriate');
 assert.equal(await accountantPicker.locator('.experience-picker__selectors select').count(), 2, 'non-nursing roles must not show nursing-specific selectors');
 const accountingBullet = (await accountantPicker.locator('.experience-picker__options article label span').first().innerText()).trim();
+const dutiesPageOne = await accountantPicker.locator('.experience-picker__options article label span').allTextContents();
+assert.equal(dutiesPageOne.length,4, 'Responsibilities should show four choices on the first page');
+await accountantPicker.locator('[data-responsibilities-more="true"]').click();
+const dutiesPageTwo = await accountantPicker.locator('.experience-picker__options article label span').allTextContents();
+assert(dutiesPageTwo.length >= 1 && dutiesPageTwo.every(t=>!dutiesPageOne.includes(t)),
+  'More responsibilities should show different role-specific duties');
+await accountantPicker.locator('[data-responsibilities-more="true"]').click();
+assert.deepEqual(await accountantPicker.locator('.experience-picker__options article label span').allTextContents(),dutiesPageOne);
 await accountantPicker.locator('.experience-picker__options article').first().getByRole('button', { name: '+ Add' }).click();
 assert((await page.locator('#qa-accountant-description').inputValue()).includes(accountingBullet), 'accounting example was not inserted');
 assert.equal(await page.locator('.experience-picker').count(), 0, 'single + Add should also close Smart CV after insertion');
+// The responsibilities panel now displays non-overlapping pages; check the
+// full role-specific library before judging specialty or experience-level coverage.
+async function allRoleSuggestionText(picker) {
+  const items = picker.locator('.experience-picker__options article label span');
+  const first = (await items.allTextContents()).join('\n');
+  const seen = new Set([first]);
+  const texts = [first];
+  const more = picker.locator('[data-responsibilities-more="true"]');
+  if (!await more.count()) return first;
+  for (let index = 0; index < 20; index++) {
+    await more.click();
+    const current = (await items.allTextContents()).join('\n');
+    if (current === first) return texts.join('\n');
+    assert(!seen.has(current), 'Responsibility paging must return to the first page before repeating');
+    seen.add(current);
+    texts.push(current);
+  }
+  assert.fail('Responsibility paging did not cycle back within 20 pages');
+}
 // Pro V3: senior accountant should auto-select the exact financial track and seniority.
 await page.locator('#qa-accountant-role').fill('Senior Financial Accountant');
 await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), 'financial-accounting', 'financial accounting track not recognized');
 assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'senior', 'seniority not detected');
-assert((await accountantPicker.innerText()).includes('Investigated general-ledger variances'), 'financial role-specific snippets absent');
-assert((await accountantPicker.innerText()).includes('Reviewed complex work outputs'), 'senior-level options absent');
-assert(!(await accountantPicker.innerText()).includes('Coordinated workload assignments'), 'manager-only descriptions must not be suggested for senior role');
+const seniorDuties = await allRoleSuggestionText(accountantPicker);
+assert(seniorDuties.includes('Investigated general-ledger variances'), 'financial role-specific snippets absent');
+assert(seniorDuties.includes('Reviewed complex work outputs'), 'senior-level options absent');
+assert(!seniorDuties.includes('Coordinated workload assignments'), 'manager-only descriptions must not be suggested for senior role');
 await accountantPicker.locator('select[aria-label="Professional experience level"]').selectOption('beginner');
-assert((await accountantPicker.innerText()).includes('Applied documented procedures'), 'manually selected early-career level not reflected in suggestions');
-assert(!(await accountantPicker.innerText()).includes('Reviewed complex work outputs'), 'senior-level suggestions should not leak into early career');
+const beginnerDuties = await allRoleSuggestionText(accountantPicker);
+assert(beginnerDuties.includes('Applied documented procedures'), 'manually selected early-career level not reflected in suggestions');
+assert(!beginnerDuties.includes('Reviewed complex work outputs'), 'senior-level suggestions should not leak into early career');
 await accountantPicker.locator('.experience-picker__heading button').click();
 // Pro V3: frontend title must switch the career domain without reusing accounting.
 await page.locator('#qa-accountant-role').fill('Frontend Developer');
@@ -1564,8 +1602,9 @@ await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), 'frontend', 'frontend track not recognized');
 assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'manually selected previous-role level must reset on role change');
-assert((await accountantPicker.innerText()).includes('accessible interface specifications'), 'frontend snippets missing');
-assert(!(await accountantPicker.innerText()).includes('general-ledger variances'), 'accounting-specific snippets leaked to developer');
+const frontendDuties = await allRoleSuggestionText(accountantPicker);
+assert(frontendDuties.includes('accessible interface specifications'), 'frontend snippets missing');
+assert(!frontendDuties.includes('general-ledger variances'), 'accounting-specific snippets leaked to developer');
 await accountantPicker.locator('.experience-picker__heading button').click();
 // A broad software title may choose a precise specialization manually.
 await page.locator('#qa-accountant-role').fill('Software Developer');
@@ -1573,7 +1612,8 @@ await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), '', 'broad software role must not auto-claim a track');
 await accountantPicker.locator('select[aria-label="Career specialization"]').selectOption('backend');
-assert((await accountantPicker.innerText()).includes('Designed API contracts'), 'manual backend specialization not reflected');
+const backendDuties = await allRoleSuggestionText(accountantPicker);
+assert(backendDuties.includes('Designed API contracts'), 'manual backend specialization not reflected');
 await accountantPicker.locator('.experience-picker__heading button').click();
 await page.locator('#qa-accountant-role').fill('Unlisted specialty role');
 await page.locator('#qa-accountant-description').focus();
@@ -1611,7 +1651,7 @@ assert.equal(await realSummaryPanel.count(), 0, 'real Builder should keep Smart 
 await realSummaryTrigger.click();
 await realSummaryPanel.waitFor();
 assert((await realSummaryPanel.locator('.sirati-summary-context').innerText()).includes('Emergency Nurse'), 'Summary must use Professional Title from earlier wizard step');
-assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 3, 'real Summary must offer 3 templates when requested');
+assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 6, 'real Builder must offer six Professional Profile choices per page');
 const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choice__text').first().innerText()).trim();
 await realSummaryPanel.locator('.sirati-summary-choice').first().click();
 const afterSmartChoice = await page.evaluate((selected) => ({
@@ -2110,10 +2150,11 @@ await page.locator('#qa-mobile-career-field .sirati-description-assistant-slot .
 const mobileCareerPanel = page.locator('.experience-picker');
 const mobileCareerRect = await mobileCareerPanel.evaluate(el => el.getBoundingClientRect());
 assert(mobileCareerRect.left >= -2 && mobileCareerRect.right <= 392, 'contextual mobile panel overflows');
-assert((await mobileCareerPanel.innerText()).includes('Qualified opportunities'), 'advanced sales suggestions should load on mobile');
+const mobileSalesDuties = await allRoleSuggestionText(mobileCareerPanel);
+assert(mobileSalesDuties.includes('Qualified opportunities'), 'advanced sales suggestions should load on mobile');
 assert.equal(await mobileCareerPanel.locator('select[aria-label="Career specialization"]').inputValue(), 'retail-sales', 'Sales Representative specialization not detected on mobile');
 assert.equal(await mobileCareerPanel.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'mobile experience level missing');
-assert((await mobileCareerPanel.innerText()).includes('Identified customer requirements'), 'original sales suggestions should remain available');
+assert(mobileSalesDuties.includes('Identified customer requirements'), 'original sales suggestions should remain available across responsibility pages');
 await page.evaluate(() => document.getElementById('qa-mobile-career-field')?.remove());
 log('mobile role-specific descriptions stay inline and within viewport');
 
