@@ -11,7 +11,7 @@ button_path=root/'components/SiratiBuilderPdfButton.tsx'
 css_path=root/'app/globals.css'
 source=builder_path.read_text(encoding='utf-8')
 
-# Synchronize an existing short-lived guest CV snapshot only after account
+# Synchronize a tab-only guest CV draft only after account
 # resolution and CV hydration, preventing an empty first render from wiping it.
 ready_ref='  const cloudReadyRef = useRef(false);'
 if source.count(ready_ref)!=1:
@@ -34,7 +34,7 @@ source=source.replace(configured_anchor,'''    if (!isSupabaseConfigured()) {
           const pending = raw ? JSON.parse(raw) : null;
           if (pending?.version === 1 && Number.isFinite(pending.createdAt) &&
               Date.now() - pending.createdAt >= 0 &&
-              Date.now() - pending.createdAt < 30 * 60 * 1000 &&
+              (pending.requested !== true || Date.now() - pending.createdAt < 30 * 60 * 1000) &&
               pending.data && typeof pending.data === 'object') {
             setData(normalizeCv(pending.data));
             if (typeof pending.template === 'string') {
@@ -60,7 +60,7 @@ source=source[:start]+"""      if (!user) {
             encodeURIComponent(window.location.pathname + window.location.search));
           return;
         }
-        setCloudStatus('Guest mode · Create a free account only at Save PDF');
+        setCloudStatus('Guest draft · Kept in this tab across refreshes');
         setGuestRestoreReady(true);
         return;
       }
@@ -83,7 +83,7 @@ source=source.replace(anchor,anchor+"""      let guestTransferRestored = false;
             pending.email.toLowerCase() === user.email?.toLowerCase());
           if (pending?.version === 1 && typeof pending.createdAt === 'number' &&
               Date.now() - pending.createdAt >= 0 &&
-              Date.now() - pending.createdAt < 30 * 60 * 1000 && emailOK &&
+              (!user || Date.now() - pending.createdAt < 30 * 60 * 1000) && emailOK &&
               pending.data && typeof pending.data === 'object') {
             guestTransferRestored = Boolean(user);
             setData(normalizeCv(pending.data));
@@ -120,8 +120,8 @@ if source.count(draft_anchor)!=1:
     raise SystemExit('Signed-in tab draft precedence anchor changed')
 source=source.replace(draft_anchor,draft_replacement,1)
 # The Builder stays mounted on every CV step, unlike the final-step PDF button.
-# Synchronize the existing snapshot after user input, but only AFTER guest
-# restoration is complete. Do not create new persistent/localStorage guest data.
+# Create/update a bounded sessionStorage draft only AFTER guest restoration.
+# Existing explicit save/PDF transfers keep their email, intent and expiry.
 effect_anchor="""  const [guestRestoreReady, setGuestRestoreReady] = useState(false);"""
 if source.count(effect_anchor)!=1:
     raise SystemExit('Builder guest-ready state not found')
@@ -131,12 +131,17 @@ effect=r'''
     try {
       const key = 'sirati.guest.pdf.pending.v1';
       const raw = window.sessionStorage.getItem(key);
-      if (!raw) return;
-      const pending = JSON.parse(raw);
-      if (pending?.version !== 1 || !Number.isFinite(pending.createdAt) ||
-          Date.now() - pending.createdAt < 0 ||
-          Date.now() - pending.createdAt >= 30 * 60 * 1000) return;
-      const updated = JSON.stringify({...pending, data, template, language});
+      let pending = null;
+      try { pending = raw ? JSON.parse(raw) : null; } catch { /* Replace malformed draft. */ }
+      const activeTransfer = pending?.version === 1 && pending.requested === true &&
+        Number.isFinite(pending.createdAt) && Date.now() - pending.createdAt >= 0 &&
+        Date.now() - pending.createdAt < 30 * 60 * 1000;
+      // Ordinary drafts survive refresh for this tab's lifetime, without
+      // authorizing sign-in transfer, cloud save, rating submission or export.
+      const snapshot = activeTransfer ? pending : {
+        version: 1, createdAt: Date.now(), email: null, requested: false
+      };
+      const updated = JSON.stringify({...snapshot, data, template, language});
       if (updated.length > 1800000) throw new Error('Guest CV snapshot is too large.');
       window.sessionStorage.setItem(key, updated);
     } catch {
@@ -147,6 +152,12 @@ effect=r'''
   }, [hydrated, guestRestoreReady, userId, data, template, language]);
 '''
 source=source.replace(effect_anchor, effect_anchor+'\n'+effect,1)
+# Explicit new-CV actions must not inherit an older save/export intent.
+for reset_anchor in ("    if (onboardingNew) {", "  function resetCv() {"):
+    if source.count(reset_anchor) != 1:
+        raise SystemExit('Guest draft reset anchor changed')
+    source=source.replace(reset_anchor, reset_anchor + "\n    try { window.sessionStorage.removeItem('sirati.guest.pdf.pending.v1'); } catch {}", 1)
+
 # Keep every Save CV entry point in the mounted editor, reusing the auth dialog.
 source=source.replace(ready_ref, ready_ref + "\n  const [saveAuthRequest, setSaveAuthRequest] = useState(0);\n  const saveVersionRequested = useRef(true);", 1)
 old_save="""    if (!activeUserId) {
@@ -220,7 +231,8 @@ function readTransfer(): Transfer | null {
     if (item.version !== 1 || !item.data || typeof item.data !== 'object' ||
         !Number.isFinite(item.createdAt) ||
         Date.now() - item.createdAt < 0 || Date.now() - item.createdAt > MAX_AGE) {
-      window.sessionStorage.removeItem(PENDING_KEY);
+      // Expired transfer intent is invalid, but the guest can still recover
+      // its CV in the editor. Never delete their draft from this reader.
       return null;
     }
     return item;
