@@ -336,3 +336,19 @@ if 'import SectionWritingAssistant' not in text:
 
 # Owner-requested rating -> auth -> saved review -> Builder PDF flow.
 subprocess.run([sys.executable, str(Path(__file__).with_name('pdf_rating_gate.py')), str(root)], check=True)
+
+# Shared, browser-local job titles for the headline and every experience row.
+shutil.copyfile(Path(__file__).resolve().parents[2] / 'components/JobTitleInput.tsx', root / 'components/JobTitleInput.tsx')
+builder = root / 'app/builder/page.tsx'
+text = builder.read_text()
+if 'import JobTitleInput' not in text:
+    replacements = {
+        '<div className="field"><label>Professional title</label><input value={data.title} onChange={e => update(\'title\', e.target.value)} placeholder="Registered Nurse · Emergency Department" /></div>': '<JobTitleInput label="Professional title" value={data.title} onChange={value => update(\'title\', value)} placeholder="e.g. Registered Nurse" />',
+        '<div className="field"><label>Role</label><input value={item.role} onChange={e => updateExperience(item.id, { role: e.target.value })} /></div>': '<JobTitleInput label="Role" value={item.role} onChange={value => updateExperience(item.id, { role: value })} placeholder="e.g. Software Developer" />',
+    }
+    for old, new in replacements.items():
+        if text.count(old) != 1:
+            raise RuntimeError('Job title input: builder anchor changed')
+        text = text.replace(old, new)
+    text = text.replace("import SectionWritingAssistant", "import JobTitleInput from '@/components/JobTitleInput';\nimport SectionWritingAssistant", 1)
+    builder.write_text(text)
