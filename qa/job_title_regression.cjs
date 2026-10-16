@@ -20,12 +20,17 @@ vm.runInNewContext(ts.transpileModule(source, {compilerOptions:{jsx:ts.JsxEmit.R
     throw Error(name);
   },
 });
-const {suggestJobTitles: suggest, JOB_TITLES: titles, default: Component} = moduleObject.exports;
+const {suggestJobTitles: suggest, browseJobTitles: browse, JOB_TITLES: titles, default: Component} = moduleObject.exports;
 assert(titles.length >= 350); assert.equal(new Set(titles).size, titles.length);
 for (const query of ['', 'd', 'de', '  de  ', '<script>']) assert.equal(suggest(query).length, 0);
 for (const [query,title] of [['DEV','Developer'],['registered','Registered Nurse'],['educator','Educator'],['soft dev','Software Developer'],['nurse','Registered Nurse'],['account','Accountant'],['مهندس','مهندس مدني']]) assert(suggest(query).includes(title), query);
 assert.equal(suggest('Developer')[0],'Developer'); assert(suggest('engineer').length <= 12);
 assert.equal(suggest('Unlisted Custom Specialist').length, 0);
+assert(browse('registered').length > 6, 'narrow matches need related alternatives');
+assert(browse('registered').slice(1).every(x => !x.title.includes('Engineer') && !x.title.includes('Developer')), 'related suggestions remain in the nursing group');
+assert(browse('engineer').length > 12, 'browse past the old 12-suggestion cap');
+assert.equal(new Set(browse('engineer').map(x=>x.title)).size,browse('engineer').length);
+assert.equal(browse('Unlisted Custom Specialist').length,0);
 function render() { index=0; tree=Component({value,label:'Role',onChange:v=>{value=v;calls.push(v)}}); effects.splice(0).forEach(fn=>fn()); }
 function nodes(n=tree) { if(!n||typeof n!=='object')return []; if(Array.isArray(n))return n.flatMap(nodes);return [n,...nodes(n.props?.children ?? null)]; }
 const input=()=>nodes().find(n=>n.type==='input');
@@ -35,6 +40,14 @@ function key(k,composing=false) {let prevented=false;input().props.onKeyDown({ke
 render();type('de');assert.equal(options().length,0);type('dev');assert(options().length>0);assert.equal(value,'dev');
 key('Enter');assert.equal(value,'dev'); // No implicit selection.
 key('ArrowDown');assert(input().props['aria-activedescendant']);key('Enter');assert.equal(value,'Developer');assert.equal(options().length,0);
+type('registered');assert.equal(options().length,6);
+const firstPage=options().map(n=>n.props.children[0]);
+const more=nodes().find(n=>n.props?.['data-job-title-more']==='true');assert(more,'more suggestions button visible');
+more.props.onClick();render();
+const nextPage=options().map(n=>n.props.children[0]);assert.equal(nextPage.length,6);
+assert(nextPage.every(title=>!firstPage.includes(title)), 'refresh must not repeat first page');
+assert.equal(value,'registered','refresh must not overwrite input');
+key('ArrowDown');key('Enter');assert(nextPage.includes(value),'keyboard selection uses refreshed page');
 type('registered');options()[0].props.onClick();render();assert.equal(value,'Registered Nurse');
 type('dev');key('ArrowDown');key('Escape');assert.equal(value,'dev');assert.equal(options().length,0);
 input().props.onFocus();render();assert(options().length);key('Tab');assert.equal(options().length,0);
