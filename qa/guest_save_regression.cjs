@@ -96,3 +96,67 @@ function setup({quota=false}={}) {
   blocked=true;const before=inserts;assert.equal(await ctx.save(),null);assert.equal(inserts,before);
   console.log('PASS: concurrent Save creates one document/version; network failure preserves retry; session boundary still blocks.');
 })().catch(e=>{console.error(e);process.exitCode=1});
+
+// Refresh regression: run the generated Builder's persistence/restore blocks,
+// including the first render and account-resolution boundary (no live accounts).
+(() => {
+  const start=builder.indexOf('    if (!hydrated || !guestRestoreReady || userId');
+  const end=builder.indexOf('  }, [hydrated, guestRestoreReady',start);
+  assert(start>=0 && end>start);
+  const restoreStart=builder.indexOf('      let guestTransferRestored = false;');
+  const restoreEnd=builder.indexOf('      setEmailReturnMissing(',restoreStart);
+  assert(restoreStart>=0 && restoreEnd>restoreStart);
+  const compile=src=>ts.transpileModule(src,{compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText;
+  const values=new Map();let denied=false,blocked=false,status='';
+  const fixture={personal:{fullName:'اختبار Synthetic',email:'test@example.invalid'},
+    experience:[{role:'Engineer',bullets:['Built a CV']}],photoDataUrl:'data:synthetic'};
+  const ctx={hydrated:true,guestRestoreReady:true,userId:null,data:fixture,
+    template:'executive-letterhead',language:'ar',Date,JSON,Number,URLSearchParams,
+    isSessionBoundaryBlocked:()=>blocked,setCloudStatus:v=>status=v,
+    window:{location:{search:''},sessionStorage:{getItem:k=>values.get(k)||null,
+      setItem:(k,v)=>{if(denied)throw Error('quota');values.set(k,v)},removeItem:k=>values.delete(k)}},
+    newCvRequestedRef:{current:false},user:null,normalizeCv:x=>x,
+    setData:v=>ctx.restoredData=v,setTemplate:v=>ctx.restoredTemplate=v,
+    setLanguage:v=>ctx.restoredLanguage=v};
+  vm.createContext(ctx);
+  const persist=()=>vm.runInContext('(function(){'+compile(builder.slice(start,end))+'})()',ctx);
+  const restore=()=>vm.runInContext('(function(){'+compile(builder.slice(restoreStart,restoreEnd))+'})()',ctx);
+  ctx.guestRestoreReady=false;persist();assert.equal(values.size,0,'must not overwrite before restore');
+  ctx.guestRestoreReady=true;ctx.hydrated=false;persist();assert.equal(values.size,0);
+  ctx.hydrated=true;persist();assert(values.has(key),'typing before Save must create a tab draft');
+  let snapshot=JSON.parse(values.get(key));assert.deepEqual(snapshot.data,fixture);
+  assert.equal(snapshot.requested,false);assert.equal(snapshot.email,null);assert.equal(snapshot.action,undefined);
+  restore();assert.deepEqual(ctx.restoredData,fixture);assert.equal(ctx.restoredTemplate,'executive-letterhead');
+  assert.equal(ctx.restoredLanguage,'ar');
+  snapshot.createdAt-=60*60*1000;values.set(key,JSON.stringify(snapshot));
+  delete ctx.restoredData;restore();assert.deepEqual(ctx.restoredData,fixture,'ordinary draft survives an idle hour');
+  for(const user of [{id:'A',email:'a@example.invalid'},{id:'B',email:'b@example.invalid'}]) {
+    ctx.user=user;delete ctx.restoredData;restore();assert.equal(ctx.restoredData,undefined,'ordinary guest draft must not transfer to an account');
+  }
+  ctx.user=null;ctx.newCvRequestedRef.current=true;delete ctx.restoredData;restore();assert.equal(ctx.restoredData,undefined);
+  ctx.newCvRequestedRef.current=false;ctx.window.location.search='?doc=other';restore();assert.equal(ctx.restoredData,undefined);
+  ctx.window.location.search='';
+  snapshot={...snapshot,createdAt:Date.now(),requested:true,email:'a@example.invalid',action:'save'};
+  values.set(key,JSON.stringify(snapshot));persist();
+  let updated=JSON.parse(values.get(key));assert.equal(updated.createdAt,snapshot.createdAt);
+  assert.equal(updated.email,snapshot.email);assert.equal(updated.action,'save');
+  ctx.user={id:'B',email:'b@example.invalid'};delete ctx.restoredData;restore();assert.equal(ctx.restoredData,undefined);
+  ctx.user={id:'A',email:'a@example.invalid'};restore();assert.deepEqual(ctx.restoredData,fixture);
+  snapshot.createdAt-=60*60*1000;values.set(key,JSON.stringify(snapshot));delete ctx.restoredData;
+  restore();assert.equal(ctx.restoredData,undefined,'expired account-transfer intent remains invalid');
+  ctx.user=null;values.set(key,'invalid JSON');persist();assert.equal(JSON.parse(values.get(key)).requested,false);
+  const before=values.get(key);ctx.userId='A';ctx.data={private:'account'};persist();assert.equal(values.get(key),before);
+  ctx.userId=null;blocked=true;persist();assert.equal(values.get(key),before);blocked=false;
+  denied=true;persist();assert(status);assert.equal(values.get(key),before);denied=false;
+  status='';ctx.data={large:'x'.repeat(1800001)};persist();assert(status);assert.equal(values.get(key),before);
+  const resetStart=builder.indexOf('  function resetCv() {');
+  const resetEnd=builder.indexOf('\n  const isLastSection',resetStart);
+  Object.assign(ctx,{STORAGE_KEY:'sirati.cv.v2',LEGACY_STORAGE_KEY:'sirati.cv.v1',
+    localStorage:{removeItem(){}},cloneEmptyCv:()=>({personal:{fullName:''}}),
+    setDocumentId(){},setVersions(){},setHistoryOpen(){},withBasePath:x=>x});
+  ctx.window.history={replaceState(){}};
+  vm.runInContext(compile(builder.slice(resetStart,resetEnd))+';resetCv();',ctx);
+  assert(!values.has(key),'New CV discards stale draft/transfer intent');
+  assert.equal(ctx.restoredData.personal.fullName,'');
+  console.log('PASS: pre-Save refresh preserves full CV/template/Arabic; hydration, idle, account/doc/new-CV, expiry, corruption, quota and session guards.');
+})();
