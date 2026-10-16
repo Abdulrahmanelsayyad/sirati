@@ -1650,7 +1650,7 @@ assert.equal(await realSummaryPanel.count(), 0, 'real Builder should keep Smart 
 await realSummaryTrigger.click();
 await realSummaryPanel.waitFor();
 assert((await realSummaryPanel.locator('.sirati-summary-context').innerText()).includes('Emergency Nurse'), 'Summary must use Professional Title from earlier wizard step');
-assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 3, 'real Summary must offer 3 templates when requested');
+assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 6, 'real Builder must offer six Professional Profile choices per page');
 const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choice__text').first().innerText()).trim();
 await realSummaryPanel.locator('.sirati-summary-choice').first().click();
 const afterSmartChoice = await page.evaluate((selected) => ({
