@@ -1574,11 +1574,12 @@ async function allRoleSuggestionText(picker) {
   for (let index = 0; index < 20; index++) {
     await more.click();
     const current = (await items.allTextContents()).join('\n');
-    if (seen.has(current)) break;
+    if (current === first) return texts.join('\n');
+    assert(!seen.has(current), 'Responsibility paging must return to the first page before repeating');
     seen.add(current);
     texts.push(current);
   }
-  return texts.join('\n');
+  assert.fail('Responsibility paging did not cycle back within 20 pages');
 }
 // Pro V3: senior accountant should auto-select the exact financial track and seniority.
 await page.locator('#qa-accountant-role').fill('Senior Financial Accountant');
@@ -2149,10 +2150,11 @@ await page.locator('#qa-mobile-career-field .sirati-description-assistant-slot .
 const mobileCareerPanel = page.locator('.experience-picker');
 const mobileCareerRect = await mobileCareerPanel.evaluate(el => el.getBoundingClientRect());
 assert(mobileCareerRect.left >= -2 && mobileCareerRect.right <= 392, 'contextual mobile panel overflows');
-assert((await mobileCareerPanel.innerText()).includes('Qualified opportunities'), 'advanced sales suggestions should load on mobile');
+const mobileSalesDuties = await allRoleSuggestionText(mobileCareerPanel);
+assert(mobileSalesDuties.includes('Qualified opportunities'), 'advanced sales suggestions should load on mobile');
 assert.equal(await mobileCareerPanel.locator('select[aria-label="Career specialization"]').inputValue(), 'retail-sales', 'Sales Representative specialization not detected on mobile');
 assert.equal(await mobileCareerPanel.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'mobile experience level missing');
-assert((await mobileCareerPanel.innerText()).includes('Identified customer requirements'), 'original sales suggestions should remain available');
+assert(mobileSalesDuties.includes('Identified customer requirements'), 'original sales suggestions should remain available across responsibility pages');
 await page.evaluate(() => document.getElementById('qa-mobile-career-field')?.remove());
 log('mobile role-specific descriptions stay inline and within viewport');
 
