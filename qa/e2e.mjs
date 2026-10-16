@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 // Run from the generated source tree (site-src or production-src). In the
 // PDF workflow the repository is nested in candidate/, below GITHUB_WORKSPACE.
 execFileSync(process.execPath, ['../../qa/guest_save_regression.cjs', process.cwd()], {stdio:'inherit'});
+execFileSync(process.execPath, ['../../qa/pdf_rating_gate_regression.cjs', process.cwd()], {stdio:'inherit'});
 
 execFileSync(process.execPath, ['../../qa/smart_role_regression.cjs', process.cwd()], {stdio:'inherit'});
 
@@ -108,7 +109,7 @@ assert(builderPdfSource.includes('class PdfRenderFailure extends Error') &&
   'auth-gated PDF errors must be sanitized without changing authenticated CV save errors');
 assert.equal((builderPdfSource.match(/await exportWithFeedback\(\);/g)||[]).length,4,
   'all four signed-in/resume PDF paths must use the sanitized export wrapper');
-assert(builderPdfSource.includes('aria-busy={busy} onClick={begin}'),
+assert(builderPdfSource.includes('aria-busy={busy} onClick={()=>void begin()}'),
   'PDF primary action must expose its loading state');
 console.log('PASS: Active auth-gated PDF export maps mixed-script/preview/browser errors without leaking details');
 
@@ -1866,6 +1867,13 @@ assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
 let exportDownloadTriggered = false;
 page.once('download', () => { exportDownloadTriggered = true; });
 await page.getByRole('button', {name:'Save PDF'}).click();
+const ratingModal = page.getByRole('dialog', {name:'Rate your experience before downloading'});
+await ratingModal.waitFor({timeout:15000});
+assert.equal(await ratingModal.locator('input').count(),0,'rating must precede auth');
+assert.equal(await ratingModal.getByRole('button',{name:'Save rating and continue'}).isDisabled(),true);
+assert.equal(exportDownloadTriggered,false,'no download before rating/auth');
+await ratingModal.getByRole('button',{name:'1 of 5 stars',exact:true}).click();
+await ratingModal.getByRole('button',{name:'Save rating and continue'}).click();
 const guestAuthModal = page.getByRole('dialog', {name:'Create a free account to save your CV as PDF'});
 await guestAuthModal.waitFor({timeout:15000});
 assert.equal(exportDownloadTriggered, false, 'guest click must not download PDF without auth');
@@ -1875,6 +1883,7 @@ const guestSavedDraft = await page.evaluate(() => {
   const value = sessionStorage.getItem('sirati.guest.pdf.pending.v1');
   return value ? JSON.parse(value) : null;
 });
+assert.equal(guestSavedDraft?.rating,1,'one-star review must survive signup transfer');
 assert(guestSavedDraft && guestSavedDraft.requested === true && guestSavedDraft.data &&
   guestSavedDraft.template, 'guest export must snapshot the actual CV and chosen template');
 assert.equal(await page.evaluate(() =>

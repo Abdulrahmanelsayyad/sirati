@@ -333,3 +333,6 @@ if 'import SectionWritingAssistant' not in text:
     text = text.replace(summary_anchor, summary + summary_anchor).replace(experience_anchor, experience_anchor + experience)
     text = text.replace(' AI writing is intentionally disabled in zero-cost mode.', ' Review local suggestions before applying.')
     builder.write_text(text)
+
+# Owner-requested rating -> auth -> saved review -> Builder PDF flow.
+subprocess.run([sys.executable, str(Path(__file__).with_name('pdf_rating_gate.py')), str(root)], check=True)
