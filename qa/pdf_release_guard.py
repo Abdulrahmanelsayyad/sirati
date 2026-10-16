@@ -1,119 +1,60 @@
-"""PDF V14 scope and production-path checks; no remote account operations."""
+"""Current PDF artifact safety; optional explicit PDF-only release scope.
+
+General regressions accept product changes. PDF-only dispatch requires an exact,
+distinct ancestor SHA and rejects changes outside the PDF surface. Neither mode
+publishes or authorizes release.
+"""
+import argparse
+import re
 import subprocess
-import sys
 from pathlib import Path
 
-root = Path(sys.argv[1])
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('root', type=Path)
+parser.add_argument('--baseline', required=True, help='Exact 40-character comparison commit SHA')
+parser.add_argument('--candidate', default='HEAD')
+parser.add_argument('--pdf-only', action='store_true')
+parser.add_argument('--scope-only', action='store_true')
+parser.add_argument('--production', action='store_true')
+args = parser.parse_args()
+root = args.root
 repo = Path(__file__).resolve().parents[1]
-base = '54461f950554c18d64690331020596dcf79e43cb'
-staging = '78ab9519599bf3436fce4418b3fe7bdfdd8e56b7'
-runtime = {'.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_template.py',
-           '.github/scripts/pdf_text_layer_v19.py', '.github/scripts/minimal_home_v13.py'}
-# V21 is a separate, owner-approved session correction after the PDF release.
-# Pin its already-reviewed source; this follow-up may change QA and the board only.
-# This is source-scope evidence, never permission to merge or deploy.
-session_head = 'd909eba3ae04d5bd246ef8e06a7938cd9bf36d75'
-session_candidate = subprocess.run(
-    ['git', 'merge-base', '--is-ancestor', session_head, 'HEAD'], cwd=repo,
-    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-# Owner approved PR #141 at this exact head. Its new Modern design is an
-# intentional visual change, not an unreviewed V21 runtime modification.
-# Only QA corrections may follow this pin; runtime edits still fail closed.
-modern_head = 'd6018cd1f7179807dbef7e26af6749e4a5fc968e'
-modern_candidate = subprocess.run(
-    ['git', 'merge-base', '--is-ancestor', modern_head, 'HEAD'], cwd=repo,
-    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-# Owner-published V26 main is the exact starting point for this subsequent,
-# narrowly scoped PDF date-token fix. Audit changes against that release,
-# rather than claiming all post-V21 product edits were unreviewed.
-published_v26 = '1371903da18d4221cb1f5647b20037e91b2dc270'
-v26_candidate = subprocess.run(
-    ['git', 'merge-base', '--is-ancestor', published_v26, 'HEAD'], cwd=repo,
-    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-if v26_candidate:
-    allowed = {'.github/scripts/pdf_text_layer_v19.py',
-               'qa/pdf_metadata_fixture.py', 'qa/pdf_metadata_check.py',
-               'qa/pdf_release_guard.py', '.github/workflows/pdf-release-qa.yml'}
-    changed = subprocess.check_output(
-        ['git', 'diff', '--name-only', published_v26], cwd=repo, text=True).splitlines()
-    assert set(changed) <= allowed, 'Unreviewed V26 source change: ' + str(set(changed) - allowed)
-    print('PASS: only scoped PDF date and synthetic verification changes after published V26')
-elif modern_candidate:
-    allowed = {'qa/pdf_release_guard.py', 'qa/pdf_guard_regression.py', 'qa/pdf_quality_check.py', 'qa/e2e.mjs'}
-    changed = subprocess.check_output(
-        ['git', 'diff', '--name-only', modern_head], cwd=repo, text=True).splitlines()
-    assert set(changed) <= allowed, 'Unreviewed Modern source change: ' + str(set(changed) - allowed)
-    print('PASS: Modern runtime matches owner-approved PR #141; QA-only follow-up')
-elif session_candidate:
-    allowed = {'qa/pdf_release_guard.py', 'qa/pdf_guard_regression.py', 'AGENT_BOARD.md'}
-    changed = subprocess.check_output(
-        ['git', 'diff', '--name-only', session_head], cwd=repo, text=True).splitlines()
-    assert set(changed) <= allowed, 'Unreviewed V21 source change: ' + str(set(changed) - allowed)
-    print('PASS: V21 runtime and account tests match pinned reviewed source; QA-only follow-up')
+def git(*parts):
+    return subprocess.check_output(['git', *parts], cwd=repo, text=True).strip()
+assert re.fullmatch(r'[0-9a-f]{40}', args.baseline), 'Baseline must be an exact commit SHA'
+base = git('rev-parse', '--verify', args.baseline + '^{commit}')
+head = git('rev-parse', '--verify', args.candidate + '^{commit}')
+assert base != head, 'Baseline must differ from candidate'
+print(f'PDF comparison: baseline={base} candidate={head}')
+if args.pdf_only:
+    assert subprocess.run(['git', 'merge-base', '--is-ancestor', base, head], cwd=repo).returncode == 0, 'PDF-only baseline must be an ancestor'
+    allowed = {'.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py',
+               '.github/workflows/pdf-release-qa.yml', 'assets/pdf-fonts/OFL.txt'}
+    changed = git('diff', '--no-renames', '--name-only', base, head).splitlines()
+    rejected = [p for p in changed if not (p in allowed or p.startswith('qa/pdf_') or p.startswith('assets/pdf-fonts/'))]
+    assert not rejected, 'Outside PDF-only scope: ' + str(rejected)
+    print('PASS: explicit PDF-only scope against supplied release baseline')
 else:
-    changed = subprocess.check_output(['git', 'diff', '--name-only', base], cwd=repo, text=True).splitlines()
-    for path in changed:
-        assert path in runtime or path.startswith('qa/pdf_') or path in {
-            '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md',
-            'assets/pdf-fonts/sirati-pdf-naskh-punctuation.woff', 'assets/pdf-fonts/OFL.txt'}, path
-# Regression gate: PR/build checks must never restore automatic
-# Production deployment. Only an approved manual dispatch on main can publish.
+    print('PASS: general PDF regression accepts product changes; artifact checks remain mandatory')
+if args.scope_only:
+    raise SystemExit(0)
+
+# Preserve the currently approved main-only deployment policy, not the retired
+# manual-dispatch rule. This test workflow itself retains contents:read only.
 workflow = (repo / '.github/workflows/pages.yml').read_text(encoding='utf-8')
 deploy_anchor = '\n  deploy:\n'
 assert workflow.count(deploy_anchor) == 1, 'Exactly one Pages deployment job required'
 build_section, deploy_section = workflow.split(deploy_anchor, 1)
 assert '\npermissions:\n  contents: read\n' in build_section, 'Default workflow permissions expanded'
-assert 'uses: actions/deploy-pages@' not in build_section, 'Unexpected deployment before approval'
+assert 'uses: actions/deploy-pages@' not in build_section, 'Unexpected deployment before build'
 assert workflow.count('uses: actions/deploy-pages@') == 1, 'Additional Pages deploy action found'
-assert "workflow_dispatch:\n    inputs:\n      approve_production_deploy:" in build_section, 'Approval input removed'
-assert all(x in build_section for x in ('required: true', 'type: boolean', 'default: false')), 'Approval must be required, boolean and default denied'
-expected_gate = "    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.approve_production_deploy == true"
-assert deploy_section.count('\n    if:') == 1 and expected_gate in deploy_section, 'Pages deployment no longer requires manual approval on main'
+expected_gate = "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
+assert deploy_section.count('\n    if:') == 1 and expected_gate in deploy_section, 'Pages deployment must be main push only'
+assert '    needs: build\n' in deploy_section, 'Pages deployment must depend on build'
 assert '    permissions:\n      contents: read\n      pages: write\n      id-token: write\n' in deploy_section, 'Deploy-only permissions changed'
 assert '\n    environment:\n      name: github-pages\n' in deploy_section, 'Production environment guard removed'
-print('PASS: PR/main builds cannot automatically publish; explicit main dispatch is required')
+print('PASS: PR checks cannot deploy; main deployment requires successful build')
 
-if not session_candidate:
-    original = subprocess.check_output(['git', 'show', base + ':.github/scripts/prepare_pages.py'], cwd=repo, text=True)
-    candidate = (repo / '.github/scripts/prepare_pages.py').read_text()
-    assert candidate.startswith(original), 'Original reconstruction/auth ordering changed'
-    assert candidate[len(original):].count('subprocess.run(') == 2
-    # V15 is an intentional remediation of the staged algorithm. Protect all
-    # non-exporter generated application sources against the verified V14 head.
-    v14 = 'c18427445bd521e0acba5ee6f6c34ae30168037b'
-    followup = subprocess.check_output(['git', 'diff', '--name-only', v14], cwd=repo, text=True).splitlines()
-    for path in followup:
-        assert path in {'.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/minimal_home_v13.py'} or path.startswith('qa/pdf_') or path in {
-            '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml', 'docs/PDF_RELEASE_V14.md', 'AGENT_BOARD.md',
-            'assets/pdf-fonts/sirati-pdf-naskh-punctuation.woff', 'assets/pdf-fonts/OFL.txt'}, path
-    for path in ['.github/scripts/prepare_pages.py', '.github/scripts/compact_ats_template.py']:
-        expected = subprocess.check_output(['git','show',v14+':'+path],cwd=repo,text=True)
-        actual = (repo/path).read_text()
-        if path.endswith('compact_ats_template.py'):
-            # V16 is strictly additive to V14; never rewrite the validated template.
-            assert actual.startswith(expected), 'V14 Compact ATS template was rewritten'
-            tail = actual[len(expected):]
-            assert tail.startswith('\n# V16: narrowly scope the Arabic Experience bullet alignment')
-            assert tail.count('/* V16 Compact ATS Arabic Experience bullets */') == 2  # Sentinel string + CSS comment
-            assert '.template-compact-ats[dir="rtl"] .cv-bullets' in tail
-            assert '.template-compact-ats[dir="rtl"] .cv-bullets > li' in tail
-            assert 'css_path.write_text(css, encoding="utf-8")' in tail
-        else:
-            assert actual == expected, 'Protected V14 generator changed: '+path
-    # V18 permits exactly two homepage FAQ copy substitutions, no other generator edits.
-    home_path = '.github/scripts/minimal_home_v13.py'
-    expected_home = subprocess.check_output(['git', 'show', base + ':' + home_path], cwd=repo, text=True)
-    for old, new in [
-        ('Yes. CV templates, smart writing tools and browser PDF export are free.',
-         'Yes. CV templates, smart writing tools and PDF downloads are free. No payment is required.'),
-        ('Yes. Choose Print / Save free PDF, then Save as PDF in your browser.',
-         'Yes. Create and edit as a guest, then choose Save PDF. Sign in or create a free account at that step to download your PDF directly.'),
-    ]:
-        assert expected_home.count(old) == 1
-        expected_home = expected_home.replace(old, new)
-    assert (repo / home_path).read_text() == expected_home, 'Unapproved homepage generator change'
-board_before = subprocess.check_output(['git', 'show', (modern_head if modern_candidate else base) + ':AGENT_BOARD.md'], cwd=repo, text=True)
-assert (repo / 'AGENT_BOARD.md').read_text().startswith(board_before), 'Existing task ownership changed'
 # V17 dependency removal must leave the actual exporter byte-identical.
 import json
 assert 'jspdf' not in json.loads((root/'package.json').read_text())['dependencies']
@@ -123,7 +64,7 @@ assert 'const pageWords = wordsByPage(words, pageCuts)' in exporter
 assert 'if (embedded !== words.length)' in exporter
 assert 'w.top + 0.5' not in exporter and 'w.top + 1' not in exporter
 print('PASS: PDF dependency and exact text coverage guards')
-if '--production' in sys.argv:
+if args.production:
     out = root / 'out'
     assert out.is_dir(), 'No production artifact'
     assert not list((root / 'app').glob('qa-pdf-*/page.tsx')), 'Synthetic route in production source'

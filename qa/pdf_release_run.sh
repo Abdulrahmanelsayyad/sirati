@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Run from workspace parent containing baseline/ and candidate/ repo checkouts.
-# Baseline is approved Staging, NOT main's image-only PDF.
+# Baseline is the PR base, previous main commit, or explicit dispatch SHA.
 set -euo pipefail
 node candidate/qa/pdf_boundary_check.mjs candidate/site-src/sirati-cv-source/lib/siratiPdfExport.ts
+# Current baselines already contain the numeral fix; do not require historical failures.
 export QA_PDF_FIXED_BASELINE=1
 export GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/tmp/sirati-pdf-release-summary.md}"
 for variant in baseline candidate; do
@@ -37,7 +38,7 @@ b=json.loads(Path('/tmp/sirati-pdf-baseline/results.json').read_text())
 c=json.loads(Path('/tmp/sirati-pdf-candidate/results.json').read_text())
 assert len(b)==len(c)==36
 assert {r['id'] for r in b} == {r['id'] for r in c}
-result={'comparison':'approved Staging vs main-derived PDF candidate',
+result={'comparison':'workflow-selected baseline vs exact candidate',
   'baseline_bytes':sum(r['sizeBytes'] for r in b), 'candidate_bytes':sum(r['sizeBytes'] for r in c),
   'baseline_median_ms':statistics.median(r['elapsedMs'] for r in b),
   'candidate_median_ms':statistics.median(r['elapsedMs'] for r in c)}

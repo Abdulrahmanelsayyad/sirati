@@ -1,4 +1,4 @@
-"""Exercise the real PDF guard in a disposable checkout, with synthetic artifacts."""
+"""Mutation tests for current PDF safety and opt-in scope, without remote data."""
 import json
 from pathlib import Path
 import shutil
@@ -8,17 +8,22 @@ import tempfile
 import unittest
 
 REPO = Path(__file__).resolve().parents[1]
-PIN = 'd909eba3ae04d5bd246ef8e06a7938cd9bf36d75'
-
 
 class GuardRegression(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.repo = Path(self.temp.name) / 'repo'
-        subprocess.run(['git', 'clone', '--quiet', '--shared', str(REPO), str(self.repo)], check=True)
-        subprocess.run(['git', 'checkout', '--quiet', PIN], cwd=self.repo, check=True)
-        shutil.copyfile(REPO / 'qa/pdf_release_guard.py', self.repo / 'qa/pdf_release_guard.py')
+        self.repo.mkdir()
+        self.git('init', '-q')
+        self.git('config', 'user.email', 'synthetic@example.invalid')
+        self.git('config', 'user.name', 'Synthetic QA')
+        for name in ('qa/pdf_release_guard.py', '.github/workflows/pages.yml'):
+            self.write(name, (REPO / name).read_text(), repo=True)
+        self.commit()
+        self.base = self.git('rev-parse', 'HEAD')
+        self.write('qa/pdf_probe.py', '# synthetic PDF test', repo=True)
+        self.commit()
         self.root = Path(self.temp.name) / 'app'
         self.write('package.json', json.dumps({'dependencies': {}}))
         self.write('lib/siratiPdfExport.ts', 'const pageWords = wordsByPage(words, pageCuts);\nif (embedded !== words.length) throw Error();')
@@ -26,56 +31,72 @@ class GuardRegression(unittest.TestCase):
         for font in ('arabic', 'latin'):
             self.write('out/fonts/pdf-naskh-' + font + '.woff', 'x' * 1001)
 
+    def git(self, *args):
+        return subprocess.check_output(['git', *args], cwd=self.repo, text=True).strip()
+
+    def commit(self):
+        self.git('add', '.')
+        self.git('commit', '-qm', 'synthetic fixture')
+
     def write(self, path, content, repo=False):
         target = (self.repo if repo else self.root) / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content)
 
-    def check(self, succeeds, message=''):
-        result = subprocess.run([sys.executable, str(self.repo / 'qa/pdf_release_guard.py'), str(self.root), '--production'], capture_output=True, text=True)
+    def check(self, succeeds, message='', pdf_only=False, baseline=None):
+        cmd = [sys.executable, str(self.repo / 'qa/pdf_release_guard.py'), str(self.root),
+               '--production', '--baseline', baseline or self.base]
+        if pdf_only:
+            cmd.append('--pdf-only')
+        result = subprocess.run(cmd, capture_output=True, text=True)
         self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
         self.assertIn(message, result.stdout + result.stderr)
 
-    def test_pinned_session_candidate_passes(self):
-        self.check(True, 'V21 runtime and account tests match')
+    def test_general_product_change_passes(self):
+        self.write('components/JobTitleInput.tsx', 'UI change', repo=True)
+        self.commit()
+        self.check(True, 'general PDF regression accepts product changes')
 
-    def modern(self):
-        subprocess.run(['git', 'checkout', '--quiet', '--force',
-            'd6018cd1f7179807dbef7e26af6749e4a5fc968e'], cwd=self.repo, check=True)
-        shutil.copyfile(REPO / 'qa/pdf_release_guard.py', self.repo / 'qa/pdf_release_guard.py')
+    def test_pdf_only_change_passes(self):
+        self.check(True, 'explicit PDF-only scope', pdf_only=True)
 
-    def test_approved_modern_candidate_passes(self):
-        self.modern()
-        self.check(True, 'Modern runtime matches owner-approved')
+    def test_pdf_only_rejects_product_change(self):
+        self.write('components/JobTitleInput.tsx', 'UI change', repo=True)
+        self.commit()
+        self.check(False, 'Outside PDF-only scope', pdf_only=True)
 
-    def test_modern_runtime_edit_rejected(self):
-        self.modern()
-        self.write('.github/scripts/modern_reference_layout.py', '# unexpected edit', repo=True)
-        self.check(False, 'Unreviewed Modern source change')
+    def test_pdf_only_rejects_removed_non_pdf_file(self):
+        self.git('rm', '.github/workflows/pages.yml')
+        self.commit()
+        self.check(False, 'Outside PDF-only scope', pdf_only=True)
 
-    def test_modern_deploy_gate_edit_rejected(self):
-        self.modern()
-        path = self.repo / '.github/workflows/pages.yml'
-        path.write_text(path.read_text().replace('default: false', 'default: true'))
-        self.check(False, 'Unreviewed Modern source change')
+    def test_branch_name_not_immutable_baseline(self):
+        self.check(False, 'exact commit SHA', baseline='main')
 
-    def test_modern_qa_route_rejected(self):
-        self.modern()
-        self.write('app/qa-pdf-probe/page.tsx', 'synthetic')
-        self.check(False, 'Synthetic route in production source')
+    def test_unknown_baseline_fails(self):
+        self.check(False, baseline='f' * 40)
 
-    def test_historical_pdf_release_still_passes(self):
-        subprocess.run(['git', 'checkout', '--quiet', '25b29f883edfd09797bbc974c0acf2224844479e'], cwd=self.repo, check=True)
-        self.check(True, 'PDF dependency and exact text coverage guards')
+    def test_same_commit_fails(self):
+        self.check(False, 'must differ', baseline=self.git('rev-parse', 'HEAD'))
 
-    def test_runtime_edit_rejected(self):
-        self.write('.github/scripts/session_boundary_v21.py', '# unexpected runtime edit', repo=True)
-        self.check(False, 'Unreviewed V21 source change')
+    def test_pdf_only_nonancestor_fails(self):
+        candidate = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-qb', 'other', self.base)
+        self.write('qa/pdf_other.py', '# other branch', repo=True)
+        self.commit()
+        other = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-q', candidate)
+        self.check(False, 'must be an ancestor', pdf_only=True, baseline=other)
 
     def test_deploy_gate_edit_rejected(self):
         path = self.repo / '.github/workflows/pages.yml'
-        path.write_text(path.read_text().replace('default: false', 'default: true'))
-        self.check(False, 'Unreviewed V21 source change')
+        path.write_text(path.read_text().replace("github.event_name == 'push'", "github.event_name == 'pull_request'"))
+        self.check(False, 'main push only')
+
+    def test_deploy_build_dependency_required(self):
+        path = self.repo / '.github/workflows/pages.yml'
+        path.write_text(path.read_text().replace('    needs: build\n', ''))
+        self.check(False, 'depend on build')
 
     def test_pdf_coverage_guard_required(self):
         self.write('lib/siratiPdfExport.ts', 'const pageWords = wordsByPage(words, pageCuts);')
@@ -102,6 +123,11 @@ class GuardRegression(unittest.TestCase):
         self.write('out/builder/index.html', '<script src="/_next/test.js"></script>')
         self.check(False, 'Wrong base path')
 
+    def test_general_still_checks_artifacts(self):
+        self.write('components/NewFeature.tsx', 'UI change', repo=True)
+        self.commit()
+        self.write('out/backend.js', 'ykfxcxhozqqsvhtdyxho.supabase.co')
+        self.check(False, 'Staging Supabase shipped')
 
 if __name__ == '__main__':
     unittest.main()

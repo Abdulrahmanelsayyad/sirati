@@ -1,12 +1,29 @@
-name: PDF-only release candidate QA (no deploy)
+name: PDF regression QA (no deploy)
 on:
   pull_request:
-    branches: [main, release/pdf-only-v14-20261011, fix/pdf-boundary-v15-20261011, fix/compact-ats-arabic-experience-v16-20261011]
-    paths: ['.github/scripts/pdf_text_layer_v19.py', '.github/scripts/compact_ats_template.py', '.github/scripts/prepare_pages.py', 'qa/pdf_*', '.github/workflows/pdf-release-qa.yml', '.github/workflows/pages.yml']
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: General regression or intentionally scoped PDF-only release
+        type: choice
+        options: [general, pdf-only]
+        default: general
+        required: true
+      baseline_sha:
+        description: Exact earlier commit SHA to compare with the selected ref
+        type: string
+        required: true
 permissions:
   contents: read
+concurrency:
+  group: pdf-qa-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  isolated-pdf:
+  pdf-regression:
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'pdf-only' && 'PDF-only release QA' || 'General PDF regression' }}
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
@@ -16,13 +33,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 78ab9519599bf3436fce4418b3fe7bdfdd8e56b7
-          path: baseline
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           path: candidate
+      - name: Resolve comparison and validate release scope
+        id: comparison
+        working-directory: candidate
+        env:
+          BASELINE_SHA: ${{ inputs.baseline_sha || github.event.pull_request.base.sha || github.event.before }}
+          PDF_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'pdf-only' }}
+        run: |
+          set -euo pipefail
+          scope=()
+          if [[ "$PDF_ONLY" == true ]]; then scope+=(--pdf-only); fi
+          python3 qa/pdf_release_guard.py site-src/sirati-cv-source --baseline "$BASELINE_SHA" --scope-only "${scope[@]}"
+          echo "baseline=$BASELINE_SHA" >> "$GITHUB_OUTPUT"
+          {
+            echo "### PDF comparison"
+            echo "Baseline: $BASELINE_SHA"
+            echo "Candidate: $(git rev-parse HEAD)"
+            echo "PDF-only scope: $PDF_ONLY"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.comparison.outputs.baseline }}
+          path: baseline
+      - name: Verify guard mutations
+        working-directory: candidate
+        run: python3 qa/pdf_guard_regression.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -31,12 +69,12 @@ jobs:
         run: |
           bash build.sh
           node qa/pdf_boundary_check.mjs
-          python3 qa/pdf_release_guard.py site-src/sirati-cv-source --production
+          python3 qa/pdf_release_guard.py site-src/sirati-cv-source --baseline "${{ steps.comparison.outputs.baseline }}" --production
           python3 qa/account_storage_check.py site-src/sirati-cv-source
           python3 qa/multi_cv_duplicate_check.py site-src/sirati-cv-source
           python3 qa/pdf_order_policy_static_check.py
           mv site-src production-src
-      - name: Build approved Staging and exact candidate with identical synthetic fixtures
+      - name: Build current baseline and candidate with identical synthetic fixtures
         env:
           SIRATI_PDF_QA_FIXTURE: '1'
         run: |
@@ -45,13 +83,7 @@ jobs:
             (cd "$variant"; bash build.sh)
             python3 candidate/qa/pdf_sections_fixture.py "$variant/site-src/sirati-cv-source"
             python3 candidate/qa/pdf_word_boundary_fixture.py "$variant/site-src/sirati-cv-source"
-            # The historical Staging baseline intentionally cannot export
-            # joined Arabic-Indic dates; exercise this case only in candidate.
-            if [[ "$variant" == candidate ]]; then
-              SIRATI_PDF_DATES=1 python3 candidate/qa/pdf_metadata_fixture.py "$variant/site-src/sirati-cv-source"
-            else
-              python3 candidate/qa/pdf_metadata_fixture.py "$variant/site-src/sirati-cv-source"
-            fi
+            SIRATI_PDF_DATES=1 python3 candidate/qa/pdf_metadata_fixture.py "$variant/site-src/sirati-cv-source"
             (cd "$variant/site-src/sirati-cv-source"; npm run build)
           done
       - name: Install independent PDF readers and local browser
@@ -96,7 +128,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sirati-pdf-release-v14
+          name: sirati-pdf-regression-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             candidate/pdf-perf-visual/
             /tmp/sirati-pdf-*/
