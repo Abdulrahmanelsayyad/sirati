@@ -1262,8 +1262,8 @@ assert((await summaryTrigger.innerText()).includes('Get specific suggestions'),
 assert.equal(await qaSummary.inputValue(), '', 'summary should remain editable and empty before selection');
 await summaryTrigger.click();
 await summaryPanel.waitFor();
-assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),3,
-  'V4 should offer three editable role-specific summaries');
+assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),6,
+  'Professional Profile should present six editable, role-specific alternatives');
 assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Accountant'),
   'V4 must use entered Professional Title');
 assert.equal(await summaryPanel.locator('.sirati-summary-role input').count(),0,
@@ -1299,8 +1299,17 @@ assert((await v5Sources.innerText()).includes('Supplied skills') &&
 const v5Target = summaryPanel.getByRole('textbox',{name:'Summary target job'});
 await v5Target.fill('Cost Accounting Manager');
 const v5SummaryTexts = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
-assert.equal(v5SummaryTexts.length, 3, 'V5 must keep three selectable summaries');
-assert.equal(new Set(v5SummaryTexts).size, 3, 'V5 draft styles should be meaningfully different');
+assert.equal(v5SummaryTexts.length, 6, 'Professional Profile must provide six choices per page');
+assert.equal(new Set(v5SummaryTexts).size, 6, 'Six profile drafts should be distinct');
+const moreProfiles = summaryPanel.locator('[data-summary-more="true"]');
+assert(await moreProfiles.isVisible(), 'Profile must expose more suggestions');
+await moreProfiles.click();
+const secondProfiles = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
+assert.equal(secondProfiles.length,6);
+assert(secondProfiles.every(t => !v5SummaryTexts.includes(t)), 'Profile refresh should not repeat the first page');
+await moreProfiles.click();
+assert.deepEqual(await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts(),v5SummaryTexts,
+  'Profile refresh should cycle back to the first set without editing the CV');
 assert(v5SummaryTexts[2].includes('Seeking Cost Accounting Manager opportunities'),
   'V5 should treat targeted role as an aspiration, not proven past employment');
 assert(!v5SummaryTexts[0].includes('Cost Accounting Manager'),
@@ -1542,6 +1551,14 @@ assert.equal(await accountantPicker.locator('select[aria-label="Career specializ
 assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'default professional career level should be appropriate');
 assert.equal(await accountantPicker.locator('.experience-picker__selectors select').count(), 2, 'non-nursing roles must not show nursing-specific selectors');
 const accountingBullet = (await accountantPicker.locator('.experience-picker__options article label span').first().innerText()).trim();
+const dutiesPageOne = await accountantPicker.locator('.experience-picker__options article label span').allTextContents();
+assert.equal(dutiesPageOne.length,4, 'Responsibilities should show four choices on the first page');
+await accountantPicker.locator('[data-responsibilities-more="true"]').click();
+const dutiesPageTwo = await accountantPicker.locator('.experience-picker__options article label span').allTextContents();
+assert(dutiesPageTwo.length >= 1 && dutiesPageTwo.every(t=>!dutiesPageOne.includes(t)),
+  'More responsibilities should show different role-specific duties');
+await accountantPicker.locator('[data-responsibilities-more="true"]').click();
+assert.deepEqual(await accountantPicker.locator('.experience-picker__options article label span').allTextContents(),dutiesPageOne);
 await accountantPicker.locator('.experience-picker__options article').first().getByRole('button', { name: '+ Add' }).click();
 assert((await page.locator('#qa-accountant-description').inputValue()).includes(accountingBullet), 'accounting example was not inserted');
 assert.equal(await page.locator('.experience-picker').count(), 0, 'single + Add should also close Smart CV after insertion');
