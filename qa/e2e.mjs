@@ -265,6 +265,7 @@ for (const width of [360, 390, 1440]) {
       .filter({has:journeyPage.locator('option[value="en"]')}).first();
     assert(await builderLanguage.count(), 'Builder language selector missing');
     await builderLanguage.selectOption(language);
+    await journeyPage.locator('select[id$="-ui-language"]').selectOption(language);
     assert.equal(await journeyPage.locator('.journey-step.complete').count(), 1);
     assert.equal(await journeyPage.locator('.journey-step[aria-current="step"] strong').innerText(),
       language === 'ar' ? 'كتابة السيرة' : 'Build your CV');
@@ -1686,9 +1687,9 @@ for (const width of [390,1440]) {
     ['en','ICU physician','General professional'],
     ['en','ICU software developer','Software development'],
     ['en','ICU nurse','Critical care nursing'],
-    ['ar','طبيب طوارئ','مهني عام'],
-    ['ar','مبرمج أنظمة طوارئ','تطوير البرمجيات'],
-    ['ar','ممرضة عناية مركزة','تمريض الرعاية الحرجة'],
+    ['ar','طبيب طوارئ','General professional'],
+    ['ar','مبرمج أنظمة طوارئ','Software development'],
+    ['ar','ممرضة عناية مركزة','Critical care nursing'],
   ]) {
     await page.locator('.cv-substep').nth(0).click();
     await page.locator('.field').filter({hasText:'Professional title'}).locator('input').first().fill(role);
@@ -1709,7 +1710,7 @@ log('Smart occupation regression: 6 bilingual titles at mobile/desktop widths PA
 
 // Smart Content is mounted inside the real controlled Skills field (section 8).
 await page.locator('.cv-substep').nth(7).click();
-await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 8 of 9'));
+await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 8 / 9'));
 const smartContentTrigger = page.locator('.wizard-section-card .sirati-content-trigger');
 await smartContentTrigger.waitFor();
 assert.equal(await page.locator('.sirati-content-panel').count(), 0, 'Smart Content must remain opt-in');
@@ -1791,12 +1792,14 @@ await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-sma
 const smartLanguageSelect = page.locator('select').filter({has:page.locator('option[value="ar"]')}).filter({has:page.locator('option[value="en"]')}).first();
 assert(await smartLanguageSelect.count(), 'Builder language switch is missing');
 await smartLanguageSelect.selectOption('ar');
+await page.locator('select[id$="-ui-language"]').selectOption('ar');
 await smartContentPanel.locator('.sirati-content-options > label').first().waitFor();
 await verifySmartSkillLayout(320, 'rtl');
 await page.setViewportSize({width:390,height:844});
 await verifySmartSkillLayout(390, 'rtl');
 await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-smart-content-rtl.png'});
 await smartLanguageSelect.selectOption('en');
+await page.locator('select[id$="-ui-language"]').selectOption('en');
 await smartContentPanel.locator('.sirati-content-options > label').first().waitFor();
 await smartContentPanel.getByRole('button', {name:'Close content suggestions'}).click();
 await page.setViewportSize({width:1440,height:1000});
@@ -2279,25 +2282,25 @@ await field('LinkedIn / professional link').fill('https://example.com/profile');
 await field('City & country').fill('Cairo, Egypt');
 await field('LinkedIn / professional link').blur();
 await page.waitForTimeout(700);
-assert((await currentStep()).includes('Section 1 of 9'), 'invalid data must not change the CV step');
+assert((await currentStep()).includes('Section 1 / 9'), 'invalid data must not change the CV step');
 await field('Email').fill('qa@example.com');
 await field('LinkedIn / professional link').fill('https://example.com/profile-updated');
 await field('LinkedIn / professional link').blur();
 await page.waitForTimeout(850);
-assert((await currentStep()).includes('Section 1 of 9'), 'completed form and blur must not auto-advance anymore');
+assert((await currentStep()).includes('Section 1 / 9'), 'completed form and blur must not auto-advance anymore');
 log('Auto-Advance removed: completed personal information does not advance without Continue');
 
 await page.locator('.wizard-footer-nav button').filter({hasText:/Continue|Next step/i}).first().click();
-await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 2 of 9'));
+await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 2 / 9'));
 const profileEditor = page.locator('.wizard-section-card textarea').first();
 await profileEditor.fill('Emergency nursing professional focused on timely assessment, communication and patient safety.');
 await profileEditor.blur();
 await page.waitForTimeout(850);
-assert((await currentStep()).includes('Section 2 of 9'), 'completed summary must remain in the same section without Continue');
+assert((await currentStep()).includes('Section 2 / 9'), 'completed summary must remain in the same section without Continue');
 await page.locator('.wizard-footer-nav button').filter({hasText:/Continue|Next step/i}).first().click();
-await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 3 of 9'));
+await page.waitForFunction(() => document.querySelector('.wizard-progress-meta')?.textContent?.includes('Section 3 / 9'));
 await page.getByRole('button', {name:'← Back'}).click();
-assert((await currentStep()).includes('Section 2 of 9'), 'manual Back must remain available');
+assert((await currentStep()).includes('Section 2 / 9'), 'manual Back must remain available');
 log('Manual Continue and Back still change steps; completion alone does not');
 
 await page.setViewportSize({width:390,height:844});
@@ -2307,18 +2310,18 @@ assert.equal(await page.locator('.sirati-auto-advance-control').count(), 0, 'Aut
 await profileEditor.fill('A completed summary can be reviewed manually on mobile without moving to a different CV section.');
 await profileEditor.blur();
 await page.waitForTimeout(800);
-assert((await currentStep()).includes('Section 2 of 9'), 'mobile completed field must not auto-advance');
+assert((await currentStep()).includes('Section 2 / 9'), 'mobile completed field must not auto-advance');
 const mobileFlowOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 assert(mobileFlowOverflow <= 2, 'mobile removal must not introduce horizontal overflow: ' + mobileFlowOverflow);
 log('Auto-Advance remains absent on 390px mobile and section does not change on blur');
 await page.setViewportSize({width:1440,height:1000});
 
 await page.locator('.cv-substep').last().click();
-assert((await currentStep()).includes('Section 9 of 9'), 'free review remains manually reachable');
+assert((await currentStep()).includes('Section 9 / 9'), 'free review remains manually reachable');
 assert.equal(await page.locator('.manual-payment-card').count(), 0, 'paid request must remain absent');
 assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
   'free PDF must be available on review step');
-assert((await currentStep()).includes('Section 9 of 9'), 'free review must not automatically submit or navigate');
+assert((await currentStep()).includes('Section 9 / 9'), 'free review must not automatically submit or navigate');
 log('Free PDF review remains manually accessible');
     
 // Native in-site rating: no email app, optional comments, no claimed persistence

@@ -67,7 +67,7 @@ def bind(m):
  count[0]+=1
  following=s[m.end():m.end()+200]
  suffix="-${item.id}" if re.search(r'value=\{item\.',following) else ''
- idexpr="{`${fieldId}-field-"+str(count[0])+suffix+"`}" 
+ idexpr="{`${fieldId}-field-"+str(count[0])+suffix+"`}"
  return '<label htmlFor='+idexpr+'>'+m[1]+'</label>'+m[2]+'<'+m[3]+' id='+idexpr
 s=re.sub(pattern,bind,s)
 # Interface preferences are independent of CV content direction.
