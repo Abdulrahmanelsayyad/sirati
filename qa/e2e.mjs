@@ -1334,7 +1334,7 @@ assert(atsDraft.includes('Relevant to the target role:') &&
 assert(!atsDraft.includes('SQL') && !atsDraft.includes('Power BI'),
   'V6 must not promote a job ad requirement into claimed experience');
 const editButtons = summaryPanel.locator('.sirati-summary-v6-edit-btn');
-assert.equal(await editButtons.count(),3,'V6 needs an editable action for each summary');
+assert.equal(await editButtons.count(),6,'V6 must support editing each visible profile alternative');
 await editButtons.first().click();
 const editableDraft = summaryPanel.getByRole('textbox',{name:'Edit summary draft'});
 await editableDraft.fill('Verified manual summary: SAP, Excel and cost analysis.');
