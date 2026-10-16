@@ -1880,13 +1880,7 @@ assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
 let exportDownloadTriggered = false;
 page.once('download', () => { exportDownloadTriggered = true; });
 await page.getByRole('button', {name:'Save PDF'}).click();
-const ratingModal = page.getByRole('dialog', {name:'Rate your experience before downloading'});
-await ratingModal.waitFor({timeout:15000});
-assert.equal(await ratingModal.locator('input').count(),0,'rating must precede auth');
-assert.equal(await ratingModal.getByRole('button',{name:'Save rating and continue'}).isDisabled(),true);
-assert.equal(exportDownloadTriggered,false,'no download before rating/auth');
-await ratingModal.getByRole('button',{name:'1 of 5 stars',exact:true}).click();
-await ratingModal.getByRole('button',{name:'Save rating and continue'}).click();
+assert.equal(await page.getByRole('dialog', {name:'Rate your experience before downloading'}).count(),0,'rating never gates download');
 const guestAuthModal = page.getByRole('dialog', {name:'Create a free account to save your CV as PDF'});
 await guestAuthModal.waitFor({timeout:15000});
 assert.equal(exportDownloadTriggered, false, 'guest click must not download PDF without auth');
@@ -1896,7 +1890,7 @@ const guestSavedDraft = await page.evaluate(() => {
   const value = sessionStorage.getItem('sirati.guest.pdf.pending.v1');
   return value ? JSON.parse(value) : null;
 });
-assert.equal(guestSavedDraft?.rating,1,'one-star review must survive signup transfer');
+assert.equal(guestSavedDraft?.rating,undefined,'signup does not require a rating');
 assert(guestSavedDraft && guestSavedDraft.requested === true && guestSavedDraft.data &&
   guestSavedDraft.template, 'guest export must snapshot the actual CV and chosen template');
 assert.equal(await page.evaluate(() =>

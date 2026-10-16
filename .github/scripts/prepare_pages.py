@@ -352,3 +352,6 @@ if 'import JobTitleInput' not in text:
         text = text.replace(old, new)
     text = text.replace("import SectionWritingAssistant", "import JobTitleInput from '@/components/JobTitleInput';\nimport SectionWritingAssistant", 1)
     builder.write_text(text)
+
+# Owner-requested core editor usability fixes, applied after all legacy patches.
+subprocess.run([sys.executable, str(Path(__file__).with_name('builder_usability.py')), str(root)], check=True)
