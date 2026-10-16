@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 // PDF workflow the repository is nested in candidate/, below GITHUB_WORKSPACE.
 execFileSync(process.execPath, ['../../qa/guest_save_regression.cjs', process.cwd()], {stdio:'inherit'});
 execFileSync(process.execPath, ['../../qa/pdf_rating_gate_regression.cjs', process.cwd()], {stdio:'inherit'});
+execFileSync(process.execPath, ['../../qa/builder_usability_regression.cjs', process.cwd()], {stdio:'inherit'});
 
 execFileSync(process.execPath, ['../../qa/smart_role_regression.cjs', process.cwd()], {stdio:'inherit'});
 
@@ -109,7 +110,7 @@ assert(builderPdfSource.includes('class PdfRenderFailure extends Error') &&
   'auth-gated PDF errors must be sanitized without changing authenticated CV save errors');
 assert.equal((builderPdfSource.match(/await exportWithFeedback\(\);/g)||[]).length,4,
   'all four signed-in/resume PDF paths must use the sanitized export wrapper');
-assert(builderPdfSource.includes('aria-busy={busy} onClick={()=>void begin()}'),
+assert(/aria-busy=\{busy\} onClick=\{(?:begin|\(\)=>void begin\(\))\}/.test(builderPdfSource),
   'PDF primary action must expose its loading state');
 console.log('PASS: Active auth-gated PDF export maps mixed-script/preview/browser errors without leaking details');
 
