@@ -77,6 +77,7 @@ jobs:
           node "$GITHUB_WORKSPACE/qa/smart_context_regression.cjs" "$PWD"
           node "$GITHUB_WORKSPACE/qa/smart_role_regression.cjs" "$PWD"
           node "$GITHUB_WORKSPACE/qa/guest_save_regression.cjs" "$PWD"
+          node "$GITHUB_WORKSPACE/qa/pdf_rating_gate_regression.cjs" "$PWD"
 
       - name: Serve static build
         run: |
