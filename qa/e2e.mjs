@@ -1562,18 +1562,38 @@ assert.deepEqual(await accountantPicker.locator('.experience-picker__options art
 await accountantPicker.locator('.experience-picker__options article').first().getByRole('button', { name: '+ Add' }).click();
 assert((await page.locator('#qa-accountant-description').inputValue()).includes(accountingBullet), 'accounting example was not inserted');
 assert.equal(await page.locator('.experience-picker').count(), 0, 'single + Add should also close Smart CV after insertion');
+// The responsibilities panel now displays non-overlapping pages; check the
+// full role-specific library before judging specialty or experience-level coverage.
+async function allRoleSuggestionText(picker) {
+  const items = picker.locator('.experience-picker__options article label span');
+  const first = (await items.allTextContents()).join('\n');
+  const seen = new Set([first]);
+  const texts = [first];
+  const more = picker.locator('[data-responsibilities-more="true"]');
+  if (!await more.count()) return first;
+  for (let index = 0; index < 20; index++) {
+    await more.click();
+    const current = (await items.allTextContents()).join('\n');
+    if (seen.has(current)) break;
+    seen.add(current);
+    texts.push(current);
+  }
+  return texts.join('\n');
+}
 // Pro V3: senior accountant should auto-select the exact financial track and seniority.
 await page.locator('#qa-accountant-role').fill('Senior Financial Accountant');
 await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), 'financial-accounting', 'financial accounting track not recognized');
 assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'senior', 'seniority not detected');
-assert((await accountantPicker.innerText()).includes('Investigated general-ledger variances'), 'financial role-specific snippets absent');
-assert((await accountantPicker.innerText()).includes('Reviewed complex work outputs'), 'senior-level options absent');
-assert(!(await accountantPicker.innerText()).includes('Coordinated workload assignments'), 'manager-only descriptions must not be suggested for senior role');
+const seniorDuties = await allRoleSuggestionText(accountantPicker);
+assert(seniorDuties.includes('Investigated general-ledger variances'), 'financial role-specific snippets absent');
+assert(seniorDuties.includes('Reviewed complex work outputs'), 'senior-level options absent');
+assert(!seniorDuties.includes('Coordinated workload assignments'), 'manager-only descriptions must not be suggested for senior role');
 await accountantPicker.locator('select[aria-label="Professional experience level"]').selectOption('beginner');
-assert((await accountantPicker.innerText()).includes('Applied documented procedures'), 'manually selected early-career level not reflected in suggestions');
-assert(!(await accountantPicker.innerText()).includes('Reviewed complex work outputs'), 'senior-level suggestions should not leak into early career');
+const beginnerDuties = await allRoleSuggestionText(accountantPicker);
+assert(beginnerDuties.includes('Applied documented procedures'), 'manually selected early-career level not reflected in suggestions');
+assert(!beginnerDuties.includes('Reviewed complex work outputs'), 'senior-level suggestions should not leak into early career');
 await accountantPicker.locator('.experience-picker__heading button').click();
 // Pro V3: frontend title must switch the career domain without reusing accounting.
 await page.locator('#qa-accountant-role').fill('Frontend Developer');
@@ -1581,8 +1601,9 @@ await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), 'frontend', 'frontend track not recognized');
 assert.equal(await accountantPicker.locator('select[aria-label="Professional experience level"]').inputValue(), 'experienced', 'manually selected previous-role level must reset on role change');
-assert((await accountantPicker.innerText()).includes('accessible interface specifications'), 'frontend snippets missing');
-assert(!(await accountantPicker.innerText()).includes('general-ledger variances'), 'accounting-specific snippets leaked to developer');
+const frontendDuties = await allRoleSuggestionText(accountantPicker);
+assert(frontendDuties.includes('accessible interface specifications'), 'frontend snippets missing');
+assert(!frontendDuties.includes('general-ledger variances'), 'accounting-specific snippets leaked to developer');
 await accountantPicker.locator('.experience-picker__heading button').click();
 // A broad software title may choose a precise specialization manually.
 await page.locator('#qa-accountant-role').fill('Software Developer');
@@ -1590,7 +1611,8 @@ await page.locator('#qa-accountant-description').focus();
 await page.locator('#qa-accountant-description-field .sirati-description-assistant-slot .experience-picker-trigger').click();
 assert.equal(await accountantPicker.locator('select[aria-label="Career specialization"]').inputValue(), '', 'broad software role must not auto-claim a track');
 await accountantPicker.locator('select[aria-label="Career specialization"]').selectOption('backend');
-assert((await accountantPicker.innerText()).includes('Designed API contracts'), 'manual backend specialization not reflected');
+const backendDuties = await allRoleSuggestionText(accountantPicker);
+assert(backendDuties.includes('Designed API contracts'), 'manual backend specialization not reflected');
 await accountantPicker.locator('.experience-picker__heading button').click();
 await page.locator('#qa-accountant-role').fill('Unlisted specialty role');
 await page.locator('#qa-accountant-description').focus();
