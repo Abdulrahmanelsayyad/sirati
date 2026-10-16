@@ -545,3 +545,38 @@ css += r'''
 '''
 css_path.write_text(css, encoding="utf-8")
 print("Applied contextual career descriptions and hid standalone Nursing library")
+
+
+# Page existing curated responsibilities instead of overwhelming the editor.
+# This never changes which suggestions can be selected or inserted.
+experience = component.read_text(encoding='utf-8')
+def duty_once(before, after, label):
+    global experience
+    if experience.count(before) != 1:
+        raise RuntimeError("Responsibilities alternatives " + label + ": changed anchor " + str(experience.count(before)))
+    experience = experience.replace(before, after, 1)
+duty_once("  const [selected, setSelected] = useState<string[]>([]);",
+  "  const [selected, setSelected] = useState<string[]>([]);\n  const [responsibilityPage, setResponsibilityPage] = useState(0);", "page state")
+duty_once("  }, [suggestions, category, query]);",
+  """  }, [suggestions, category, query]);
+  // Keep all suggestions in the existing selection state, but show
+  // manageable, non-repeating pages. Filters reset the page.
+  useEffect(() => setResponsibilityPage(0), [filtered]);
+  const responsibilityPages = Math.max(1, Math.ceil(filtered.length / 4));
+  const safeResponsibilityPage = Math.min(responsibilityPage, responsibilityPages - 1);
+  const visibleResponsibilities = filtered.slice(safeResponsibilityPage*4, (safeResponsibilityPage+1)*4);""", "derived pages")
+duty_once("{filtered.map((item) => {", "{visibleResponsibilities.map((item) => {", "visible duties")
+duty_once("""        {!filtered.length && <p className="experience-picker__empty">{copy.empty}</p>}
+      </div>""",
+  """        {!filtered.length && <p className="experience-picker__empty">{copy.empty}</p>}
+      </div>
+      {responsibilityPages > 1 && <div className="experience-picker__more" style={{display:'flex',gap:8,alignItems:'center',justifyContent:'space-between',marginTop:10,flexWrap:'wrap'}}>
+        <small aria-live="polite">{safeResponsibilityPage*4+1}–{Math.min((safeResponsibilityPage+1)*4,filtered.length)} / {filtered.length}</small>
+        <button type="button" data-responsibilities-more="true"
+          style={{minHeight:44,padding:'8px 12px',border:'1px solid #cbd5e1',borderRadius:9,background:'#eff6ff',color:'#1e40af',fontWeight:750,cursor:'pointer'}}
+          onClick={() => setResponsibilityPage(page => (page+1)%responsibilityPages)}>
+          {language === 'ar' ? '↻ مسؤوليات أخرى' : '↻ More responsibilities'}
+        </button>
+      </div>}""", "pager")
+component.write_text(experience,encoding='utf-8')
+print("Added non-repeating, filter-aware responsibility pages.")
