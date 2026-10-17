@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 import fitz
 
-root = Path("/tmp")
+root = Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve()
 baseline = root/"sirati-pdf-metadata-baseline"/"metadata.pdf"
 candidate = root/"sirati-pdf-metadata-candidate"/"metadata.pdf"
 assert baseline.is_file() and candidate.is_file(), "Missing downloaded metadata QA PDFs"

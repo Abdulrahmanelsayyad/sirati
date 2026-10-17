@@ -5,7 +5,9 @@ set -euo pipefail
 node candidate/qa/pdf_boundary_check.mjs candidate/site-src/sirati-cv-source/lib/siratiPdfExport.ts
 # Current baselines already contain the numeral fix; do not require historical failures.
 export QA_PDF_FIXED_BASELINE=1
-export GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/tmp/sirati-pdf-release-summary.md}"
+export SIRATI_QA_ARTIFACT_DIR="${SIRATI_QA_ARTIFACT_DIR:-$PWD/qa-artifacts}"
+mkdir -p "$SIRATI_QA_ARTIFACT_DIR"
+export GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-${SIRATI_QA_ARTIFACT_DIR}/sirati-pdf-release-summary.md}"
 for variant in baseline candidate; do
   src="$PWD/$variant/site-src/sirati-cv-source"
   port=4174
@@ -19,7 +21,7 @@ for variant in baseline candidate; do
     [[ "$suite" == metadata ]] && script=pdf_metadata_download.mjs
     cp "candidate/qa/$script" "$src/qa-release-$suite.mjs"
     (cd "$src"; QA_PDF_BASE_URL="http://127.0.0.1:$port/sirati" \
-      QA_PDF_RESULTS_DIR="/tmp/sirati-pdf$suffix-$variant" node "qa-release-$suite.mjs")
+      QA_PDF_RESULTS_DIR="${SIRATI_QA_ARTIFACT_DIR}/sirati-pdf$suffix-$variant" node "qa-release-$suite.mjs")
   done
 done
 src="$PWD/candidate/site-src/sirati-cv-source"
@@ -30,12 +32,12 @@ for test in metadata quality word_boundaries rtl_numerals_bullets; do
 done
 # Extra mobile width: all 9 families in both languages. No claim of physical Android.
 (cd "$src"; QA_PDF_ALL_WIDTHS=1 QA_PDF_BASE_URL=http://127.0.0.1:4175/sirati \
-  QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-candidate-widths node qa-release-sections.mjs)
+  QA_PDF_RESULTS_DIR="${SIRATI_QA_ARTIFACT_DIR}/sirati-pdf-candidate-widths" node qa-release-sections.mjs)
 python3 - <<'PY'
-import json, statistics
+import json, statistics, os
 from pathlib import Path
-b=json.loads(Path('/tmp/sirati-pdf-baseline/results.json').read_text())
-c=json.loads(Path('/tmp/sirati-pdf-candidate/results.json').read_text())
+b=json.loads(Path(os.environ["SIRATI_QA_ARTIFACT_DIR"]).joinpath("sirati-pdf-baseline/results.json").read_text())
+c=json.loads(Path(os.environ["SIRATI_QA_ARTIFACT_DIR"]).joinpath("sirati-pdf-candidate/results.json").read_text())
 assert len(b)==len(c)==36
 assert {r['id'] for r in b} == {r['id'] for r in c}
 result={'comparison':'workflow-selected baseline vs exact candidate',
@@ -56,7 +58,7 @@ python3 candidate/qa/pdf_template_native_check.py || native_status=$?
 
 # V17: explicit bilingual download/text coverage for all 24 extra variants.
 (cd "$src"; QA_PDF_EXTRA_TEMPLATES=1 QA_PDF_ALL_WIDTHS=1 QA_PDF_BASE_URL=http://127.0.0.1:4175/sirati \
-  QA_PDF_RESULTS_DIR=/tmp/sirati-pdf-extra-candidate node qa-release-sections.mjs)
+  QA_PDF_RESULTS_DIR="${SIRATI_QA_ARTIFACT_DIR}/sirati-pdf-extra-candidate" node qa-release-sections.mjs)
 python3 candidate/qa/pdf_extra_templates_check.py
 
 python3 candidate/qa/pdf_rtl_raster_check.py

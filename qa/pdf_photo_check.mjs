@@ -1,10 +1,12 @@
+import * as qaPath from 'node:path';
+const qaRoot = qaPath.resolve(process.env.SIRATI_QA_ARTIFACT_DIR || 'qa-artifacts');
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 const base = process.env.QA_PDF_BASE_URL || 'http://127.0.0.1:4173';
-const dir = process.env.QA_PDF_RESULTS_DIR || '/tmp/sirati-pdf-photo';
+const dir = process.env.QA_PDF_RESULTS_DIR || qaPath.join(qaRoot, "sirati-pdf-photo");
 fs.mkdirSync(dir,{recursive:true});
 const browser = await chromium.launch({headless:true});
 const page = await browser.newPage();

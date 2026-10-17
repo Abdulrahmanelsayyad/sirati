@@ -2,10 +2,11 @@
 import json
 import subprocess
 import unicodedata
+import os
 from pathlib import Path
 import fitz
 
-root = Path('/tmp/sirati-pdf-extra-candidate')
+root = Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve().joinpath("sirati-pdf-extra-candidate")
 cases = json.loads((root / 'results.json').read_text())
 assert len(cases) == 144
 observations = []

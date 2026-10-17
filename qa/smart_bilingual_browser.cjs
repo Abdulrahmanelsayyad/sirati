@@ -1,3 +1,7 @@
+const qaPath = require('node:path');
+const fs = require('node:fs');
+const qaRoot = qaPath.resolve(process.env.SIRATI_QA_ARTIFACT_DIR || 'qa-artifacts');
+fs.mkdirSync(qaRoot, {recursive:true});
 // Real local Builder UI with synthetic text; no network account or CV writes.
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
@@ -37,10 +41,10 @@ const assert=require('node:assert/strict');
  await language.selectOption('ar');
  await page.locator('.sirati-summary-panel[dir="rtl"]').waitFor();
  const box=await panel.boundingBox();assert(box.x>=-1 && box.x+box.width<=391);
- await page.screenshot({path:'/tmp/sirati-smart-ar-mobile.png',fullPage:true});
+ await page.screenshot({path:qaPath.join(qaRoot, "sirati-smart-ar-mobile.png"),fullPage:true});
  await page.setViewportSize({width:1440,height:1000});await language.selectOption('en');
  await page.locator('.sirati-summary-panel[dir="ltr"]').waitFor();
- await page.screenshot({path:'/tmp/sirati-smart-en-desktop.png',fullPage:true});
+ await page.screenshot({path:qaPath.join(qaRoot, "sirati-smart-en-desktop.png"),fullPage:true});
  assert.deepEqual(errors,[]);
  console.log('PASS Arabic mobile and English desktop Smart CV layouts, no runtime errors');
  } finally {await browser.close()}

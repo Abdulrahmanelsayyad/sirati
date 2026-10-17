@@ -1,9 +1,10 @@
 """Verify actual PDF raster markers, not only computed RTL browser styles."""
+import os
 from pathlib import Path
 import fitz
 import re
 
-root = Path('/tmp/sirati-pdf-template-long-candidate')
+root = Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve().joinpath("sirati-pdf-template-long-candidate")
 for width in (360, 390, 1440):
     with fitz.open(root / f'compact-ats-ar-{width}-target5.pdf') as doc:
         page = doc[0]

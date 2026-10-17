@@ -13,7 +13,7 @@ import unicodedata
 from pathlib import Path
 import fitz
 
-root = Path("/tmp")
+root = Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve()
 samples = {
     "long-en1": [
         "Healthcare professional with a focus on clear communication",

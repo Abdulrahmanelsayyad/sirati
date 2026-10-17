@@ -1,3 +1,5 @@
+import * as qaPath from 'node:path';
+const qaRoot = qaPath.resolve(process.env.SIRATI_QA_ARTIFACT_DIR || 'qa-artifacts');
 // Exact shared CvPreview/exporter: real templates, synthetic content, no account mocks.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -5,7 +7,7 @@ import { chromium } from 'playwright';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 const base=process.env.QA_PDF_BASE_URL;
 assert(['http://127.0.0.1:4175/sirati','http://127.0.0.1:4174/sirati'].includes(base));
-const folder=process.env.QA_PDF_RESULTS_DIR||'/tmp/sirati-pdf-template-long-candidate';
+const folder=process.env.QA_PDF_RESULTS_DIR||qaPath.join(qaRoot, "sirati-pdf-template-long-candidate");
 const smoke=process.env.QA_PDF_LONG_SMOKE==='1';
 fs.mkdirSync(folder,{recursive:true});
 const browser=await chromium.launch({headless:true});

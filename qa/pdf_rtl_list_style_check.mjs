@@ -1,3 +1,5 @@
+import * as qaPath from 'node:path';
+const qaRoot = qaPath.resolve(process.env.SIRATI_QA_ARTIFACT_DIR || 'qa-artifacts');
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { chromium } from 'playwright';
@@ -10,7 +12,7 @@ try {
   await page.goto(base+'/qa-pdf-sections/');
   await page.getByLabel('Template',{exact:true}).selectOption('compact-ats');
   await page.getByLabel('Long fixture lines').fill('4');
-  const images='/tmp/sirati-pdf-rtl-visual-candidate';
+  const images=qaPath.join(qaRoot, "sirati-pdf-rtl-visual-candidate");
   fs.mkdirSync(images,{recursive:true});
   for(const width of [360,390,1440]){
     await page.setViewportSize({width,height:1000});
