@@ -14,7 +14,7 @@ const transpile = s => {
 };
 const summary = source('PersonalSummaryPicker');
 const prefix = summary.slice(0,summary.indexOf('export default function')).replace(/^import .*;$/gm,'');
-const api = vm.runInNewContext(transpile(prefix+'\n({analyzeJobPosting,makeSuggestions,tracksFor,inferredLevel,hasJobTerm})'));
+const api = vm.runInNewContext(transpile(prefix+'\n({analyzeJobPosting,tracksFor,hasJobTerm})'));
 let fit=api.analyzeJobPosting('Basic Life Support, REST API, SQL, JavaScript','BLS, RESTful APIs','');
 assert.deepEqual(Array.from(fit.matched),['REST APIs','BLS']);
 assert.deepEqual(Array.from(fit.notInEvidence),['SQL','JavaScript']);
@@ -48,12 +48,28 @@ const smartPrefix=source('SmartContentSuggestions').split('type Props =')[0].rep
 const packs=vm.runInNewContext(transpile(smartPrefix+'\n(role)=> (PACKS.find(p=>p.match.test(role)) || GENERIC);'));
 assert.equal(new Set(roles.map(role=>packs(role).label.en)).size,10);
 assert(packs('Administrative assistant').skills.some(s=>s.en==='Records management'));
-const drafts=roles.map(role=>api.makeSuggestions(role,'en',api.tracksFor(role)[0],'entry','','','','Invent a 90% result'));
-assert.equal(new Set(drafts.map(x=>x[0])).size,10);
-for(const options of drafts){assert.equal(new Set(options).size,3);assert(!options.join(' ').includes('90%'));}
-assert.equal(api.inferredLevel('Junior accountant'),'entry');assert.equal(api.inferredLevel('Senior accountant'),'senior');
-assert(api.makeSuggestions('Senior accountant','en',api.tracksFor('Accountant')[0],'senior','Excel','Closed monthly accounts','','')[1].includes('Closed monthly accounts'));
-assert.equal(api.makeSuggestions('','en',api.tracksFor('')[0],'entry','','','','').length,0);
+// The new editor intentionally does not guess a specialty or a seniority from a title.
+// Exercise the actual shared factual draft generator rather than a removed legacy helper.
+const reviewSource=fs.readFileSync(path.join(root,'lib/careerReviewContent.ts'),'utf8');
+const reviewModule={exports:{}};
+vm.runInNewContext(transpile(reviewSource),{module:reviewModule,exports:reviewModule.exports,require(name){throw Error('Unexpected career content import: '+name)}});
+const profileDrafts=reviewModule.exports.profileDrafts;
+const neutralDrafts=roles.map(role=>profileDrafts(role,'en','','unspecified','','',''));
+assert.equal(new Set(neutralDrafts.map(options=>options[0])).size,10,
+  'Distinct job titles keep distinct neutral draft identities');
+for(const options of neutralDrafts){
+  assert.equal(options.length,1,'No artificial paraphrases when only title is supplied');
+  assert(!options.join(' ').includes('90%'));
+  assert(!/Mid level|Emergency care|entry-level/.test(options.join(' ')),
+    'Never infer seniority or specialty without explicit selection');
+}
+const detailed=profileDrafts('Senior accountant','en','Cost accounting','senior',
+  'Excel','Closed monthly accounts','Finance lead');
+assert.equal(detailed.length,4,'Distinct evidence, target, skills, and identity strategies');
+assert(detailed[1].includes('Closed monthly accounts'));
+assert(detailed[2].includes('Seeking a role as Finance lead'));
+assert.equal(new Set(detailed).size,4);
+assert.equal(profileDrafts('','en','','unspecified','','','').length,0);
 let slots=[],index=0,effects=[],tree;
 const hooks={useState(initial){const i=index++;if(!(i in slots))slots[i]=initial;return [slots[i],v=>slots[i]=typeof v==='function'?v(slots[i]):v]},useMemo(fn){return fn()},useEffect(fn,deps){const i=index++;if(!slots[i]||deps.some((v,j)=>v!==slots[i][j])){slots[i]=deps;effects.push(fn)}}};
 const moduleScope={exports:{}};
@@ -77,7 +93,7 @@ open();change('Edit achievement','Draft for nurse');confirm();change('Achievemen
 change('Edit achievement','Do not redirect deleted target');confirm();data={...data,experience:data.experience.filter(x=>x.id!=='accountant')};render();assert(nodes().find(n=>text(n)==='Add edited achievement').props.disabled);
 click('Skills');const options=nodes().filter(n=>n.type==='input'&&n.props.type==='checkbox'&&!n.props.disabled);options[0].props.onChange();render();confirm();const before=data.skills;click('Add selected skills');assert(data.skills.startsWith(before));
 const roundtrip=JSON.parse(JSON.stringify(data));assert.equal(JSON.stringify(roundtrip),JSON.stringify(data)); // serialization only, not cloud persistence
-console.log('PASS: 10 profession summaries; aliases/boundaries; no job-ad fabrication; correct stable-ID insertion, reorder/delete safety, duplicate guard, context reset, exact existing text preservation and serialization.');
+console.log('PASS: 10 profession contexts; factual non-repeating draft strategies; aliases/boundaries; no job-ad fabrication; correct stable-ID insertion, reorder/delete safety, duplicate guard, context reset, exact existing text preservation and serialization.');
 // Execute actual undo handler: exact restoration, subsequent-edit and detached-field guards.
 const undoSource=summary.slice(summary.indexOf('  const undo = () => {'),summary.indexOf('  return createPortal(!open'));
 assert(undoSource.includes('const undo'), 'Undo handler is generated');
