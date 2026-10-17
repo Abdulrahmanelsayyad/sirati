@@ -1,7 +1,9 @@
 """Adversarial boundary and failure-contract regressions; no real credentials."""
 import base64
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -55,8 +57,36 @@ class VerificationTests(unittest.TestCase):
             (root / 'public/asset.bin').write_bytes(b'\xff' + jwt('service_role').encode())
             self.assertEqual(scan(root)['findings'][0]['rule'], 'privileged-jwt')
             (root / 'public/asset.bin').unlink()
-            (root / 'public/link').symlink_to(root / 'app/safe.ts')
+            outside = root / 'outside'
+            outside.mkdir()
+            (outside / 'private.ts').write_text(jwt('service_role'))
+            link = root / 'public/link'
+            if os.name == 'nt':
+                subprocess.run([str(Path(os.environ['SYSTEMROOT']) / 'System32/cmd.exe'),
+                    '/c', 'mklink', '/J', str(link), str(outside)],
+                    capture_output=True, check=True)
+            else:
+                link.symlink_to(outside, target_is_directory=True)
             self.assertEqual(scan(root)['status'], 'FAIL')
+            self.assertEqual(scan(root)['findings'], [])  # Never read linked targets.
+            self.assertEqual(scan(root)['files'], 4)
+            (root / 'package.json').write_text('{}')
+            before = fingerprint(root)
+            (outside / 'private.ts').write_text('changed external synthetic content')
+            self.assertEqual(fingerprint(root), before)
+            file_link = root / 'public/file-link.ts'
+            if os.name == 'nt':
+                # File symlinks need privileges; exercise their classification without
+                # replacing the real, unprivileged reparse-point test above.
+                from unittest.mock import patch
+                file_link.write_text(jwt('service_role'))
+                original = Path.is_symlink
+                with patch.object(Path, 'is_symlink', lambda p: p == file_link or original(p)):
+                    self.assertEqual(scan(root)['status'], 'FAIL')
+                    self.assertEqual(scan(root)['findings'], [])
+            else:
+                file_link.symlink_to(root / 'app/safe.ts')
+                self.assertEqual(scan(root)['status'], 'FAIL')
 
     def test_exit_failure_blocked_timeout_and_no_output_leak(self):
         for name, argv, expected in [
