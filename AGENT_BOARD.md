@@ -1,5 +1,7 @@
 # Sirati Agent Board
 
+- **Live review fixes — 2026-10-17** — Owner: Codex; branch `fix/review-content-and-editor`, base `98fedf5`. Scope: optional rating before PDF auth (skip supported), catalog count/English menu, neutral evidence-based summaries, LinkedIn/interview drafting, tab-scoped section restore, compatible experience date controls. Local reconstruction + production build/typecheck PASS; focused rating/guest-save/new-CV/role/content/restore regressions PASS. Existing review retained; feedback failure does not block PDF; session changes block export. No database/auth configuration, PDF renderer, payment or deployment changes. Full browser CI and real-account/device acceptance remain separate; Draft PR only.
+
 ## Priority
 Keep Sirati reliable, secure, polished, easy to use, and focused on the core customer journey:
 Login -> Template -> CV Builder -> Save -> Preview -> PDF Order.

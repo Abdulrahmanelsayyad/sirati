@@ -153,7 +153,7 @@ function setup({quota=false}={}) {
   const resetEnd=builder.indexOf('\n  const isLastSection',resetStart);
   Object.assign(ctx,{STORAGE_KEY:'sirati.cv.v2',LEGACY_STORAGE_KEY:'sirati.cv.v1',
     localStorage:{removeItem(){}},cloneEmptyCv:()=>({personal:{fullName:''}}),
-    setDocumentId(){},setVersions(){},setHistoryOpen(){},withBasePath:x=>x});
+    rememberSection(){},setDocumentId(){},setVersions(){},setHistoryOpen(){},withBasePath:x=>x});
   ctx.window.history={replaceState(){}};
   vm.runInContext(compile(builder.slice(resetStart,resetEnd))+';resetCv();',ctx);
   assert(!values.has(key),'New CV discards stale draft/transfer intent');

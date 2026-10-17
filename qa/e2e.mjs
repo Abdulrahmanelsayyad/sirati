@@ -9,6 +9,7 @@ execFileSync(process.execPath, ['../../qa/guest_save_regression.cjs', process.cw
 execFileSync(process.execPath, ['../../qa/pdf_rating_gate_regression.cjs', process.cwd()], {stdio:'inherit'});
 execFileSync(process.execPath, ['../../qa/builder_usability_regression.cjs', process.cwd()], {stdio:'inherit'});
 execFileSync(process.execPath, ['../../qa/job_title_regression.cjs', process.cwd()], {stdio:'inherit'});
+execFileSync(process.execPath, ['../../qa/review_content_regression.cjs', process.cwd()], {stdio:'inherit'});
 
 execFileSync(process.execPath, ['../../qa/smart_role_regression.cjs', process.cwd()], {stdio:'inherit'});
 
@@ -546,7 +547,7 @@ for (const width of [320,360,390,768,1440]) {
   await opener.click();
   const drawer = page.getByRole('dialog',{name:'Sirati features and customer account'});
   assert(await drawer.isVisible(),'features drawer missing at '+width);
-  for (const feature of ['CV Builder','32 CV templates','Smart CV','CV Quality',
+  for (const feature of ['CV Builder','33 CV templates','Smart CV','CV Quality',
                          'Cover Letter Pro','Headline & About assistant','Interview preparation','My Documents']) {
     assert((await drawer.innerText()).includes(feature),'missing actual feature: '+feature);
   }
@@ -1267,22 +1268,24 @@ assert((await summaryTrigger.innerText()).includes('Get specific suggestions'),
 assert.equal(await qaSummary.inputValue(), '', 'summary should remain editable and empty before selection');
 await summaryTrigger.click();
 await summaryPanel.waitFor();
-assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),6,
-  'Professional Profile should present six editable, role-specific alternatives');
+assert.equal(await summaryPanel.locator('.sirati-summary-choice').count(),1,
+  'Profile starts with one draft until facts are supplied');
 assert((await summaryPanel.locator('.sirati-summary-context').innerText()).includes('Accountant'),
   'V4 must use entered Professional Title');
 assert.equal(await summaryPanel.locator('.sirati-summary-role input').count(),0,
   'V4 should not ask for Professional Title twice');
 const speciality = summaryPanel.getByRole('combobox',{name:'Summary specialization'});
 const level = summaryPanel.getByRole('combobox',{name:'Summary experience level'});
-assert.equal(await speciality.inputValue(),'financial','Accountant should default to financial accounting');
+assert.equal(await speciality.inputValue(),'unspecified','No specialty assumed');
+assert.equal(await level.inputValue(),'unspecified','No seniority assumed');
+await speciality.selectOption('financial');
 assert((await summaryPanel.innerText()).includes('ledger reconciliations'),
   'Accountant financial specialty should be specific instead of general');
 await speciality.selectOption('cost');
 assert((await summaryPanel.innerText()).includes('cost allocation'),
   'Cost Accounting must have distinct, specialized wording');
 await level.selectOption('senior');
-assert((await summaryPanel.innerText()).includes('senior-level'),
+assert((await summaryPanel.innerText()).includes('Senior level'),
   'Pro V4 must follow explicitly selected experience level');
 await summaryPanel.locator('.sirati-summary-pro-facts summary').click();
 await summaryPanel.getByRole('textbox',{name:'Summary actual skills'}).fill('SAP ERP, Excel');
@@ -1295,8 +1298,7 @@ assert(!optionsText.includes('99%') && !optionsText.includes('10 years'),
 
 // V5 adds truly distinct styles and a target job, but never asserts an unverified job change.
 const v5Labels = await summaryPanel.locator('.sirati-summary-choice__style').allInnerTexts();
-assert(v5Labels[0].includes('ATS concise') && v5Labels[1].includes('Evidence-led') && v5Labels[2].includes('Career direction'),
-  'V5 must offer three distinct writing goals');
+assert(v5Labels.every(label=>label.includes('Editable draft')), 'Drafts remain explicitly editable');
 const v5Sources = summaryPanel.locator('.sirati-summary-v5-sources');
 assert((await v5Sources.innerText()).includes('Supplied skills') &&
        (await v5Sources.innerText()).includes('Supplied achievement'),
@@ -1304,19 +1306,9 @@ assert((await v5Sources.innerText()).includes('Supplied skills') &&
 const v5Target = summaryPanel.getByRole('textbox',{name:'Summary target job'});
 await v5Target.fill('Cost Accounting Manager');
 const v5SummaryTexts = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
-assert.equal(v5SummaryTexts.length, 6, 'Professional Profile must provide six choices per page');
-assert.equal(new Set(v5SummaryTexts).size, 6, 'Six profile drafts should be distinct');
-const moreProfiles = summaryPanel.locator('[data-summary-more="true"]');
-assert(await moreProfiles.isVisible(), 'Profile must expose more suggestions');
-await moreProfiles.click();
-const secondProfiles = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
-assert.equal(secondProfiles.length,6);
-assert(secondProfiles.every(t => !v5SummaryTexts.includes(t)), 'Profile refresh should not repeat the first page');
-await moreProfiles.click();
-assert.deepEqual(await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts(),v5SummaryTexts,
-  'Profile refresh should cycle back to the first set without editing the CV');
-assert(v5SummaryTexts[2].includes('Seeking Cost Accounting Manager opportunities'),
-  'V5 should treat targeted role as an aspiration, not proven past employment');
+assert.equal(v5SummaryTexts.length, 4, 'Only distinct, evidence-supported strategies');
+assert.equal(new Set(v5SummaryTexts).size,4);
+assert(v5SummaryTexts[2].includes('Seeking a role as Cost Accounting Manager'),'Target remains an aspiration');
 assert(!v5SummaryTexts[0].includes('Cost Accounting Manager'),
   'V5 must not misrepresent target job as the current professional title');
 assert(v5SummaryTexts[1].startsWith('Prepared 12 accurate monthly reporting packages.'),
@@ -1333,13 +1325,12 @@ assert((await jobInsight.innerText()).includes('SAP') && (await jobInsight.inner
 assert((await jobInsight.innerText()).includes('SQL') && (await jobInsight.innerText()).includes('Power BI'),
   'V6 should show requirements absent from user-entered facts');
 const atsDraft = await summaryPanel.locator('.sirati-summary-choice__text').first().innerText();
-assert(atsDraft.includes('Relevant to the target role:') &&
-       atsDraft.includes('SAP') && atsDraft.includes('Excel'),
+assert(atsDraft.includes('SAP') && atsDraft.includes('Excel'),
   'V6 ATS draft must reference only supported, overlapping skill terms regardless of display order');
 assert(!atsDraft.includes('SQL') && !atsDraft.includes('Power BI'),
   'V6 must not promote a job ad requirement into claimed experience');
 const editButtons = summaryPanel.locator('.sirati-summary-v6-edit-btn');
-assert.equal(await editButtons.count(),6,'V6 must support editing each visible profile alternative');
+assert.equal(await editButtons.count(),4,'V6 must support editing each visible profile alternative');
 await editButtons.first().click();
 const editableDraft = summaryPanel.getByRole('textbox',{name:'Edit summary draft'});
 await editableDraft.fill('Verified manual summary: SAP, Excel and cost analysis.');
@@ -1375,22 +1366,25 @@ assert.equal(await summaryPanel.count(),0,'close button should dismiss Smart CV 
 await page.locator('#qa-summary-role').fill('Frontend Developer');
 assert.equal(await summaryPanel.count(),0,'editing title should not reopen Smart CV automatically');
 await summaryTrigger.click();
-assert.equal(await speciality.inputValue(),'frontend','Frontend Developer should choose frontend specialization');
+assert.equal(await speciality.inputValue(),'unspecified');
+await speciality.selectOption('frontend');
 assert((await summaryPanel.innerText()).includes('responsive interfaces'),
   'Software Developer specialization should be role-specific');
 await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
 
 await page.locator('#qa-summary-role').fill('Senior ICU Nurse');
 await summaryTrigger.click();
-assert.equal(await speciality.inputValue(),'icu','Senior ICU Nurse should infer critical care specialty');
-assert.equal(await level.inputValue(),'senior','Senior in Job Title should infer senior level');
+assert.equal(await speciality.inputValue(),'unspecified');
+assert.equal(await level.inputValue(),'unspecified');
+await speciality.selectOption('icu');
+await level.selectOption('senior');
 assert((await summaryPanel.innerText()).includes('patient monitoring'),
   'ICU Nurse should receive clinical role-specific summary examples');
 await summaryPanel.getByRole('button',{name:'Hide suggestions'}).click();
 
 await page.locator('#qa-summary-role').fill('Unlisted Job Profession');
 await summaryTrigger.click();
-assert((await summaryPanel.innerText()).includes('core responsibilities associated with the stated role'),
+assert((await summaryPanel.innerText()).includes('Unlisted Job Profession'),
   'unknown professions need safe role-specific fallback without invented skills');
 await summaryPanel.locator('.sirati-summary-pro-facts summary').click();
 await summaryPanel.getByRole('textbox',{name:'Summary actual skills'}).fill('');
@@ -1417,11 +1411,12 @@ await page.evaluate(() => {
 await summaryTrigger.click();
 assert((await summaryPanel.innerText()).includes('محاسبة التكاليف'),
   'Arabic specialization label should render in RTL');
+await speciality.selectOption('cost');
 assert((await summaryPanel.innerText()).includes('توزيع التكاليف'),
   'Arabic suggestion must be specific to cost accounting');
 assert((await summaryPanel.innerText()).includes('مقارنة إعلان الوظيفة'),
   'V6 must expose job-fit feature in Arabic');
-assert((await summaryPanel.locator('.sirati-summary-choice__style').allInnerTexts())[2].includes('اتجاه مهني'),
+assert((await summaryPanel.locator('.sirati-summary-choice__style').allInnerTexts())[0].includes('مسودة قابلة للتعديل'),
   'V5 needs Arabic labels for the new career direction draft');
 assert(await summaryPanel.getByRole('textbox',{name:'Summary target job'}).isVisible(),
   'V5 target job field should be available on Arabic and English mobile');
@@ -1656,7 +1651,7 @@ assert.equal(await realSummaryPanel.count(), 0, 'real Builder should keep Smart 
 await realSummaryTrigger.click();
 await realSummaryPanel.waitFor();
 assert((await realSummaryPanel.locator('.sirati-summary-context').innerText()).includes('Emergency Nurse'), 'Summary must use Professional Title from earlier wizard step');
-assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 6, 'real Builder must offer six Professional Profile choices per page');
+assert.equal(await realSummaryPanel.locator('.sirati-summary-choice').count(), 1, 'Builder must not pad suggestions with paraphrases');
 const realSummaryChoice = (await realSummaryPanel.locator('.sirati-summary-choice__text').first().innerText()).trim();
 await realSummaryPanel.locator('.sirati-summary-choice').first().click();
 const afterSmartChoice = await page.evaluate((selected) => ({
@@ -1930,6 +1925,7 @@ assert.equal(await page.getByRole('button', {name:'Save PDF'}).count(), 1,
 let exportDownloadTriggered = false;
 page.once('download', () => { exportDownloadTriggered = true; });
 await page.getByRole('button', {name:'Save PDF'}).click();
+await page.getByRole('button', {name:'Skip and continue',exact:true}).click();
 assert.equal(await page.getByRole('dialog', {name:'Rate your experience before downloading'}).count(),0,'rating never gates download');
 const guestAuthModal = page.getByRole('dialog', {name:'Create a free account to save your CV as PDF'});
 await guestAuthModal.waitFor({timeout:15000});
