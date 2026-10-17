@@ -44,9 +44,27 @@ export function interviewQuestions(role:string, specialty:string, level:string, 
   const questions = [pick(['Tell us about your background relevant to ' + role + '.', 'حدثنا عن خبرتك المناسبة لوظيفة ' + role + '.']), ...(bank?.questions || []).map(pick)];
   if (specialty.trim()) {
     const nursing = banks[0].match.test(role);
-    if (nursing && /emergency|triage|طوارئ|فرز/iu.test(specialty)) questions.push(pick(['How would you prioritize simultaneous arrivals and communicate a change in urgency?', 'كيف ترتب أولوية الحالات الواصلة معًا وتبلّغ عن تغير درجة الإلحاح؟']));
-    else if (nursing && /icu|critical|intensive|عناية|حرجة/iu.test(specialty)) questions.push(pick(['How would you verify a monitoring alarm and communicate your findings to the critical care team?', 'كيف تتحقق من إنذار المراقبة وتبلّغ النتائج لفريق الرعاية الحرجة؟']));
-    else questions.push(pick(['Walk through a task in ' + specialty + ': risks, checks and escalation.', 'اشرح مهمة في ' + specialty + ': المخاطر والفحوص والتصعيد.']));
+    if (nursing && /emergency|triage|طوارئ|فرز/iu.test(specialty)) {
+      questions.push(...([
+        ['How would you prioritize simultaneous arrivals and communicate a change in urgency?', 'كيف ترتب أولوية الحالات الواصلة معًا وتبلّغ عن تغير درجة الإلحاح؟'],
+        ['A patient deteriorates in the waiting area. Describe your immediate ABCDE assessment, escalation and documentation.', 'مريض حالته بتتدهور في الانتظار. اشرح تقييم ABCDE الفوري والتصعيد والتوثيق.'],
+        ['During triage, what findings would make you suspect sepsis and trigger the local escalation pathway?', 'أثناء الفرز، ما العلامات التي تثير اشتباه الإنتان وتستدعي تفعيل مسار التصعيد المحلي؟'],
+        ['How would you safely hand over a critically ill patient from the emergency department to ICU using SBAR?', 'كيف تسلّم حالة حرجة بأمان من الطوارئ للعناية المركزة باستخدام SBAR؟']
+      ] as [string,string][]).map(pick));
+    } else if (nursing && /icu|critical|intensive|عناية|حرجة/iu.test(specialty)) {
+      questions.push(...([
+        ['How would you verify a monitoring alarm and communicate your findings to the critical care team?', 'كيف تتحقق من إنذار المراقبة وتبلّغ النتائج لفريق الرعاية الحرجة؟'],
+        ['An ICU patient suddenly desaturates. Describe your bedside safety checks, ABCDE assessment and urgent escalation within nursing scope.', 'مريض بالعناية حصل له انخفاض مفاجئ بالأكسجين. اشرح فحوص الأمان وتقييم ABCDE والتصعيد العاجل ضمن دور التمريض.'],
+        ['What would you monitor during a high-risk infusion, and how would you respond to a suspected medication error under local policy?', 'ما الذي تراقبه أثناء إعطاء محلول دوائي عالي الخطورة، وكيف تتعامل مع الاشتباه في خطأ دوائي حسب السياسة المحلية؟'],
+        ['How would you structure an ICU handover to communicate trends, lines, current support and outstanding safety concerns?', 'كيف تنظم تسليم مريض بالعناية لتوضيح اتجاهات المؤشرات والخطوط والدعم الحالي ومخاوف السلامة؟']
+      ] as [string,string][]).map(pick));
+    } else if (nursing && /pediatric|paediatric|child|أطفال/iu.test(specialty)) {
+      questions.push(...([
+        ['How do you recognize age-specific deterioration in a child and promptly escalate to the pediatric team?', 'كيف تتعرف على تدهور حالة طفل حسب عمره وتُصعّد الأمر سريعًا لفريق الأطفال؟'],
+        ['How would you verify a weight-based pediatric medication dose and prevent a calculation error?', 'كيف تتحقق من جرعة دواء أطفال محسوبة حسب الوزن وتتجنب خطأ الحساب؟'],
+        ['Explain your approach to explaining procedures to a child and family while maintaining safeguarding and consent standards.', 'اشرح كيف تتواصل مع الطفل وأسرته قبل الإجراء مع مراعاة الحماية والموافقة.']
+      ] as [string,string][]).map(pick));
+    } else questions.push(pick(['Walk through a task in ' + specialty + ': risks, checks and escalation.', 'اشرح مهمة في ' + specialty + ': المخاطر والفحوص والتصعيد.']));
   }
   if (level === 'entry') questions.push(pick(['Use a training or placement example: when did you ask for supervision?', 'اذكر مثالًا من التدريب: متى طلبت الإشراف؟']));
   if (level === 'mid') questions.push(pick(['Describe an independent decision, its limits and when you sought help.', 'صف قرارًا اتخذته باستقلالية وحدوده ومتى طلبت المساعدة.']));
