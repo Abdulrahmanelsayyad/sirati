@@ -14,7 +14,7 @@ from pathlib import Path
 import fitz
 from PIL import Image
 
-ROOT=Path("/tmp")
+ROOT=Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve()
 BASE=ROOT/"sirati-pdf-baseline"
 CAND=ROOT/"sirati-pdf-candidate"
 OUT=Path("candidate/pdf-perf-visual")

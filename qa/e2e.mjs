@@ -1,3 +1,5 @@
+import * as qaPath from 'node:path';
+const qaRoot = qaPath.resolve(process.env.SIRATI_QA_ARTIFACT_DIR || 'qa-artifacts');
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -135,7 +137,7 @@ assert.equal(pdfJoinedScriptWarning({experience:[{details:'الـ ICU/ER'}]},tru
 assert.equal(pdfJoinedScriptWarning({profile:'ACLS/BLS, emergency nurse'},false),null);
 assert.equal(pdfJoinedScriptWarning({photoDataUrl:'الـICU/ER'},false),null);
 assert.equal(pdfJoinedScriptWarning({experience:[{details:'ICUالعناية'}]},false)?.includes('ICUالعناية'),true);
-assert(builderPdfSource.includes('if (!saving) {\n      const warning = pdfJoinedScriptWarning(data, arabic);') &&
+assert(builderPdfSource.replace(/\r\n/g, '\n').includes('if (!saving) {\n      const warning = pdfJoinedScriptWarning(data, arabic);') &&
        builderPdfSource.includes('if (e instanceof PdfRenderFailure) throw e'),
   'PDF preflight must block before auth and survive resumed export without affecting Save CV');
 console.log('PASS: joined Arabic/Latin PDF preflight advises exact fix without editing data or opening auth');
@@ -448,15 +450,16 @@ assert(fs.readFileSync('app/globals.css','utf8').includes('.sirati-menu-signout:
 // Execute the actual generated handler against synthetic in-memory accounts.
 // This is a behavioral unit test, NOT an authenticated browser A/B or RLS test.
 const menuHandlerSignature = '  async function handleSignOut() {';
-const menuHandlerStart = menuSource.indexOf(menuHandlerSignature);
-const menuHandlerEnd = menuSource.indexOf('\n  }\n',menuHandlerStart);
+const menuHandlerSource = menuSource.replace(/\r\n/g, '\n');
+const menuHandlerStart = menuHandlerSource.indexOf(menuHandlerSignature);
+const menuHandlerEnd = menuHandlerSource.indexOf('\n  }\n',menuHandlerStart);
 assert(menuHandlerStart >= 0 && menuHandlerEnd > menuHandlerStart,
   'generated drawer sign-out handler cannot be extracted for behavioral regression');
 const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 const syntheticMenuLogout = new AsyncFunction(
   'user','signingOut','createClient','window','setSigningOut',
   'setSignOutError','setUser','close','withBasePath',
-  menuSource.slice(menuHandlerStart+menuHandlerSignature.length,menuHandlerEnd)
+  menuHandlerSource.slice(menuHandlerStart+menuHandlerSignature.length,menuHandlerEnd)
 );
 async function checkMenuSignOut({confirm=true, fail=false, hasDraft=true}={}) {
   const store = new Map([
@@ -964,7 +967,7 @@ const polishedMini = await sidebarCard.locator('.profile-sidebar-portrait-placeh
 });
 assert(Math.abs(polishedMini.width - polishedMini.height) <= 1, 'sidebar miniature portrait must be square for circular crop');
 assert.equal(polishedMini.borderRadius, '50%', 'portrait in mini-CV must be circular');
-fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
+fs.mkdirSync(qaPath.join(qaRoot, "sirati-qa-pdfs"), { recursive: true });
 log('Profile Sidebar template card shows integrated circular photo framing');
 
 
@@ -992,7 +995,9 @@ const previousTemplates = page.getByRole('button', { name: 'Previous templates' 
 assert(await previousTemplates.isDisabled(), 'previous arrow should start disabled');
 assert(await nextTemplates.isEnabled(), 'next arrow should be available');
 await nextTemplates.click();
-await page.waitForFunction(() => document.querySelector('.template-carousel-track').scrollLeft > 30);
+// Scrolling precedes the React button-state update; wait for both observable states.
+await page.waitForFunction(() => document.querySelector('.template-carousel-track').scrollLeft > 30 &&
+  document.querySelector('button[aria-label="Previous templates"]')?.disabled === false);
 assert(await previousTemplates.isEnabled(), 'previous arrow should enable after scrolling');
 log('compact desktop carousel with working horizontal arrow navigation');
 
@@ -1061,9 +1066,9 @@ assert.equal(await cards.count(), 8, 'featured carousel should restore original 
 await page.setViewportSize({ width: 1440, height: 1000 });
 log('Template Library: category/search, empty state, mobile width and featured return');
 
-await sidebarCard.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-card-desktop.png'});
+await sidebarCard.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "profile-sidebar-card-desktop.png")});
 log('captured Profile Sidebar sample card for independent visual review');
-await goldCard.screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-card-desktop.png'});
+await goldCard.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "gold-sidebar-card-desktop.png")});
 log('captured Gold Sidebar complete sample card screenshot');
 
 
@@ -1825,10 +1830,10 @@ const verifySmartSkillLayout = async (width, direction) => {
   log('Smart Content mobile checkbox/text geometry PASS ('+width+'px, '+direction+')');
 };
 await verifySmartSkillLayout(390, 'ltr');
-await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-smart-content.png'});
+await smartContentPanel.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "mobile-builder-smart-content.png")});
 await page.setViewportSize({width:320,height:760});
 await verifySmartSkillLayout(320, 'ltr');
-await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-smart-content-320.png'});
+await smartContentPanel.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "mobile-builder-smart-content-320.png")});
 // Also verify Arabic direction using the existing Builder language switch.
 const smartLanguageSelect = page.locator('select').filter({has:page.locator('option[value="ar"]')}).filter({has:page.locator('option[value="en"]')}).first();
 assert(await smartLanguageSelect.count(), 'Builder language switch is missing');
@@ -1838,7 +1843,7 @@ await smartContentPanel.locator('.sirati-content-options > label').first().waitF
 await verifySmartSkillLayout(320, 'rtl');
 await page.setViewportSize({width:390,height:844});
 await verifySmartSkillLayout(390, 'rtl');
-await smartContentPanel.screenshot({path:'/tmp/sirati-qa-pdfs/mobile-builder-smart-content-rtl.png'});
+await smartContentPanel.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "mobile-builder-smart-content-rtl.png")});
 await smartLanguageSelect.selectOption('en');
 await page.locator('select[id$="-ui-language"]').selectOption('en');
 await smartContentPanel.locator('.sirati-content-options > label').first().waitFor();
@@ -2041,10 +2046,10 @@ assert(await editorFooterNav.isVisible(), 'Continue footer must stay visible aft
 
 // Capture genuine generated Builder screens at narrow phone widths.
 // Images contain synthetic QA data, never live customer content.
-await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-rest.png', animations: 'disabled' });
+await page.screenshot({ path: qaPath.join(qaRoot, "sirati-qa-pdfs", "mobile-builder-390-rest.png"), animations: 'disabled' });
 await firstMobileEditor.focus();
 assert(await editorFooterNav.isVisible(), 'focused mobile form must retain manual Continue and Back');
-await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-390-focused.png', animations: 'disabled' });
+await page.screenshot({ path: qaPath.join(qaRoot, "sirati-qa-pdfs", "mobile-builder-390-focused.png"), animations: 'disabled' });
 await firstMobileEditor.evaluate(el => el.blur());
 await page.setViewportSize({ width: 320, height: 700 });
 assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
@@ -2052,7 +2057,7 @@ assert.equal(await page.locator('.wizard-journey-wrap').isVisible(), false,
 const smallOverflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 assert(smallOverflow <= 2, '320px builder overflow=' + smallOverflow);
 await assertCompactMobileNav(editorFooterNav, 'unfocused 320px');
-await page.screenshot({ path: '/tmp/sirati-qa-pdfs/mobile-builder-320-rest.png', animations: 'disabled' });
+await page.screenshot({ path: qaPath.join(qaRoot, "sirati-qa-pdfs", "mobile-builder-320-rest.png"), animations: 'disabled' });
 await page.setViewportSize({ width: 390, height: 844 });
 log('mobile focus mode: visible manual footer snapshots at 320px, 390px focused/unfocused');
 
@@ -2173,11 +2178,11 @@ for (let i = 0; i < await printSelects.count(); i++) {
 }
 assert(printTemplateSelect);
 
-fs.mkdirSync('/tmp/sirati-qa-pdfs', { recursive: true });
+fs.mkdirSync(qaPath.join(qaRoot, "sirati-qa-pdfs"), { recursive: true });
 for (const value of ['modern', 'classic', 'compact', 'compact-ats', 'healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold-sidebar']) {
   await printTemplateSelect.selectOption(value);
   await page.waitForTimeout(70);
-  const path = '/tmp/sirati-qa-pdfs/' + value + '.pdf';
+  const path = qaPath.join(qaRoot, 'sirati-qa-pdfs', value + '.pdf');
   await page.pdf({ path, format: 'A4', printBackground: true, preferCSSPageSize: true });
   const size = fs.statSync(path).size;
   assert(size > 5000, value + ' PDF too small: ' + size);
@@ -2232,7 +2237,7 @@ assert.equal(imageStyle.borderRadius, '50%', 'headshot should be a circle');
 assert.equal(imageStyle.objectFit, 'cover', 'headshot needs crop-to-fill, not distorted stretch');
 assert(imageStyle.objectPosition.includes('30%'), 'headshot needs portrait-friendly face position');
 assert(imageStyle.centered <= 2 && imageStyle.insideRail, 'portrait frame must align within left sidebar');
-await sidebarPaper.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-uploaded-photo-desktop.png'});
+await sidebarPaper.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "profile-sidebar-uploaded-photo-desktop.png")});
 log('Profile Sidebar portrait is centered, circular and crop-to-fill without distortion');
 
 await page.emulateMedia({media: 'print'});
@@ -2264,7 +2269,7 @@ const mobilePortrait = await sidebarAfterReload.locator('img.profile-sidebar-por
 assert(Math.abs(mobilePortrait.w-mobilePortrait.h) <= 2, 'mobile portrait should stay circular/square');
 assert(mobilePortrait.inRail, 'mobile portrait should remain inside rail');
 assert(mobilePortrait.overflow <= 2, 'mobile portrait causes page overflow: '+mobilePortrait.overflow);
-await sidebarAfterReload.screenshot({path:'/tmp/sirati-qa-pdfs/profile-sidebar-mobile.png'});
+await sidebarAfterReload.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "profile-sidebar-mobile.png")});
 log('Profile Sidebar mobile circular portrait stays inside rail without horizontal overflow');
 
 
@@ -2290,7 +2295,7 @@ const goldPhotoStyle=await goldPaper.locator('img.gold-sidebar-portrait').evalua
 assert(goldPhotoStyle.width>0 && goldPhotoStyle.height>0 && goldPhotoStyle.inside,'photo should fit inside the Gold rail');
 assert.equal(goldPhotoStyle.fit,'cover','portrait should crop rather than stretch');
 assert(goldPhotoStyle.rounded.includes('px'),'Gold photo should use a distinctive portrait frame');
-await goldPaper.screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-uploaded-desktop.png'});
+await goldPaper.screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "gold-sidebar-uploaded-desktop.png")});
 await page.reload({waitUntil:'networkidle'});
 assert.equal(await page.locator('.cv-sheet.template-gold-sidebar img.gold-sidebar-portrait').count(),1,'Gold Sidebar and its photo should survive draft reload');
 log('Gold Sidebar shares existing uploaded photo and remains selected after reload');
@@ -2304,7 +2309,7 @@ const goldMobile = await page.locator('.cv-sheet.template-gold-sidebar').evaluat
 });
 assert(goldMobile.inside,'Gold Sidebar photo must stay within mobile rail');
 assert(goldMobile.overflow<=2,'Gold Sidebar must not overflow narrow screen');
-await page.locator('.cv-sheet.template-gold-sidebar').screenshot({path:'/tmp/sirati-qa-pdfs/gold-sidebar-mobile.png'});
+await page.locator('.cv-sheet.template-gold-sidebar').screenshot({path:qaPath.join(qaRoot, "sirati-qa-pdfs", "gold-sidebar-mobile.png")});
 log('Gold Sidebar narrow mobile render preserves portrait alignment and page width');
 
 // Regression: Auto-Advance has been removed at the customer's request.
@@ -2460,6 +2465,6 @@ log('Local document review: real TXT upload, invalid PDF warning, per-fact conse
 
 await browser.close();
 fs.copyFileSync('../../qa/document_import_browser.cjs', './qa-document-import.cjs');
-execFileSync(process.execPath, ['./qa-document-import.cjs'], {stdio:'inherit'});
+execFileSync(process.execPath, [...process.execArgv, './qa-document-import.cjs'], {stdio:'inherit'});
 console.log('E2E QA COMPLETE');
 

@@ -131,6 +131,6 @@ jobs:
           name: sirati-pdf-regression-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             candidate/pdf-perf-visual/
-            /tmp/sirati-pdf-*/
+            **/qa-artifacts/sirati-pdf-*/
             /tmp/*-http.log
           retention-days: 7

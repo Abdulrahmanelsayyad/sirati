@@ -40,16 +40,37 @@ def findings(text: str) -> list[dict]:
     return result
 
 
+def is_link(path: Path) -> bool:
+    # Windows junctions are reparse points, but are not is_symlink() on Python 3.11.
+    return path.is_symlink() or bool(getattr(path.lstat(), 'st_file_attributes', 0) & 0x400)
+
+
+def source_paths(directory: Path):
+    if not directory.exists() and not directory.is_symlink():
+        return
+    if is_link(directory):
+        yield directory
+        return
+    for current, directories, files in os.walk(directory, followlinks=False):
+        for name in directories[:]:
+            path = Path(current) / name
+            if is_link(path):
+                directories.remove(name)
+                yield path
+        for name in files:
+            yield Path(current) / name
+
+
 def scan(root: Path) -> dict:
     """Supplemental client boundary check, not a general secret scanner or RLS proof."""
     errors, hits, paths = [], [], []
     for name in PUBLIC_DIRS:
         directory = root / name
-        if not directory.is_dir() or directory.is_symlink():
+        if not directory.is_dir() or is_link(directory):
             errors.append({'path': name, 'rule': 'missing-or-symlink-directory'})
             continue
-        for path in sorted(directory.rglob('*')):
-            if path.is_symlink():
+        for path in sorted(source_paths(directory)):
+            if is_link(path):
                 errors.append({'path': str(path.relative_to(root)), 'rule': 'symlink-not-scanned'})
                 continue
             if not path.is_file():
@@ -77,7 +98,12 @@ def run_check(name: str, argv: list[str], cwd: Path, timeout: float = 90) -> dic
                 code = process.wait(timeout=timeout)
                 status = 'PASS' if code == 0 else 'FAIL'
             except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
+                if os.name == 'nt':
+                    subprocess.run([str(Path(env['SYSTEMROOT']) / 'System32/taskkill.exe'),
+                        '/PID', str(process.pid), '/T', '/F'], env=env,
+                        stdout=log, stderr=log, check=True, timeout=10)
+                else:
+                    os.killpg(process.pid, signal.SIGKILL)
                 process.wait()
                 status = 'TIMEOUT'
             if status != 'PASS':
@@ -103,7 +129,7 @@ def checks(root: Path) -> list[tuple[str, list[str]]]:
 
 def fingerprint(root: Path) -> str:
     # Hash relevant source and verifier inputs so dirty work is not represented by SHA alone.
-    inputs = sorted(set(p for n in PUBLIC_DIRS for p in (root / n).rglob('*') if p.is_file() and not p.is_symlink()) |
+    inputs = sorted(set(p for n in PUBLIC_DIRS for p in source_paths(root / n) if not is_link(p) and p.is_file()) |
                     {root / 'package.json', Path(__file__)} |
                     set((REPO / 'qa').glob('*.py')) | set((REPO / 'qa').glob('*.cjs')) |
                     set((REPO / 'qa').glob('*.mjs')) | set((REPO / 'qa').glob('*.sql')) |

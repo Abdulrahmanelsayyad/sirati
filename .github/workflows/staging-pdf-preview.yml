@@ -106,6 +106,6 @@ jobs:
           name: sirati-staging-qa-debug
           path: |
             /tmp/sirati-staging-http.log
-            /tmp/sirati-qa-pdfs/*.png
+            **/qa-artifacts/sirati-qa-pdfs/*.png
           if-no-files-found: ignore
           retention-days: 3

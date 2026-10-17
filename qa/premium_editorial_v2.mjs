@@ -1,3 +1,5 @@
+import * as qaPath from 'node:path';
+const qaRoot = qaPath.resolve(process.env.SIRATI_QA_ARTIFACT_DIR || 'qa-artifacts');
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 
@@ -7,7 +9,7 @@ const { chromium } = await import('playwright');
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
 const origin = 'http://127.0.0.1:4173/sirati/';
-const out = '/tmp/sirati-premium-editorial-v2';
+const out = qaPath.join(qaRoot, "sirati-premium-editorial-v2");
 mkdirSync(out, { recursive: true });
 
 try {

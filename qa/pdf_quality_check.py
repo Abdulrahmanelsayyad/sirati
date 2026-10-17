@@ -10,7 +10,7 @@ import unicodedata
 from pathlib import Path
 from PIL import Image, ImageChops, ImageStat
 
-ROOT = Path("/tmp")
+ROOT = Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve()
 OUTPUT = Path("candidate/pdf-perf-visual")
 OUTPUT.mkdir(parents=True, exist_ok=True)
 variants = {

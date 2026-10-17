@@ -156,7 +156,8 @@ css=root/'app/globals.css';css.write_text(css.read_text()+'''
  .wizard-builder-shell {grid-template-columns:minmax(0, .92fr) minmax(0, 1.08fr);}
  .wizard-panel,.wizard-preview-wrap,.wizard-preview-wrap .preview-stage {min-width:0;max-width:100%;}
  .wizard-preview-wrap .preview-stage {align-items:flex-start;overflow:visible;}
- .wizard-preview-wrap .preview-stage > .cv-sheet {width:794px!important;min-width:794px!important;max-width:794px!important;flex-shrink:0;zoom:var(--cv-preview-scale,1);margin:0;transform:none;}
+ /* Override legacy mobile min-height:auto before scaling the full A4 paper. */
+ .wizard-preview-wrap .preview-stage > .cv-sheet {width:794px!important;min-width:794px!important;max-width:794px!important;min-height:1123px;flex-shrink:0;zoom:var(--cv-preview-scale,1);margin:0;transform:none;}
  .wizard-document-settings {grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
  .save-status {white-space:normal;}
  .sirati-pdf-feedback-optional {display:block;font-size:13px;margin-top:8px;}

@@ -3,10 +3,11 @@ import json
 import re
 import subprocess
 import unicodedata
+import os
 from pathlib import Path
 import fitz
 
-root=Path('/tmp/sirati-pdf-template-long-candidate')
+root=Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve().joinpath("sirati-pdf-template-long-candidate")
 cases=json.loads((root/'results.json').read_text())
 assert len(cases)==162
 results=[]
@@ -43,7 +44,7 @@ for item in cases:
         results.append({'id':item['id'],'reader':reader,'status':'FAIL' if errors else 'PASS',
                         'phrase_count':count,'page_ownership':ownership,'errors':errors})
 # Arabic sentence punctuation must not split/reorder the logical sentence.
-arabic_pdf=Path('/tmp/sirati-pdf-long-candidate/long-ar3.pdf')
+arabic_pdf=Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve().joinpath("sirati-pdf-long-candidate/long-ar3.pdf")
 phrase='الخبرة المهنية في تمريض الطوارئ ومهارات سلامة المرضى ومكافحة العدوى'
 for reader,text in [('poppler-raw',subprocess.check_output(['pdftotext','-raw',str(arabic_pdf),'-'],text=True)),
                     ('pymupdf','\n'.join(p.get_text(sort=True) for p in fitz.open(arabic_pdf)))]:
@@ -52,7 +53,7 @@ for reader,text in [('poppler-raw',subprocess.check_output(['pdftotext','-raw',s
     assert len(re.findall(re.escape(phrase)+r'\s*\.',clean))==95, reader+': Arabic sentence order/punctuation'
 print('PASS: 95 complete logical Arabic sentences with terminal punctuation in both readers')
 # Short 360px data must preserve all sections and equivalent Arabic numeric values.
-for pdf in Path('/tmp/sirati-pdf-candidate-widths').glob('*-360.pdf'):
+for pdf in Path(os.environ.get("SIRATI_QA_ARTIFACT_DIR", "qa-artifacts")).resolve().joinpath("sirati-pdf-candidate-widths").glob('*-360.pdf'):
     with fitz.open(pdf) as doc:
         native='\n'.join(p.get_text(sort=True) for p in doc)
     poppler=subprocess.check_output(['pdftotext','-raw',str(pdf),'-'],text=True)
