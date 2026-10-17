@@ -1912,6 +1912,8 @@ assert(overflow <= 2, 'desktop horizontal overflow=' + overflow);
 log('desktop page-level overflow check');
 
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
+// Start the clean-PDF journey at Personal even though refresh now preserves the prior section.
+await page.locator('.cv-substep').first().click();
 for (let step = 0; step < 8; step++) {
   const next = page.getByRole('button', { name: /Continue/ }).last();
   assert((await next.count()) > 0, 'missing Continue button before clean-PDF review step');
@@ -2164,6 +2166,7 @@ log('mobile role-specific descriptions stay inline and within viewport');
 
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
+await page.locator('.cv-substep').first().click();
 await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().fill('QA Sirati Nurse');
 
 let printTemplateSelect = null;
