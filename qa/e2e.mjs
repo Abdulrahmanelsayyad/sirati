@@ -1307,7 +1307,15 @@ assert((await v5Sources.innerText()).includes('Supplied skills') &&
   'V5 must label whether skills/achievements actually came from user data');
 const v5Target = summaryPanel.getByRole('textbox',{name:'Summary target job'});
 await v5Target.fill('Cost Accounting Manager');
-const v5SummaryTexts = await summaryPanel.locator('.sirati-summary-choice__text').allInnerTexts();
+const initialProfileChoices = await summaryPanel.locator('.sirati-summary-choice__text').allTextContents();
+assert.equal(initialProfileChoices.length, 3);
+await summaryPanel.getByRole('button', {name:'↻ More profile suggestions', exact:true}).click();
+const moreProfileChoices = await summaryPanel.locator('.sirati-summary-choice__text').allTextContents();
+assert(moreProfileChoices.length > 0 && moreProfileChoices.every(text => !initialProfileChoices.includes(text)),
+  'More must show an unseen factual draft, not repeat the first page');
+await summaryPanel.getByRole('button', {name:'↻ More profile suggestions', exact:true}).click();
+assert.deepEqual(await summaryPanel.locator('.sirati-summary-choice__text').allTextContents(), initialProfileChoices);
+const v5SummaryTexts = [...initialProfileChoices, ...moreProfileChoices];
 assert.equal(v5SummaryTexts.length, 4, 'Only distinct, evidence-supported strategies');
 assert.equal(new Set(v5SummaryTexts).size,4);
 assert(v5SummaryTexts[2].includes('Seeking a role as Cost Accounting Manager'),'Target remains an aspiration');
@@ -1332,7 +1340,7 @@ assert(atsDraft.includes('SAP') && atsDraft.includes('Excel'),
 assert(!atsDraft.includes('SQL') && !atsDraft.includes('Power BI'),
   'V6 must not promote a job ad requirement into claimed experience');
 const editButtons = summaryPanel.locator('.sirati-summary-v6-edit-btn');
-assert.equal(await editButtons.count(),4,'V6 must support editing each visible profile alternative');
+assert.equal(await editButtons.count(),3,'V6 must support editing each visible profile alternative');
 await editButtons.first().click();
 const editableDraft = summaryPanel.getByRole('textbox',{name:'Edit summary draft'});
 await editableDraft.fill('Verified manual summary: SAP, Excel and cost analysis.');
@@ -1876,11 +1884,16 @@ const expectedClasses = {
 
 for (const [value, expectedClass] of Object.entries(expectedClasses)) {
   await templateSelect.selectOption(value);
-  await page.waitForTimeout(70);
+  await page.waitForFunction(className => document.querySelector('.cv-sheet')?.classList.contains(className), expectedClass);
   const className = await page.locator('.cv-sheet').getAttribute('class');
   assert(className.includes(expectedClass), value + ' did not render expected class');
-  assert((await page.locator('.cv-sheet').innerText()).includes('QA Sirati Nurse'),
+  // innerText applies the Modern template's uppercase CSS. Compare the actual
+  // heading value, then independently verify the editable and persisted values.
+  assert.equal(await page.locator('.cv-sheet h1').textContent(), 'QA Sirati Nurse',
     value + ' switched template but the saved name disappeared from CV preview');
+  await page.locator('.cv-substep').nth(0).click();
+  assert.equal(await page.getByLabel('Full name', {exact:true}).inputValue(), 'QA Sirati Nurse');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sirati.cv.v2') || '{}').data?.fullName === 'QA Sirati Nurse');
 }
 log('switching all eight templates retains CV data');
 
@@ -1901,7 +1914,7 @@ for (const value of ['healthcare-pro', 'executive-ats', 'profile-sidebar', 'gold
   const sheet = page.locator('.cv-sheet');
   assert((await sheet.getAttribute('class')).includes('template-' + value), value + ' RTL design missing');
   assert.equal(await sheet.getAttribute('dir'), 'rtl', value + ' must be RTL in Arabic');
-  assert((await sheet.innerText()).includes('QA Sirati Nurse'), value + ' lost CV content on Arabic toggle');
+  assert.equal(await sheet.locator('h1').textContent(), 'QA Sirati Nurse', value + ' lost CV content on Arabic toggle');
 }
 assert.equal(await page.locator('details.smart-nursing-library').count(), 0, 'Arabic Builder must not show Nursing-only library');
 await languageSelect.selectOption('en');
@@ -1989,6 +2002,10 @@ log('free PDF review guidance fits 390px mobile');
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(base + '/builder/?template=modern&language=en', { waitUntil: 'networkidle' });
+// Review is intentionally restored after navigation. Check that continuity,
+// then explicitly choose the editable section needed by this keyboard test.
+assert.equal(await page.locator('.wizard-section-card input:visible, .wizard-section-card textarea:visible').count(), 0);
+await page.locator('.cv-substep').first().click();
 
 // The inner 9-section progress stays visible while redundant outer onboarding
 // is suppressed on narrow screens, leaving more space for input fields.
@@ -2464,6 +2481,38 @@ assert((await importCheck.evaluate(() => document.documentElement.scrollWidth - 
   'document-review UI must not overflow a 360px viewport');
 await importCheck.close();
 log('Local document review: real TXT upload, invalid PDF warning, per-fact consent, revoke and mobile layout');
+
+// Fresh isolated draft: dates, section restore and Arabic optional feedback.
+const continuity = await browser.newPage({viewport:{width:390,height:844}});
+await continuity.goto(base + '/builder/', {waitUntil:'networkidle'});
+await continuity.getByLabel('Full name', {exact:true}).fill('Continuity QA');
+await continuity.locator('.cv-substep').nth(2).click();
+const dates = continuity.locator('fieldset').filter({hasText:'Employment dates'}).first();
+await dates.getByLabel('Start date', {exact:true}).fill('2022-04');
+await dates.getByLabel('End date', {exact:true}).fill('2024-06');
+await continuity.reload({waitUntil:'networkidle'});
+assert.equal(await dates.getByLabel('Start date', {exact:true}).inputValue(), '2022-04');
+assert.equal(await dates.getByLabel('End date', {exact:true}).inputValue(), '2024-06');
+await dates.getByLabel('End date', {exact:true}).fill('2021-03');
+assert(await dates.getByRole('alert').isVisible(), 'Invalid chronology must be explained');
+await continuity.reload({waitUntil:'networkidle'});
+assert.equal(await dates.getByLabel('End date', {exact:true}).inputValue(), '2024-06', 'Invalid edit must not overwrite saved dates');
+await dates.getByLabel('Currently working', {exact:true}).check();
+assert(await dates.getByLabel('End date', {exact:true}).isDisabled());
+await continuity.reload({waitUntil:'networkidle'});
+assert(await dates.getByLabel('Currently working', {exact:true}).isChecked());
+assert.equal(await continuity.locator('.cv-sheet h1').textContent(), 'Continuity QA');
+await continuity.locator('select[id$="-ui-language"]').selectOption('ar');
+await continuity.locator('.cv-substep').nth(8).click();
+await continuity.getByRole('button', {name:'حفظ PDF', exact:true}).click();
+const arabicRating = continuity.getByRole('dialog', {name:'قيّم تجربة التحرير (اختياري)'});
+assert(await arabicRating.isVisible());
+assert(await arabicRating.getByRole('button', {name:'تخطي ومتابعة', exact:true}).isEnabled());
+assert(await arabicRating.getByRole('button', {name:'حفظ التقييم والمتابعة', exact:true}).isDisabled());
+await arabicRating.getByRole('button', {name:'العودة للتحرير', exact:true}).click();
+assert.equal(await continuity.getByRole('dialog').count(), 0);
+await continuity.close();
+log('Dates: valid/reversed/current employment persists, section restores, Arabic optional feedback is accessible');
 
 await browser.close();
 fs.copyFileSync('../../qa/document_import_browser.cjs', './qa-document-import.cjs');

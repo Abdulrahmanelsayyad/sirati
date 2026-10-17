@@ -71,6 +71,10 @@ s=s[:a]+'''  const tracks = useMemo(() => [{id:'unspecified',en:'Choose speciali
 s=s.replace("setLevelChoice('auto')","setLevelChoice('unspecified')").replace("setTrackChoice('auto')","setTrackChoice('unspecified')")
 s=s.replace('<option value="entry">','<option value="unspecified">{lang === \'ar\' ? \'اختر مستوى الخبرة (اختياري)\' : \'Choose experience level (optional)\'}</option>\n              <option value="entry">',1)
 s=s.replace("{t.styles[i % t.styles.length]}","{lang === 'ar' ? 'مسودة قابلة للتعديل' : 'Editable draft'}")
+# Factual drafting supplies at most four genuinely different strategies. A
+# six-item page made More unreachable. Keep three choices and expose the rest.
+s=s.replace('profilePage * 6', 'profilePage * 3').replace('(profilePage + 1) * 6', '(profilePage + 1) * 3')
+s=s.replace('(profilePage+1)*6', '(profilePage+1)*3').replace('options.length > 6', 'options.length > 3').replace('Math.ceil(options.length/6)', 'Math.ceil(options.length/3)')
 s=s.replace("'Professional title & selected specialty'", "'Professional title & your explicit selections'")
 a=s.index('function inferredTrack('); b=s.index('// Only match explicit job requirements',a); s=s[:a]+s[b:]
 a=s.index('// Offline, editable alternatives;'); b=s.index('export default function PersonalSummaryPicker()',a); s=s[:a]+s[b:]
@@ -172,12 +176,12 @@ anchor='    {downloaded && !saving &&'
 a=s.index(anchor)
 s=s[:a]+'''    {ratingNotice && <small role="status">{ratingNotice}</small>}
     {ratingOpen && <div className="sirati-pdf-auth-overlay"><section ref={ratingDialog} role="dialog" aria-modal="true" aria-labelledby={dialogId+'-rating'} className="sirati-pdf-auth-dialog">
-      <button type="button" onClick={()=>{setRatingOpen(false);selectedRating.current=0;trigger.current?.focus();}}>Back to editing</button>
-      <h2 id={dialogId+'-rating'}>Rate your editing experience (optional)</h2>
-      <p>Your rating will be submitted after sign-in. You can skip it and continue to PDF. Existing reviews are kept unchanged.</p>
-      <div role="group" aria-label="Rating">{[1,2,3,4,5].map(value=><button key={value} type="button" aria-label={value+' of 5 stars'} aria-pressed={rating===value} style={{minWidth:44,minHeight:44,fontSize:24}} onClick={()=>setRating(value)}>{value<=rating?'★':'☆'}</button>)}</div>
-      <button type="button" className="btn btn-primary" disabled={!rating} onClick={()=>continueAfterRating(false)}>Save rating and continue</button>
-      <button type="button" className="btn btn-secondary" onClick={()=>continueAfterRating(true)}>Skip and continue</button>
+      <button type="button" onClick={()=>{setRatingOpen(false);selectedRating.current=0;trigger.current?.focus();}}>{arabic?'العودة للتحرير':'Back to editing'}</button>
+      <h2 id={dialogId+'-rating'}>{arabic?'قيّم تجربة التحرير (اختياري)':'Rate your editing experience (optional)'}</h2>
+      <p>{arabic?'يُرسل تقييمك بعد تسجيل الدخول. يمكنك التخطي والمتابعة إلى PDF. يُحفظ أي تقييم سابق دون تغيير.':'Your rating will be submitted after sign-in. You can skip it and continue to PDF. Existing reviews are kept unchanged.'}</p>
+      <div role="group" aria-label={arabic?'التقييم':'Rating'}>{[1,2,3,4,5].map(value=><button key={value} type="button" aria-label={value+(arabic?' من 5 نجوم':' of 5 stars')} aria-pressed={rating===value} style={{minWidth:44,minHeight:44,fontSize:24}} onClick={()=>setRating(value)}>{value<=rating?'★':'☆'}</button>)}</div>
+      <button type="button" className="btn btn-primary" disabled={!rating} onClick={()=>continueAfterRating(false)}>{arabic?'حفظ التقييم والمتابعة':'Save rating and continue'}</button>
+      <button type="button" className="btn btn-secondary" onClick={()=>continueAfterRating(true)}>{arabic?'تخطي ومتابعة':'Skip and continue'}</button>
     </section></div>}
 '''+s[a:]
 p.write_text(s)
