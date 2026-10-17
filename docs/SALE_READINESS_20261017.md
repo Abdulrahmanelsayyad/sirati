@@ -53,3 +53,6 @@ A green build is not an independent audit. Historical staging A/B evidence appli
 - [ ] Transfer only agreed rights after funds are secured, verify destination deployment and final acceptance. Do not transfer personal accounts or unrelated data.
 
 **Related:** [Operational buyer handoff](BUYER_HANDOFF_RUNBOOK.md), [current open acceptance gate](https://github.com/Abdulrahmanelsayyad/sirati/issues/24), [proprietary license](../LICENSE).
+
+## Seller-confirmed sale reason (17 October 2026)
+The seller states that they do not currently have enough time to market and grow Sirati CV. This is a seller-provided explanation, not a representation that all product defects are resolved or that marketing/traction has already been achieved. Reflect this wording consistently in marketplace listings and buyer communications.
