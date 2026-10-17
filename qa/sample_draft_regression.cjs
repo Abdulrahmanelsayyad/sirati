@@ -16,7 +16,7 @@ function scenario(options = {}) {
   let confirmation = '';
   const args = {
     hydrated: true, cloudReadyRef: { current: true }, cloudLoading: false,
-    saveInFlight: { current: false }, language: 'en', template: 'modern', userId: 'synthetic-user',
+    saveInFlight: { current: false }, language: 'en', uiLanguage: 'en', template: 'modern', userId: 'synthetic-user',
     choice: {}, normalizeCv: x => x, makeHeaderSampleCv: () => ({ fullName: 'Sample Candidate' }),
     withBasePath: x => '/sirati' + x,
     event: { currentTarget: { closest: () => ({ removeAttribute() {} }) } },
@@ -57,7 +57,7 @@ test('cancel preserves original document, data, history and URL', () => {
   assert.equal(state.writes[0].data.data.fullName, 'Original');
 });
 test('Arabic sample keeps selected template and language with Arabic confirmation', () => {
-  const { state, confirmation } = scenario({ args: { language: 'ar', template: 'compact-ats' } });
+  const { state, confirmation } = scenario({ args: { language: 'ar', uiLanguage: 'ar', template: 'compact-ats' } });
   assert.match(confirmation, /مسودة جديدة/);
   assert.equal(state.url, '/sirati/builder?template=compact-ats&language=ar');
 });
