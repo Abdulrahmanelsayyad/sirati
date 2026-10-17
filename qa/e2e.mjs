@@ -114,8 +114,10 @@ assert(builderPdfSource.includes('class PdfRenderFailure extends Error') &&
   'auth-gated PDF errors must be sanitized without changing authenticated CV save errors');
 assert.equal((builderPdfSource.match(/await exportWithFeedback\(\);/g)||[]).length,4,
   'all four signed-in/resume PDF paths must use the sanitized export wrapper');
-assert(/aria-busy=\{busy\} onClick=\{(?:begin|\(\)=>void begin\(\))\}/.test(builderPdfSource),
-  'PDF primary action must expose its loading state');
+assert(/aria-busy=\{busy\}\s+onClick=\{/.test(builderPdfSource) &&
+       builderPdfSource.includes('setRatingOpen(true)') &&
+       builderPdfSource.includes('continueAfterRating(true)'),
+  'PDF primary action retains loading state and offers a skippable optional rating');
 console.log('PASS: Active auth-gated PDF export maps mixed-script/preview/browser errors without leaking details');
 
 // The user can fix an unsupported joined token before the PDF sign-in gate.
