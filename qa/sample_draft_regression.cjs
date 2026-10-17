@@ -22,7 +22,7 @@ function scenario(options = {}) {
     event: { currentTarget: { closest: () => ({ removeAttribute() {} }) } },
     setDocumentId: x => state.documentId = x, setData: x => state.data = x,
     setVersions: x => state.versions = x, setHistoryOpen: x => state.historyOpen = x,
-    setCurrentSection: x => state.currentSection = x, setCloudStatus() {},
+    rememberSection: x => state.currentSection = x, setCloudStatus() {},
     window: { confirm: text => { confirmation = text; return options.accept !== false; },
       history: { replaceState: (_, __, url) => state.url = url },
       setTimeout: fn => { fn(); return 1; }, clearTimeout() {} },

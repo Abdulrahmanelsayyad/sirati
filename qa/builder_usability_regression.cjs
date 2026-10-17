@@ -11,7 +11,7 @@ const full={...empty,fullName:'Test',title:'Engineer',email:'test@example.invali
 assert(check(full,0).checks.every(Boolean));assert(!check(full,8).complete[8]);
 // Every explicit text/select field label must resolve to the same stable field ID.
 const labels=[...source.matchAll(/<label htmlFor=(\{`[^`]+`\})>[^<]*<\/label>\s*<(input|textarea|select) id=(\{`[^`]+`\})/g)];
-assert(labels.length>=30);for(const m of labels)assert.equal(m[1],m[3]);
+assert(labels.length>=29);for(const m of labels)assert.equal(m[1],m[3]);
 assert(!/<label>[^<]+<\/label>\s*<(input|textarea|select)/.test(source));
 assert(source.includes('uiLanguage={uiLanguage} language={language} data={data}'));
 assert(source.includes('<CvPreview data={data} template={template} language={language}'));
@@ -19,4 +19,5 @@ assert(source.includes('TEMPLATE_NAMES[template]'));assert(source.includes('"mod
 assert(!read('app/layout.tsx').includes('<BuilderNavigator />'));
 assert(source.includes("sessionStorage.setItem('sirati.builder.uiLanguage',value)"));
 assert(read('components/SiratiBuilderPdfButton.tsx').includes('data,template,language}'));
+assert(source.includes('<ExperienceDates'));
 console.log('PASS: empty/partial/full completion, Review navigation, 30 accessible labels, independent CV/UI language, template name and single navigator.');

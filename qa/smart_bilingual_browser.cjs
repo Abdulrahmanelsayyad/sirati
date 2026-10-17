@@ -30,7 +30,10 @@ const assert=require('node:assert/strict');
  console.log('PASS real Builder bilingual evidence matching excludes unsupported SQL');
  page.once('dialog',dialog=>dialog.accept());
  await panel.locator('.sirati-summary-choice').first().click();
- const selected=await summary.inputValue();assert(selected.includes('project management'));
+ const selected=await summary.inputValue();
+ assert(selected.includes('المَشَارِيع') && selected.includes('تـحليل البيانات'),
+   'Inserted summary should use the original user-supplied Arabic evidence');
+ assert(!selected.includes('SQL'),'Do not convert an unsupported job requirement into claimed experience');
  await page.waitForFunction(text=>document.querySelector('.cv-sheet')?.textContent?.includes(text),selected);
  await page.getByRole('button',{name:/Undo summary/}).click();
  assert.equal(await summary.inputValue(),'My original summary.');

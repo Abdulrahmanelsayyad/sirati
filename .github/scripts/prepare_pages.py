@@ -355,3 +355,6 @@ if 'import JobTitleInput' not in text:
 
 # Owner-requested core editor usability fixes, applied after all legacy patches.
 subprocess.run([sys.executable, str(Path(__file__).with_name('builder_usability.py')), str(root)], check=True)
+
+# Owner's live-site review: content quality and editor continuity.
+subprocess.run([sys.executable, str(Path(__file__).with_name('review_content_editor.py')), str(root)], check=True)
