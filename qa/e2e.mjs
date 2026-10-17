@@ -993,7 +993,9 @@ const previousTemplates = page.getByRole('button', { name: 'Previous templates' 
 assert(await previousTemplates.isDisabled(), 'previous arrow should start disabled');
 assert(await nextTemplates.isEnabled(), 'next arrow should be available');
 await nextTemplates.click();
-await page.waitForFunction(() => document.querySelector('.template-carousel-track').scrollLeft > 30);
+// Scrolling precedes the React button-state update; wait for both observable states.
+await page.waitForFunction(() => document.querySelector('.template-carousel-track').scrollLeft > 30 &&
+  document.querySelector('button[aria-label="Previous templates"]')?.disabled === false);
 assert(await previousTemplates.isEnabled(), 'previous arrow should enable after scrolling');
 log('compact desktop carousel with working horizontal arrow navigation');
 
