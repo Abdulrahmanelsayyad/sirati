@@ -8,6 +8,15 @@ for(const lang of ['en','ar']) {
  assert(!text.includes('..'));assert(text.includes('Registered Nurse | Triage | Documentation'));assert(text.includes('Coordinated handovers.'));
  const questions=c.interviewQuestions('Registered Nurse','Emergency care','senior',lang).join(' ');
  assert(lang==='en'?questions.includes('SBAR')&&questions.includes('arrivals')&&questions.includes('delegate'):questions.includes('SBAR')&&questions.includes('الواصلة')&&questions.includes('تفوض'));
+ const emergency=c.interviewQuestions('Registered Nurse','Emergency care','senior',lang);
+ const intensive=c.interviewQuestions('Registered Nurse','ICU','mid',lang);
+ const pediatrics=c.interviewQuestions('Registered Nurse','Pediatric','entry',lang);
+ const general=c.interviewQuestions('Registered Nurse','','',lang);
+ assert(emergency.length>=general.length+4,'Emergency nursing must have a true specialty question bank');
+ assert(intensive.length>=general.length+4,'ICU nursing must have a true specialty question bank');
+ assert(pediatrics.length>=general.length+3,'Pediatrics must have age-appropriate specialist questions');
+ assert(lang==='en'?intensive.join(' ').includes('desaturates'):intensive.join(' ').includes('الأكسجين'));
+ assert(lang==='en'?pediatrics.join(' ').includes('weight-based'):pediatrics.join(' ').includes('الوزن'));
 }
 assert(c.linkedInDraft('en','Nurse','Five years of emergency nursing.','').startsWith('HEADLINE:\nNurse | Five years of emergency nursing'));
 assert(!c.interviewQuestions('ICU physician','','','en').join(' ').includes('medication safety'),'care setting does not imply nursing');
