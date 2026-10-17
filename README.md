@@ -61,10 +61,10 @@ service-role secret and does not override database RLS.
 
 ## CI and release checks
 
-- `.github/workflows/pages.yml` builds on pull requests and pushes to `main`,
-  but **does not deploy automatically**. Publishing GitHub Pages requires a
-  separate manual `workflow_dispatch` on `main`, with the
-  `approve_production_deploy` confirmation explicitly enabled by the owner.
+- `.github/workflows/pages.yml` builds on pull requests and pushes to `main`.
+  **Pull requests only build; pushes to `main` automatically publish to
+  GitHub Pages** if the build succeeds. Keep buyer experiments and staging
+  changes on separate branches: merging to `main` affects production.
 - `.github/workflows/qa.yml` runs reconstruction, static checks, Playwright
   E2E, mobile/print and template regressions on pull requests.
 - See `qa/` for the test files and `AGENT_POLICY.md` for change boundaries.
@@ -81,12 +81,13 @@ or customer data merely to test a build.
 Before representing the project as fully ready for sale or transferring operations,
 the owner and buyer should verify the following **on a controlled test setup**:
 
-1. **Privacy:** [Issue #25](https://github.com/Abdulrahmanelsayyad/sirati/issues/25)
-   documents unencrypted account CV drafts in origin-wide browser
-   `localStorage`. Account-scoped key names prevent mistaken normal UI restore
-   but **do not** make plaintext inaccessible to other users of the same browser.
-   Independent A/B verification is still tracked by
+1. **Privacy:** Historical account-draft `localStorage` exposure was
+   mitigated with scoped `sessionStorage` and sign-out cleanup. The original
+   [Issue #25](https://github.com/Abdulrahmanelsayyad/sirati/issues/25)
+   is closed and consolidated into
    [Issue #24](https://github.com/Abdulrahmanelsayyad/sirati/issues/24).
+   Browser session storage is **not encrypted**, and independent cross-account
+   privacy/security release acceptance remains outstanding.
 2. **Customer journey:** login, create/edit, save/reopen, account switch,
    language switching, 360/390px mobile, all templates, and print/export.
    CI helps; real user and independent QA checks remain necessary.
@@ -112,3 +113,12 @@ assets, dependencies and obligations.
 Read `AGENT_POLICY.md`, `AGENT_TEAM.md`, and `AGENT_BOARD.md` before work.
 Avoid overlapping edits to the generated Builder and its generator scripts.
 Keep fixes small and reversible; never make unverified production-readiness claims.
+
+## Selling / buyer due diligence
+
+Sirati can be listed as a disclosed-condition, pre-traction software asset.
+The seller reports no genuine registered users; no revenue/visitor figures have
+been independently verified. Do not present rule-based suggestions as LLM AI or
+historical payment code as active monetization. See the current
+[sale readiness evidence](docs/SALE_READINESS_20261017.md) and
+[buyer-controlled handoff runbook](docs/BUYER_HANDOFF_RUNBOOK.md).
