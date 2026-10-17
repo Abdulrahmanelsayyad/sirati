@@ -1879,7 +1879,8 @@ for (const [value, expectedClass] of Object.entries(expectedClasses)) {
   await page.waitForTimeout(70);
   const className = await page.locator('.cv-sheet').getAttribute('class');
   assert(className.includes(expectedClass), value + ' did not render expected class');
-  assert.equal(await page.locator('.field').filter({ hasText: 'Full name' }).locator('input').first().inputValue(), 'QA Sirati Nurse');
+  assert((await page.locator('.cv-sheet').innerText()).includes('QA Sirati Nurse'),
+    value + ' switched template but the saved name disappeared from CV preview');
 }
 log('switching all eight templates retains CV data');
 
