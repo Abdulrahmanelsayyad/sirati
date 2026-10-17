@@ -135,7 +135,7 @@ assert.equal(pdfJoinedScriptWarning({experience:[{details:'الـ ICU/ER'}]},tru
 assert.equal(pdfJoinedScriptWarning({profile:'ACLS/BLS, emergency nurse'},false),null);
 assert.equal(pdfJoinedScriptWarning({photoDataUrl:'الـICU/ER'},false),null);
 assert.equal(pdfJoinedScriptWarning({experience:[{details:'ICUالعناية'}]},false)?.includes('ICUالعناية'),true);
-assert(builderPdfSource.includes('if (!saving) {\n      const warning = pdfJoinedScriptWarning(data, arabic);') &&
+assert(builderPdfSource.replace(/\r\n/g, '\n').includes('if (!saving) {\n      const warning = pdfJoinedScriptWarning(data, arabic);') &&
        builderPdfSource.includes('if (e instanceof PdfRenderFailure) throw e'),
   'PDF preflight must block before auth and survive resumed export without affecting Save CV');
 console.log('PASS: joined Arabic/Latin PDF preflight advises exact fix without editing data or opening auth');
@@ -448,15 +448,16 @@ assert(fs.readFileSync('app/globals.css','utf8').includes('.sirati-menu-signout:
 // Execute the actual generated handler against synthetic in-memory accounts.
 // This is a behavioral unit test, NOT an authenticated browser A/B or RLS test.
 const menuHandlerSignature = '  async function handleSignOut() {';
-const menuHandlerStart = menuSource.indexOf(menuHandlerSignature);
-const menuHandlerEnd = menuSource.indexOf('\n  }\n',menuHandlerStart);
+const menuHandlerSource = menuSource.replace(/\r\n/g, '\n');
+const menuHandlerStart = menuHandlerSource.indexOf(menuHandlerSignature);
+const menuHandlerEnd = menuHandlerSource.indexOf('\n  }\n',menuHandlerStart);
 assert(menuHandlerStart >= 0 && menuHandlerEnd > menuHandlerStart,
   'generated drawer sign-out handler cannot be extracted for behavioral regression');
 const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 const syntheticMenuLogout = new AsyncFunction(
   'user','signingOut','createClient','window','setSigningOut',
   'setSignOutError','setUser','close','withBasePath',
-  menuSource.slice(menuHandlerStart+menuHandlerSignature.length,menuHandlerEnd)
+  menuHandlerSource.slice(menuHandlerStart+menuHandlerSignature.length,menuHandlerEnd)
 );
 async function checkMenuSignOut({confirm=true, fail=false, hasDraft=true}={}) {
   const store = new Map([
