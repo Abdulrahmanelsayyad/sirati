@@ -2463,6 +2463,6 @@ log('Local document review: real TXT upload, invalid PDF warning, per-fact conse
 
 await browser.close();
 fs.copyFileSync('../../qa/document_import_browser.cjs', './qa-document-import.cjs');
-execFileSync(process.execPath, ['./qa-document-import.cjs'], {stdio:'inherit'});
+execFileSync(process.execPath, [...process.execArgv, './qa-document-import.cjs'], {stdio:'inherit'});
 console.log('E2E QA COMPLETE');
 
